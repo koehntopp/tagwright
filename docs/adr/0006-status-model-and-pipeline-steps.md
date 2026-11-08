@@ -24,7 +24,7 @@ An album is a folder that contains FLAC files. Folders named `Disc N` or `CD N` 
 | Dynamic range | every track has `DYNAMIC_RANGE` |
 | ReplayGain | every track has `REPLAYGAIN_ALBUM_GAIN` |
 | Fingerprints | every track has `ACOUSTID_FINGERPRINT` |
-| Tags and cover | a `DISCOGS_RELEASE_ID` exists, every track has `ARTIST`, `TITLE`, `ALBUM`, `TRACKNUMBER`, `DISCNUMBER` and `DATE` or `YEAR` |
+| Tags and cover | a `DISCOGS_RELEASE_ID` exists, every track has `ARTIST`, `TITLE`, `ALBUM`, `TRACKNUMBER`, `DISCNUMBER`, `CATALOGNUMBER` (any of its four spellings; Discogs' own value `none` counts) and `DATE` or `YEAR` |
 | Lyrics | no track is missing lyrics (see below) |
 | Filenames | every file name equals the bliss name of its tags ([0010](0010-bliss-file-naming.md)) |
 

@@ -55,7 +55,9 @@ if SETTINGS_FILE.is_file():
 	ROOT = Path(settings.get('input') or ROOT)
 	INGEST = Path(settings.get('output') or INGEST)
 DISC_RE = re.compile(r'^(?:Disc|CD)\s*\d+$', re.I)  # same rule as discogs disc_layout.DISC_DIR_RE
-REQUIRED_TAGS = ('ARTIST', 'TITLE', 'ALBUM', 'TRACKNUMBER', 'DISCNUMBER')  # an empty one means the album is not ready
+CATALOG_KEYS = ('CATALOGNUMBER', 'CATALOG NUMBER', 'CATALOG_NUMBER', 'CATALOGNO')  # spellings fixtags reads, first present wins
+# One entry per required tag (alternative spellings together); an empty one means the album is not ready.
+REQUIRED_TAGS = (('ARTIST',), ('TITLE',), ('ALBUM',), ('TRACKNUMBER',), ('DISCNUMBER',), CATALOG_KEYS)
 MIN_COVER = 1400  # px; smaller covers turn the Tags and cover step yellow
 COVER_NOTE = f'Cover is {{c}}, below {MIN_COVER}x{MIN_COVER}'
 SYNCED_RE = re.compile(r'\[\d{2}:\d{2}\.\d{2}\]')  # strict [MM:SS.xx], as in the discogs lrc_count.py
@@ -166,7 +168,7 @@ def track_files(album: Path, files, tags, lengths, has_discogs: bool) -> list[di
 	out = []
 	for f, t, length in zip(files, tags, lengths):
 		kind = lyric_kind(t)
-		tags_ok = has_discogs and all(tag(t, k) for k in REQUIRED_TAGS) and bool(tag(t, 'DATE', 'YEAR'))
+		tags_ok = has_discogs and all(tag(t, *k) for k in REQUIRED_TAGS) and bool(tag(t, 'DATE', 'YEAR'))
 		out.append({
 			'name': f.name,
 			'length': round(length),
@@ -242,7 +244,7 @@ def summarize(album: Path) -> dict:
 	have = lambda *k: sum(1 for t in tags if tag(t, *k)) == n  # noqa: E731
 	kinds = [lyric_kind(t) for t in tags]
 	syn, pla, ins, mis = (kinds.count(k) for k in ('lrc', 'txt', 'instr', 'none'))
-	req = all(have(k) for k in REQUIRED_TAGS) and have('DATE', 'YEAR')
+	req = all(have(*k) for k in REQUIRED_TAGS) and have('DATE', 'YEAR')
 	cov = out['cover']
 	small_cover = not cov or cov['w'] < MIN_COVER or cov['h'] < MIN_COVER
 	steps = [
@@ -722,7 +724,8 @@ def release_tracks(rid: str) -> dict:
 			'producers': by_role(t.get('extraartists') or [], 'producer'),
 			'engineers': by_role(t.get('extraartists') or [], 'engineer'),
 		})
-	catno = next((c for lb in r.get('labels', []) if (c := (lb.get('catno') or '').strip()) and c.lower() != 'none'), '')
+	# Discogs' own 'none' counts: the tag must not be empty
+	catno = next((c for lb in r.get('labels', []) if (c := (lb.get('catno') or '').strip())), '')
 	images = r.get('images') or []
 	image = next((i for i in images if i.get('type') == 'primary'), images[0] if images else {}).get('uri', '')
 	out = {
@@ -876,7 +879,7 @@ def tracks_apply(body: dict):
 		if a.tags is None:
 			a.add_tags()
 		a['DISCOGS_RELEASE_ID'] = [rel['id']]
-		fill(a, 'CATALOGNUMBER', rel['catno'], 'CATALOG NUMBER', 'CATALOG_NUMBER', 'CATALOGNO')
+		fill(a, 'CATALOGNUMBER', rel['catno'], *CATALOG_KEYS[1:])
 		fill(a, 'ARTIST', t['artist'])
 		if not tag(a.tags, 'ALBUM_ARTIST_OVERRIDE'):
 			fill(a, 'ALBUMARTIST', rel['artist'])
@@ -955,7 +958,7 @@ def set_track(body: dict):
 # The override keys are also applied to ALBUMARTIST / ALBUM so the change shows before the next run.
 ALBUM_FIELDS = {
 	'ALBUM_ARTIST_OVERRIDE': ('ALBUMARTIST',), 'ALBUM_TITLE_OVERRIDE': ('ALBUM',), 'ALBUM_FORMAT': (), 'ALBUM_EDITION': (),
-	'CATALOGNUMBER': ('CATALOG NUMBER', 'CATALOG_NUMBER', 'CATALOGNO'), 'MUSICBRAINZ_ALBUMID': ('MUSICBRAINZ ALBUM ID',),
+	'CATALOGNUMBER': CATALOG_KEYS[1:], 'MUSICBRAINZ_ALBUMID': ('MUSICBRAINZ ALBUM ID',),
 }
 OVERRIDES = {'ALBUM_ARTIST_OVERRIDE': 'ALBUMARTIST', 'ALBUM_TITLE_OVERRIDE': 'ALBUM'}
 # Tags fixtags writes from the Discogs release (see discogs/fixtags.py); shown read-only.
@@ -1049,6 +1052,8 @@ def set_tags(body: dict):
 		if not all(str(tr.get(k, '')).strip() for k in ('title', 'disc', 'track')):
 			raise HTTPException(400, f'title, disc and track must not be empty ({tr.get("file")})')
 	fields = {k: v for k, v in body.get('fields', {}).items() if k in ALBUM_FIELDS}
+	if 'CATALOGNUMBER' in fields and not str(fields['CATALOGNUMBER']).strip():
+		raise HTTPException(400, 'catalog number must not be empty (enter none if the release has none)')
 	if fields:
 		write_album_fields(album, fields)
 	log = [f'album: {k} = {v or "(removed)"}' for k, v in fields.items()]

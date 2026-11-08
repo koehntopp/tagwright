@@ -456,7 +456,7 @@ const KFIELDS = [
   ['ALBUM_TITLE_OVERRIDE', 'Album title', 'Replaces the Discogs title. Empty: remove the override and restore the Discogs master title.'],
   ['ALBUM_FORMAT', 'Format', 'For example CD, SACD, Vinyl. Empty: CD.'],
   ['ALBUM_EDITION', 'Edition', 'For example Remastered or Gold Disc. Part of the version string.'],
-  ['CATALOGNUMBER', 'Catalog number', 'Part of the version string.'],
+  ['CATALOGNUMBER', 'Catalog number', 'Part of the version string. Must not be empty: enter none if the release has none.'],
   ['MUSICBRAINZ_ALBUMID', 'MusicBrainz release ID', 'Anchors the language tags to a MusicBrainz release.'],
 ];
 const KTRACK = [['disc', 'Disc', 'w-14'], ['track', 'Track', 'w-14'], ['title', 'Title', 'w-full min-w-40'], ['artist', 'Artist', 'w-full min-w-32'], ['subtitle', 'Disc subtitle', 'w-full min-w-28']];
@@ -503,6 +503,7 @@ $('ksave').onclick = async () => {
   Object.keys(kd.fields).forEach(k => { if (kd.fields[k].trim() !== kd.d.fields[k]) fields[k] = kd.fields[k]; });
   kd.tracks.forEach((t, i) => { if (KTRACK.some(([k]) => t[k] !== kd.d.tracks[i][k])) tracks.push(t); });
   if (!Object.keys(fields).length && !tracks.length) { $('kdlg').close(); return; }
+  if ('CATALOGNUMBER' in fields && !fields.CATALOGNUMBER.trim()) { $('kerr').textContent = 'Catalog number must not be empty (enter none if the release has none).'; return; }
   if (tracks.some(t => !['title', 'disc', 'track'].every(k => String(t[k]).trim()))) { $('kerr').textContent = 'Title, disc and track must not be empty.'; return; }
   try {
     const r = await post('/api/tags', {path: kd.path, fields, tracks});

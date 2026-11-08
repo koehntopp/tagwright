@@ -38,7 +38,7 @@ Entries of type `track` only (headings and index entries are skipped). Position 
   | `ARTIST` | the track's artists, else the release artists (names without the `(n)` suffix, join words kept) |
   | `ALBUMARTIST` | the release artists; skipped when `ALBUM_ARTIST_OVERRIDE` is set (`fixtags.py` writes the override) |
   | `ALBUM` | the master title, else the release title (the rule of discogs ADR 0002 section 3); skipped when `ALBUM_TITLE_OVERRIDE` is set. `fixtags.py` rewrites `ALBUM` on every run anyway |
-  | `CATALOGNUMBER` | the first label catalogue number that is not `none`; checked under all four spellings (`CATALOGNUMBER`, `CATALOG NUMBER`, `CATALOG_NUMBER`, `CATALOGNO`). The next fix run puts it into `VERSION` |
+  | `CATALOGNUMBER` | the first label's catalogue number, **including Discogs' own `none`** (the tag must never be empty, and the library already carries `none`); checked under all four spellings (`CATALOGNUMBER`, `CATALOG NUMBER`, `CATALOG_NUMBER`, `CATALOGNO`). The next fix run puts it into `VERSION` |
   | cover | the release's primary image, **only when the first file has no embedded picture** ([0016](0016-cover-art.md)) |
 
   **Everything else the old tagger import wrote is imported too** ("import all that are available": the data is in the release anyway). Found by reading the tags of 40 albums in the library that were imported with Yate. Per assigned file, from the release JSON:
