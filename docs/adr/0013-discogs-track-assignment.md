@@ -41,6 +41,29 @@ Entries of type `track` only (headings and index entries are skipped). Position 
   | `CATALOGNUMBER` | the first label catalogue number that is not `none`; checked under all four spellings (`CATALOGNUMBER`, `CATALOG NUMBER`, `CATALOG_NUMBER`, `CATALOGNO`). The next fix run puts it into `VERSION` |
   | cover | the release's primary image, **only when the first file has no embedded picture** ([0016](0016-cover-art.md)) |
 
+  **Everything else the old tagger import wrote is imported too** ("import all that are available": the data is in the release anyway). Found by reading the tags of 40 albums in the library that were imported with Yate. Per assigned file, from the release JSON:
+
+  *Player tags*, filled **only when empty** (multi-valued where noted):
+
+  | Tag | From the release |
+  |-----|------------------|
+  | `GENRE` (multi) | genres |
+  | `MOOD` | styles, joined with `, ` (the tagger's convention) |
+  | `LABEL` (multi) | label names |
+  | `MEDIA` | formats, `Name (description,description)`, joined with `, ` |
+  | `COUNTRY` | country |
+  | `BARCODE` | the first identifier of type Barcode |
+  | `CATALOG` (multi) | all label catalogue numbers except `none` |
+  | `COPYRIGHT` | companies "Phonographic Copyright (p)" as `℗ name` and "Copyright (c)" as `© name`, joined |
+  | `PUBLISHER` | companies "Published By" |
+  | `COMPOSER` (multi) | the track's writer credits (Written-By, Composed By, Music By, Songwriter, Lyrics By, Words By), else the release's |
+  | `PRODUCER`, `ENGINEER` (multi) | the track's producer / engineer credits, else the release's |
+  | `PERSONNEL` (multi) | every release credit as `Name - Role` |
+
+  *Discogs-owned tags*, **replaced on every assignment** (all existing `DISCOGS_*` keys except `DISCOGS_RELEASE_ID` are deleted first, so a changed release leaves no stale links): `DISCOGS_RELEASE_URL`, `DISCOGS_MASTER_ID` (`m<id>`), `DISCOGS_MASTER_URL`, `DISCOGS_ARTIST_URL`, `DISCOGS_ALBUMARTIST_URL`, `DISCOGS_ARTIST_LIST`, `DISCOGS_LABEL_URL` (multi), `DISCOGS_ARTWORK_URL`, `DISCOGS_CATALOG_NUMBER` (`Label: catno`, multi), `DISCOGS_ALBUM_RELEASECOUNTRY`, `DISCOGS_RELEASE_NOTES`, `DISCOGS_VIDEO_URL` (multi, `Title: url`; the old import put the title into the key name, which is not a valid Vorbis key in general), one `DISCOGS_<ROLE>` per company role (`DISCOGS_PRESSED_BY`, `DISCOGS_RECORDED_AT`, `DISCOGS_MIXED_AT`, ...; names joined with `, `; copyright roles are in `COPYRIGHT`), and per track `DISCOGS_RELEASE_ORDINAL_POSITION` (0-based index in the release tracklist) and `TRACK_NUMBER_TEXT` (the Discogs position, for example `1-3` or `A2`). Nothing reads these tags in the discogs scripts; they are kept in the files for players and later use. They overlap with the `ALBUM_*` tags `fixtags.py` writes, which stay as they are.
+
+  Not imported, with no Discogs source or not Discogs data: `ARTISTSORT`, `ALBUMARTISTSORT`, `COMMENT` (a ripper note), `DISCOGS_IMPORT_SETTINGS` (the old importer's own state), and the MusicBrainz tags (a separate import; `MUSICBRAINZ_ALBUMID` is user-set).
+
   The result is logged as `filled from Discogs: ...`. A cover that cannot be fetched is logged (`cover not fetched: ...`) and does not fail the assignment. Everything else Discogs-derived (dates, labels, genres, credits, ...) is written by `fixtags.py` on the next Run fixes ([0014](0014-internal-tag-editor.md) "From Discogs"). Not filled, because they are the owner's own tags with no Discogs source: `ALBUM_FORMAT`, `ALBUM_EDITION`, `SET SUBTITLE`, `MUSICBRAINZ_ALBUMID`.
 - Discogs release positions are not stored in a tag, because `fixtags` removes tag families it manages.
 

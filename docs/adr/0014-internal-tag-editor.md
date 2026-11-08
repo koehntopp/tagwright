@@ -35,10 +35,10 @@ The pencils next to the album artist and the album title in the inspector header
 One row per file: disc, track, title, artist, disc subtitle, and a pen button that opens the lyrics editor ([0015](0015-track-playback-and-track-edit.md)). Only changed rows are sent. Writes `TITLE` (required), `ARTIST`, `DISCNUMBER`, `TRACKNUMBER`, `SET SUBTITLE` and `DISCSUBTITLE` (kept equal so it shows before the next fix). Files are renamed afterwards ([0010](0010-bliss-file-naming.md)).
 
 ### From Discogs tab: read-only
-The tags `fixtags.py` writes from the release, shown as key and value and not editable: dates and years, `ALBUM`, `VERSION`, master/release titles and years, `ORIGINAL_TITLE`, `ALBUM_MAX_RESOLUTION`, country, labels, catalogue numbers, format, genres, styles, notes, series, data quality, `ALBUM_DR`, and the families `ALBUM_COMPANY_*`, `ALBUM_CREDIT_*`, `ALBUM_IDENT_*`. A note states that the overrides on the Album tab take precedence over `ALBUM` and `ALBUMARTIST`.
+The tags `fixtags.py` writes from the release, shown as key and value and not editable: dates and years, `ALBUM`, `VERSION`, master/release titles and years, `ORIGINAL_TITLE`, `ALBUM_MAX_RESOLUTION`, country, labels, catalogue numbers, format, genres, styles, notes, series, data quality, `ALBUM_DR`, and the families `ALBUM_COMPANY_*`, `ALBUM_CREDIT_*`, `ALBUM_IDENT_*` and `DISCOGS_*` (written by the Discogs assignment, [0013](0013-discogs-track-assignment.md); `DISCOGS_RELEASE_ID` itself is shown on the Album tab). The player tags the assignment fills when empty (`GENRE`, `LABEL`, `COMPOSER`, ...) are ordinary tags and are not listed here. A note states that the overrides on the Album tab take precedence over `ALBUM` and `ALBUMARTIST`.
 
 ### Rules
-- The editable list and the read-only list are constants in `app.py` (`ALBUM_FIELDS`, `DISCOGS_FIXED`, `DISCOGS_PREFIXES`) and mirror `fixtags.py`. A change to `fixtags.py` that moves a tag between "user input" and "Discogs-derived" requires updating them and this ADR.
+- The editable list and the read-only list are constants in `app.py` (`ALBUM_FIELDS`, `DISCOGS_FIXED`, `DISCOGS_PREFIXES`) and mirror `fixtags.py` (the `DISCOGS_` prefix is Tagwright's own, from [0013](0013-discogs-track-assignment.md)). A change to `fixtags.py` that moves a tag between "user input" and "Discogs-derived" requires updating them and this ADR.
 - A tag Discogs owns is never made editable here; to change it, change the release or add an override.
 - Saves are refused while a job runs ([0008](0008-job-model.md)).
 

@@ -515,6 +515,7 @@ def move(body: dict):
 
 # ---------- track editor: assign album files to a Discogs release ----------
 releases: dict[str, dict] = {}  # release id -> parsed tracklist (Discogs allows 60 requests/min)
+raw_releases: dict[str, dict] = {}  # release id -> the Discogs release JSON, for the tags written on apply
 
 
 def discogs_key() -> str:
@@ -594,6 +595,85 @@ def seconds(d: str) -> int:
 		return 0
 
 
+WRITER_ROLES = ('written-by', 'written by', 'composed by', 'music by', 'songwriter', 'lyrics by', 'words by')
+COPYRIGHT_TYPES = ('copyright (c)', 'phonographic copyright (p)')
+
+
+def clean_artist(name: str) -> str:
+	return re.sub(r'\s*\(\d+\)$', '', name.strip())
+
+
+def uniq(xs) -> list[str]:
+	return list(dict.fromkeys(x for x in xs if x))
+
+
+def by_role(extra: list[dict], *roles: str) -> list[str]:
+	"""Names of the credits whose role contains one of the (lower-case) role words."""
+	return uniq(clean_artist(e.get('name', '')) for e in extra if any(w in (e.get('role') or '').lower() for w in roles))
+
+
+def release_tags(r: dict) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+	"""(player tags, DISCOGS_* tags) from a raw Discogs release. Empty values are omitted.
+
+	Player tags are the standard ones the tagger used to import (shown by Roon etc.); they are filled when missing.
+	DISCOGS_* tags are Discogs-owned and replaced on every assignment.
+	"""
+	extra, companies, labels = r.get('extraartists') or [], r.get('companies') or [], r.get('labels') or []
+	artists = r.get('artists') or []
+
+	def company(*types: str) -> list[str]:
+		return uniq(clean_artist(c.get('name', '')) for c in companies if (c.get('entity_type_name') or '').lower() in types)
+
+	fmts = ', '.join(
+		f['name'] + (f' ({",".join(f["descriptions"])})' if f.get('descriptions') else '') for f in r.get('formats') or [] if f.get('name')
+	)
+	catnos = uniq((lb.get('catno') or '').strip() for lb in labels if (lb.get('catno') or '').strip().lower() != 'none')
+	barcode = next((i['value'].strip() for i in r.get('identifiers') or [] if i.get('type') == 'Barcode' and i.get('value')), '')
+	copyright_ = [f'\u2117 {n}' for n in company('phonographic copyright (p)')] + [f'\u00a9 {n}' for n in company('copyright (c)')]
+	player = {
+		'GENRE': uniq(r.get('genres') or []),
+		'MOOD': [', '.join(r.get('styles') or [])],  # the tagger put the Discogs styles here
+		'LABEL': uniq(clean_artist(lb.get('name', '')) for lb in labels),
+		'MEDIA': [fmts], 'COUNTRY': [r.get('country', '')], 'BARCODE': [barcode], 'CATALOG': catnos,
+		'COPYRIGHT': [', '.join(copyright_)], 'PUBLISHER': [', '.join(company('published by'))],
+		'PRODUCER': by_role(extra, 'producer'), 'ENGINEER': by_role(extra, 'engineer'),
+		'PERSONNEL': uniq(f'{clean_artist(e["name"])} - {e["role"]}' for e in extra if e.get('name') and e.get('role')),
+	}
+	rid = r['id']
+	artist_urls = [f'https://www.discogs.com/artist/{a["id"]}' for a in artists if a.get('id')]
+	discogs_tags = {
+		'DISCOGS_RELEASE_URL': [r.get('uri', '')],
+		'DISCOGS_MASTER_ID': [f'm{r["master_id"]}'] if r.get('master_id') else [],
+		'DISCOGS_MASTER_URL': [f'https://www.discogs.com/master/{r["master_id"]}'] if r.get('master_id') else [],
+		'DISCOGS_ARTIST_URL': artist_urls, 'DISCOGS_ALBUMARTIST_URL': artist_urls,
+		'DISCOGS_ARTIST_LIST': [', '.join(clean_artist(a.get('name', '')) for a in artists)],
+		'DISCOGS_LABEL_URL': [f'https://www.discogs.com/label/{lb["id"]}' for lb in labels if lb.get('id')],
+		'DISCOGS_ARTWORK_URL': [f'https://www.discogs.com/viewimages?release={rid}'],
+		'DISCOGS_CATALOG_NUMBER': uniq(f'{clean_artist(lb.get("name", ""))}: {lb["catno"]}' for lb in labels if lb.get('catno')),
+		'DISCOGS_ALBUM_RELEASECOUNTRY': [r.get('country', '')],
+		'DISCOGS_RELEASE_NOTES': [(r.get('notes') or '').strip()],
+		'DISCOGS_VIDEO_URL': uniq(f'{v.get("title", "").strip()}: {v["uri"]}' for v in r.get('videos') or [] if v.get('uri')),
+	}
+	for c in companies:  # Recorded At, Mixed At, Pressed By, ... one tag per role
+		role = (c.get('entity_type_name') or '').strip()
+		if role and role.lower() not in COPYRIGHT_TYPES:
+			key = 'DISCOGS_' + re.sub(r'[^A-Z0-9]+', '_', role.upper()).strip('_')
+			discogs_tags.setdefault(key, [])
+			name = clean_artist(c.get('name', ''))
+			if name and name not in discogs_tags[key]:
+				discogs_tags[key].append(name)
+	for key in [k for k in discogs_tags if k.startswith('DISCOGS_') and k not in DISCOGS_FIXED_KEYS]:
+		discogs_tags[key] = [', '.join(discogs_tags[key])] if discogs_tags[key] else []
+	return ({k: [x for x in v if x] for k, v in player.items() if any(v)}, {k: [x for x in v if x] for k, v in discogs_tags.items() if any(v)})
+
+
+# DISCOGS_* tags that keep one value per entry instead of one joined value (the rest are per company role)
+DISCOGS_FIXED_KEYS = {
+	'DISCOGS_RELEASE_URL', 'DISCOGS_MASTER_ID', 'DISCOGS_MASTER_URL', 'DISCOGS_ARTIST_URL', 'DISCOGS_ALBUMARTIST_URL', 'DISCOGS_ARTIST_LIST',
+	'DISCOGS_LABEL_URL', 'DISCOGS_ARTWORK_URL', 'DISCOGS_CATALOG_NUMBER', 'DISCOGS_ALBUM_RELEASECOUNTRY', 'DISCOGS_RELEASE_NOTES', 'DISCOGS_VIDEO_URL',
+}
+
+
 def release_tracks(rid: str) -> dict:
 	if rid in releases:
 		return releases[rid]
@@ -610,6 +690,9 @@ def release_tracks(rid: str) -> dict:
 			'i': len(tracks), 'position': pos, 'disc': int(m[1]) if m else 1, 'track': int(m[2]) if m else seq,
 			'title': t.get('title', ''), 'duration': seconds(t.get('duration', '')),
 			'artist': artist_names(t.get('artists', [])) or album_artist,
+			'composers': by_role(t.get('extraartists') or [], *WRITER_ROLES),
+			'producers': by_role(t.get('extraartists') or [], 'producer'),
+			'engineers': by_role(t.get('extraartists') or [], 'engineer'),
 		})
 	catno = next((c for lb in r.get('labels', []) if (c := (lb.get('catno') or '').strip()) and c.lower() != 'none'), '')
 	images = r.get('images') or []
@@ -619,6 +702,7 @@ def release_tracks(rid: str) -> dict:
 		'master_id': r.get('master_id') or 0, 'image': image, 'tracks': tracks,
 	}
 	releases[rid] = out
+	raw_releases[rid] = r
 	return out
 
 
@@ -740,12 +824,16 @@ def tracks_apply(body: dict):
 	log = []
 	filled: dict[str, int] = {}
 
-	def fill(a: FLAC, key: str, value: str, *alts: str) -> None:
-		# Tags the pipeline reads as user input (the tagger used to import them from Discogs): filled when empty,
+	def fill(a: FLAC, key: str, value: str | list[str], *alts: str) -> None:
+		# Tags the tagger used to import from Discogs (the pipeline reads some as user input): filled when empty,
 		# never overwritten (discogs ADR 0002 section 1 and 2).
-		if value and not tag(a.tags, key, *alts):
-			a[key] = [value]
+		values = [value] if isinstance(value, str) else value
+		if values and not tag(a.tags, key, *alts):
+			a[key] = values
 			filled[key] = filled.get(key, 0) + 1
+
+	player, discogs_tags = release_tags(raw_releases[rel['id']])
+	writers = by_role(raw_releases[rel['id']].get('extraartists') or [], *WRITER_ROLES)
 
 	cover = None
 	if not FLAC(flacs(album)[0]).pictures and rel['image']:
@@ -766,6 +854,19 @@ def tracks_apply(body: dict):
 			fill(a, 'ALBUMARTIST', rel['artist'])
 		if not tag(a.tags, 'ALBUM_TITLE_OVERRIDE') and not tag(a.tags, 'ALBUM'):
 			fill(a, 'ALBUM', release_album_title(rel))
+		for key, values in player.items():
+			if key not in ('PRODUCER', 'ENGINEER'):
+				fill(a, key, values)
+		fill(a, 'COMPOSER', t['composers'] or writers)  # track credits win over release credits
+		fill(a, 'PRODUCER', t['producers'] or player.get('PRODUCER', []))
+		fill(a, 'ENGINEER', t['engineers'] or player.get('ENGINEER', []))
+		for key in [k for k in a.tags.keys() if k.upper().startswith('DISCOGS_') and k.upper() != 'DISCOGS_RELEASE_ID']:
+			del a.tags[key]  # Discogs-owned: replaced by the data of this release
+		for key, values in discogs_tags.items():
+			a[key] = values
+		a['DISCOGS_RELEASE_ORDINAL_POSITION'] = [str(t['i'])]
+		if t['position']:
+			a['TRACK_NUMBER_TEXT'] = [t['position']]
 		a['TITLE'] = [t['title']]
 		a['TRACKNUMBER'] = [str(n)]
 		a['DISCNUMBER'] = [str(d)]
@@ -776,6 +877,7 @@ def tracks_apply(body: dict):
 	if cover:
 		embed_cover(album, cover, only_missing=True)
 		filled['cover'] = 1
+	log.append(f'Discogs-owned tags written: {len(discogs_tags) + 1} per file')
 	if filled:
 		log.append('filled from Discogs: ' + ', '.join(f'{k} x{v}' if v > 1 else k for k, v in filled.items()))
 	log += rename_files(album)
@@ -836,7 +938,7 @@ DISCOGS_FIXED = (
 	'ALBUM_RELEASE_FORMAT_DESCRIPTIONS', 'ALBUM_RELEASE_FORMAT_TEXT', 'ALBUM_RELEASE_GENRES', 'ALBUM_RELEASE_STYLES',
 	'ALBUM_RELEASE_NOTES', 'ALBUM_RELEASE_DATE_FULL', 'ALBUM_RELEASE_DATA_QUALITY', 'ALBUM_RELEASE_SERIES', 'ALBUM_DR',
 )
-DISCOGS_PREFIXES = ('ALBUM_COMPANY_', 'ALBUM_CREDIT_', 'ALBUM_IDENT_')
+DISCOGS_PREFIXES = ('ALBUM_COMPANY_', 'ALBUM_CREDIT_', 'ALBUM_IDENT_', 'DISCOGS_')
 
 
 @app.get('/api/tags')
@@ -848,7 +950,7 @@ def get_tags(path: str):
 	t0 = FLAC(files[0]).tags or {}
 	keys = {k.upper(): k for k in t0.keys()}
 	fixed = [k for k in DISCOGS_FIXED if k in keys]
-	extra = sorted(k for k in keys if k.startswith(DISCOGS_PREFIXES))
+	extra = sorted(k for k in keys if k.startswith(DISCOGS_PREFIXES) and k != 'DISCOGS_RELEASE_ID')
 	tracks = []
 	for f in files:
 		t = FLAC(f).tags or {}
