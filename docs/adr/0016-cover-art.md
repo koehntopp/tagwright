@@ -1,0 +1,21 @@
+# ADR 0016: Cover art: display, size warning, replacement
+
+- **Status**: Accepted
+- **Date**: 2026-11-08
+
+## Context
+
+UC-9. Library quality needs a cover of at least 1400x1400. Covers are embedded in each FLAC; some albums only have a folder image.
+
+## Decision
+
+- **Which image**: `GET /api/cover` serves the embedded front cover (type 3) of the first file, else its first picture, else the first of `cover.jpg`, `folder.jpg`, `cover.png`, `folder.png` in the album folder, else answers 204 (no 404s in the console). The UI appends `&v=<album mtime>` so a replaced cover is not served from the browser cache. With no art, cards show a neutral gradient with initials.
+- **Size**: `summarize` reports `{w, h, bytes, embedded}` for that same image. Mutagen's stored width/height are used; if they are 0 the image is decoded with Pillow. The inspector shows `W×H` under the cover; hovering shows embedded or not, and the size in KB/MB.
+- **Warning**: below 1400 px on either side, or no cover, the **Tags and cover** step is partial (yellow) with the tooltip "Cover is WxH, below 1400x1400". It still counts as done ([0006](0006-status-model-and-pipeline-steps.md), [0011](0011-ingestion-move.md)). The limit is the constant `MIN_COVER`.
+- **Replace**: the pen beside the size opens a file picker; the browser sends the image as the raw body of `PUT /api/cover?path=`. The server verifies it is an image (400 otherwise), keeps JPEG and PNG bytes as they are, converts any other format to JPEG quality 95, and in every FLAC replaces the front and untyped (type 0) pictures with the new front cover, keeping other picture types (for example back cover). Refused while a job runs.
+- Pillow is the image dependency.
+
+## Consequences
+
+- `fixtags.py` resizes covers on a later run to its `cover_max_size` (default 1500 px); an uploaded cover larger than that is reduced then.
+- A folder image is embedded only by uploading a cover; the pipeline does not embed it.
