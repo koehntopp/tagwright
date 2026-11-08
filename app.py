@@ -146,7 +146,7 @@ def lyric_kind(t) -> str:
 
 def track_dr_mean(tags) -> str:
 	"""Album DR fallback: mean of the per-track DYNAMIC_RANGE tags."""
-	vals = [int(v) for t in tags if (v := tag(t, 'DYNAMIC_RANGE', 'DYNAMIC RANGE')).isdigit() and int(v) > 0]
+	vals = [int(v) for t in tags if (v := tag(t, 'DYNAMIC_RANGE')).isdigit() and int(v) > 0]
 	return str(round(sum(vals) / len(vals))).zfill(2) if vals else ''
 
 
@@ -163,10 +163,10 @@ def track_files(album: Path, files, tags, lengths, has_discogs: bool) -> list[di
 			'disc': tag(t, 'DISCNUMBER'),
 			'track': tag(t, 'TRACKNUMBER'),
 			'title': tag(t, 'TITLE') or f.stem,
-			'dr': tag(t, 'DYNAMIC_RANGE', 'DYNAMIC RANGE'),
+			'dr': tag(t, 'DYNAMIC_RANGE'),
 			'lyrics': kind,
 			'checks': [
-				bool(tag(t, 'DYNAMIC_RANGE', 'DYNAMIC RANGE')),
+				bool(tag(t, 'DYNAMIC_RANGE')),
 				bool(tag(t, 'REPLAYGAIN_ALBUM_GAIN')),
 				bool(tag(t, 'ACOUSTID_FINGERPRINT', 'ACOUSTID FINGERPRINT')),
 				tags_ok,
@@ -235,7 +235,7 @@ def summarize(album: Path) -> dict:
 	cov = out['cover']
 	small_cover = not cov or cov['w'] < MIN_COVER or cov['h'] < MIN_COVER
 	steps = [
-		('Dynamic range', have('DYNAMIC_RANGE', 'DYNAMIC RANGE')),
+		('Dynamic range', have('DYNAMIC_RANGE')),
 		('ReplayGain', have('REPLAYGAIN_ALBUM_GAIN')),
 		('Fingerprints', have('ACOUSTID_FINGERPRINT', 'ACOUSTID FINGERPRINT')),
 		('Tags and cover', bool(did) and req),
@@ -754,7 +754,7 @@ def set_track(body: dict):
 # The override keys are also applied to ALBUMARTIST / ALBUM so the change shows before the next run.
 ALBUM_FIELDS = {
 	'ALBUM_ARTIST_OVERRIDE': ('ALBUMARTIST',), 'ALBUM_TITLE_OVERRIDE': ('ALBUM',), 'ALBUM_FORMAT': (), 'ALBUM_EDITION': (),
-	'SUBTITLE': (), 'CATALOGNUMBER': ('CATALOG NUMBER', 'CATALOG_NUMBER', 'CATALOGNO'), 'MUSICBRAINZ_ALBUMID': ('MUSICBRAINZ ALBUM ID',),
+	'CATALOGNUMBER': ('CATALOG NUMBER', 'CATALOG_NUMBER', 'CATALOGNO'), 'MUSICBRAINZ_ALBUMID': ('MUSICBRAINZ ALBUM ID',),
 }
 OVERRIDES = {'ALBUM_ARTIST_OVERRIDE': 'ALBUMARTIST', 'ALBUM_TITLE_OVERRIDE': 'ALBUM'}
 # Tags fixtags writes from the Discogs release (see discogs/fixtags.py); shown read-only.
