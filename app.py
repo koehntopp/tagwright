@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run
 # /// script
-# dependencies = ["fastapi", "uvicorn", "mutagen", "python-slugify", "unidecode", "pathvalidate"]
+# dependencies = ["fastapi", "uvicorn", "mutagen", "python-slugify", "unidecode", "pathvalidate", "pillow"]
 # ///
 """Tagwright: web UI over the discogs nzbfix pipeline.
 
@@ -8,6 +8,7 @@ Env: ROOT (base dir, default /staging), INGEST_DIR (default /flac/ingest),
 DISCOGS_DIR (dir holding nzbfix.py, default /opt/discogs), PORT (8080).
 """
 
+import io
 import json
 import os
 import re
@@ -23,10 +24,11 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from mutagen.flac import FLAC
+from mutagen.flac import FLAC, Picture
+from PIL import Image, UnidentifiedImageError
 from pathvalidate import sanitize_filename
 from slugify import slugify
 
@@ -170,6 +172,30 @@ def track_files(album: Path, files, tags, lengths, has_discogs: bool) -> list[di
 	return out
 
 
+def cover_info(a: FLAC, album: Path) -> dict | None:
+	"""Size of the cover that /api/cover serves (embedded front cover first, else a folder image)."""
+	pics = a.pictures
+	pic = next((p for p in pics if p.type == 3), pics[0] if pics else None)
+	if pic:
+		w, h = pic.width, pic.height
+		if not (w and h):  # some taggers leave the dimensions unset
+			try:
+				with Image.open(io.BytesIO(pic.data)) as im:
+					w, h = im.width, im.height
+			except (OSError, UnidentifiedImageError):
+				pass
+		return {'w': w, 'h': h, 'bytes': len(pic.data), 'embedded': True}
+	for name in ('cover.jpg', 'folder.jpg', 'cover.png', 'folder.png'):
+		img = album / name
+		if img.is_file():
+			try:
+				with Image.open(img) as im:
+					return {'w': im.width, 'h': im.height, 'bytes': img.stat().st_size, 'embedded': False}
+			except (OSError, UnidentifiedImageError):
+				return None
+	return None
+
+
 def summarize(album: Path) -> dict:
 	files = flacs(album)
 	if not files:
@@ -186,6 +212,7 @@ def summarize(album: Path) -> dict:
 		'artist_is_albumartist': bool(tag(t0, 'ALBUMARTIST')),
 		'new_title': bliss_album(t0),
 		'album': tag(t0, 'ALBUM'),
+		'cover': cover_info(audio[0], album),
 		'artist_override': tag(t0, 'ALBUM_ARTIST_OVERRIDE'),
 		'title_override': tag(t0, 'ALBUM_TITLE_OVERRIDE'),
 		'year': tag(t0, 'DATE', 'YEAR')[:4],
@@ -277,6 +304,36 @@ def albums(path: str = ''):
 @app.get('/api/album')
 def album(path: str):
 	return get_summary(safe(path))
+
+
+@app.put('/api/cover')
+async def set_cover(path: str, request: Request):
+	"""Replace the embedded front cover of every file with the uploaded image (raw request body)."""
+	if job['state'] == 'running':
+		raise HTTPException(409, 'a job is running')
+	album = safe(path)
+	data = await request.body()
+	try:
+		with Image.open(io.BytesIO(data)) as im:
+			fmt, w, h, mode = im.format, im.width, im.height, im.mode
+			if fmt not in ('JPEG', 'PNG'):  # FLAC players expect JPEG or PNG
+				buf = io.BytesIO()
+				im.convert('RGB').save(buf, 'JPEG', quality=95)
+				data, fmt, mode = buf.getvalue(), 'JPEG', 'RGB'
+	except (OSError, UnidentifiedImageError) as e:
+		raise HTTPException(400, 'not a readable image') from e
+	pic = Picture()
+	pic.type, pic.mime, pic.desc, pic.width, pic.height, pic.data = 3, f'image/{fmt.lower()}', '', w, h, data
+	pic.depth = {'1': 1, 'L': 8, 'P': 8, 'RGB': 24, 'RGBA': 32}.get(mode, 24)
+	for f in flacs(album):
+		a = FLAC(f)
+		keep = [p for p in a.pictures if p.type not in (0, 3)]  # front and untyped covers are replaced; back cover etc. stay
+		a.clear_pictures()
+		a.add_picture(pic)
+		for p in keep:
+			a.add_picture(p)
+		a.save()
+	return get_summary(album)
 
 
 @app.get('/api/cover')
