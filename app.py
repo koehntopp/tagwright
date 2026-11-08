@@ -14,9 +14,13 @@ import re
 import shutil
 import subprocess
 import threading
+import urllib.error
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 import unicodedata
+from difflib import SequenceMatcher
 from pathlib import Path
+from urllib.parse import urlencode
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -406,6 +410,176 @@ def move(body: dict):
 	INGEST.mkdir(parents=True, exist_ok=True)
 	shutil.move(str(path), str(dest))
 	return {'moved_to': str(dest)}
+
+
+# ---------- track editor: assign album files to a Discogs release ----------
+releases: dict[str, dict] = {}  # release id -> parsed tracklist (Discogs allows 60 requests/min)
+
+
+def discogs_key() -> str:
+	if settings.get('discogs_api_key'):
+		return settings['discogs_api_key']
+	cfg = Path(os.environ.get('CONFIG_DIR', SCRIPTS)) / 'config.py'
+	m = re.search(r'^discogs_api_key\s*=\s*[\'"]([^\'"]+)', cfg.read_text(), re.M) if cfg.is_file() else None
+	return m.group(1) if m else ''
+
+
+def discogs(path: str, **params) -> dict:
+	key = discogs_key()
+	if not key:
+		raise HTTPException(400, 'Discogs API key not set (Settings)')
+	url = 'https://api.discogs.com' + path + ('?' + urlencode(params) if params else '')
+	req = urllib.request.Request(url, headers={'User-Agent': 'Tagwright/0.2', 'Authorization': f'Discogs token={key}'})
+	try:
+		with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
+			return json.load(r)
+	except urllib.error.HTTPError as e:
+		raise HTTPException(404 if e.code == 404 else 502, f'Discogs: HTTP {e.code}') from e
+	except OSError as e:
+		raise HTTPException(502, f'Discogs: {e}') from e
+
+
+def artist_names(artists: list[dict]) -> str:
+	"""'Name (2)' disambiguation suffixes dropped; Discogs join words ('&', ',') kept."""
+	out = ''
+	for a in artists:
+		out += re.sub(r'\s*\(\d+\)$', '', a.get('name', ''))
+		j = a.get('join', '').strip()
+		out += (', ' if j == ',' else f' {j} ') if j else ''
+	return out.strip()
+
+
+def seconds(d: str) -> int:
+	try:
+		m, s = d.split(':')[-2:]
+		return int(m) * 60 + int(s)
+	except ValueError:
+		return 0
+
+
+def release_tracks(rid: str) -> dict:
+	if rid in releases:
+		return releases[rid]
+	r = discogs(f'/releases/{rid}')
+	album_artist = artist_names(r.get('artists', []))
+	tracks, seq = [], 0
+	for t in r.get('tracklist', []):
+		if t.get('type_') != 'track':
+			continue
+		pos = t.get('position', '')
+		m = re.match(r'^(?:CD|DVD)?(\d+)[-.](\d+)$', pos, re.I)
+		seq += 1
+		tracks.append({
+			'i': len(tracks), 'position': pos, 'disc': int(m[1]) if m else 1, 'track': int(m[2]) if m else seq,
+			'title': t.get('title', ''), 'duration': seconds(t.get('duration', '')),
+			'artist': artist_names(t.get('artists', [])) or album_artist,
+		})
+	out = {'id': str(r['id']), 'title': r.get('title', ''), 'artist': album_artist, 'year': r.get('year', ''), 'tracks': tracks}
+	releases[rid] = out
+	return out
+
+
+def brief(r: dict) -> dict:
+	"""Search hits and full releases come in different shapes."""
+	title = r.get('title', '')
+	if r.get('artists'):
+		title = f'{artist_names(r["artists"])} - {title}'
+	fmt = r.get('format') or [f['name'] for f in r.get('formats', [])]
+	label = r.get('label') or [lb['name'] for lb in r.get('labels', [])]
+	return {
+		'id': str(r['id']), 'title': title, 'year': r.get('year', ''), 'country': r.get('country', ''),
+		'format': ', '.join(fmt[:3]), 'label': ', '.join(label[:2]),
+		'catno': r.get('catno') or (r.get('labels') or [{}])[0].get('catno', ''), 'thumb': r.get('thumb', ''),
+	}
+
+
+@app.get('/api/discogs/search')
+def discogs_search(q: str):
+	q = q.strip()
+	if q.isdigit():
+		return [brief(discogs(f'/releases/{q}'))]
+	return [brief(r) for r in discogs('/database/search', type='release', q=q, per_page=20).get('results', [])]
+
+
+def norm_title(s: str) -> str:
+	return re.sub(r'[^a-z0-9]+', ' ', unicodedata.normalize('NFD', s.lower()).encode('ascii', 'ignore').decode()).strip()
+
+
+def album_files(album: Path) -> list[dict]:
+	out = []
+	for f in flacs(album):
+		a = FLAC(f)
+		t = a.tags or {}
+		out.append({
+			'file': str(f.relative_to(album)), 'title': tag(t, 'TITLE') or f.stem, 'duration': round(a.info.length),
+			'disc': int(m[0]) if (m := re.match(r'\d+', tag(t, 'DISCNUMBER') or '1')) else 1,
+			'track': int(m[0]) if (m := re.match(r'\d+', tag(t, 'TRACKNUMBER'))) else 0,
+		})
+	return sorted(out, key=lambda x: (x['disc'], x['track'], x['file']))
+
+
+@app.post('/api/tracks/propose')
+def tracks_propose(body: dict):
+	"""Release tracklist, album files and a suggested file -> release track assignment."""
+	album = safe(body.get('path', ''))
+	rel = release_tracks(str(body.get('release_id', '')).strip())
+	files = album_files(album)
+	pairs = []
+	for f in files:
+		for t in rel['tracks']:
+			s = SequenceMatcher(None, norm_title(f['title']), norm_title(t["title"])).ratio() * 0.6
+			if t['duration']:
+				s += max(0.0, 1 - abs(f['duration'] - t['duration']) / 8) * 0.25
+			if f['track'] and (f['disc'], f['track']) == (t['disc'], t['track']):
+				s += 0.15
+			pairs.append((s, f['file'], t['i']))
+	assign: dict[str, int | None] = {f['file']: None for f in files}
+	conf: dict[str, float] = {}
+	used: set[int] = set()
+	for s, fn, i in sorted(pairs, reverse=True):
+		if s >= 0.35 and assign[fn] is None and i not in used:
+			assign[fn], conf[fn] = i, round(s, 2)
+			used.add(i)
+	return {'release': rel, 'files': [{**f, 'rel': assign[f['file']], 'conf': conf.get(f['file'], 0)} for f in files]}
+
+
+@app.post('/api/tracks/apply')
+def tracks_apply(body: dict):
+	"""Write release id and per-track tags for the assigned files, then rename them (bliss pattern).
+
+	Tracks are renumbered 1..n per disc in release order, so a subset of the release gets no gaps.
+	Files without an assignment are left untouched.
+	"""
+	album = safe(body.get('path', ''))
+	if job['state'] == 'running':
+		raise HTTPException(409, 'a job is running')
+	rel = release_tracks(str(body.get('release_id', '')).strip())
+	chosen = {a['file']: a['rel'] for a in body.get('assignments', []) if a.get('rel') is not None}
+	if len({*chosen.values()}) != len(chosen):
+		raise HTTPException(400, 'a release track is assigned twice')
+	picked = sorted(chosen.items(), key=lambda kv: kv[1])
+	disc_of = {fn: rel['tracks'][i]['disc'] for fn, i in picked}
+	discs = sorted(set(disc_of.values()))
+	count = {d: sum(1 for v in disc_of.values() if v == d) for d in discs}
+	seen: dict[int, int] = {}
+	log = []
+	for fn, i in picked:
+		t, d = rel['tracks'][i], disc_of[fn]
+		seen[d] = seen.get(d, 0) + 1
+		a = FLAC(album / fn)
+		if a.tags is None:
+			a.add_tags()
+		a['DISCOGS_RELEASE_ID'] = [rel['id']]
+		a['TITLE'] = [t['title']]
+		a['ARTIST'] = [t['artist']]
+		a['TRACKNUMBER'] = [str(seen[d])]
+		a['DISCNUMBER'] = [str(discs.index(d) + 1)]
+		a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(count[d])]
+		a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(discs))]
+		a.save()
+		log.append(f'{fn}: {discs.index(d) + 1}-{seen[d]:02d} {t["title"]}')
+	log += rename_files(album)
+	return {'log': log, 'album': get_summary(album)}
 
 
 app.mount('/static', StaticFiles(directory=Path(__file__).parent / 'static'), name='static')

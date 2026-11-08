@@ -53,6 +53,23 @@
   <aside id="inspector" class="w-[480px] shrink-0 bg-base-100 border-l border-base-300 overflow-y-auto"></aside>
 </div>
 
+<dialog id="tdlg" class="modal">
+  <div class="modal-box w-11/12 max-w-[64rem] overflow-x-hidden">
+    <h3 class="font-semibold text-lg">Assign tracks to a release</h3>
+    <form class="flex gap-2 mt-3" id="tform">
+      <input id="tq" type="text" class="input input-sm flex-1" placeholder="Artist and album, or a Discogs release ID" autocomplete="off">
+      <button class="btn btn-sm btn-primary" id="tsearch">Search Discogs</button>
+    </form>
+    <div id="tbody" class="mt-4 max-h-[60vh] overflow-y-auto"></div>
+    <p class="text-error text-sm mt-2" id="terr"></p>
+    <div class="modal-action">
+      <button class="btn btn-sm" id="tclose">Cancel</button>
+      <button class="btn btn-sm btn-primary" id="tapply" disabled>Apply</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
 <dialog id="sdlg" class="modal">
   <div class="modal-box w-11/12 max-w-[48rem] overflow-x-hidden">
     <h3 class="font-semibold text-lg">Settings</h3>
@@ -232,7 +249,7 @@ function renderInspector() {
       <div class="collapse collapse-arrow bg-base-200 mt-4">
         <input type="checkbox" id="trackstoggle" ${tracksOpen ? 'checked' : ''}>
         <div class="collapse-title text-[13px] font-medium">Tracks <span class="badge badge-ghost badge-xs ml-1">${a.tracks}</span>${stepSel !== null ? `<span class="text-xs text-primary ml-2">${esc(a.steps[stepSel].name.replace(' and ', ' & '))}</span>` : ''}</div>
-        <div class="collapse-content"><ul class="max-h-80 overflow-y-auto">${a.files.map(trackRow).join('')}</ul></div>
+        <div class="collapse-content"><button class="btn btn-xs mb-2" id="assign">Assign to release…</button><ul class="max-h-80 overflow-y-auto">${a.files.map(trackRow).join('')}</ul></div>
       </div>
       <div class="collapse collapse-arrow bg-base-200 mt-4">
         <input type="checkbox" id="logtoggle" ${logOpen ? 'checked' : ''}>
@@ -251,8 +268,9 @@ function renderInspector() {
   });
   $('run').onclick = () => runFixes([a.path], title(a));
   $('move').onclick = move;
+  $('assign').onclick = openTed;
   const sb = $('search');
-  if (sb) sb.onclick = () => window.open('https://www.discogs.com/search/?type=release&q=' + encodeURIComponent([a.artist, a.album].filter(Boolean).join(' ')), '_blank', 'noopener');
+  if (sb) sb.onclick = openTed;
 }
 
 function renderJob() {
@@ -333,6 +351,79 @@ $('runall').onclick = () => {
 $('sort').onchange = e => { sortKey = e.target.value; renderGrid(); };
 $('q').oninput = e => { query = e.target.value; renderGrid(); };
 document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); $('q').focus(); } });
+
+// ---- track editor: search a Discogs release, assign album files to its tracks ----
+let ted = null;  // {path, rid, release, files: [{file, title, duration, rel, conf}]}
+const mmss = n => n ? Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0') : '';
+const tedBusy = (on, msg = '') => { $('tbody').classList.toggle('opacity-50', on); $('tbody').classList.toggle('pointer-events-none', on); $('terr').textContent = msg; };
+
+function openTed() {
+  const a = selAlbum; if (!a) return;
+  ted = {path: a.path, rid: '', release: null, files: []};
+  $('tq').value = a.discogs || [a.artist, a.album].filter(Boolean).join(' ');
+  $('tbody').innerHTML = ''; $('terr').textContent = ''; $('tapply').disabled = true;
+  $('tdlg').showModal();
+  if (a.discogs) tedPick(a.discogs); else $('tq').focus();
+}
+
+async function tedSearch(e) {
+  e.preventDefault();
+  const q = $('tq').value.trim(); if (!q) return;
+  tedBusy(true);
+  try {
+    const rs = await api('/api/discogs/search?q=' + encodeURIComponent(q));
+    ted.release = null; $('tapply').disabled = true; tedBusy(false);
+    $('tbody').innerHTML = rs.length ? `<table class="table table-sm"><tbody>${rs.map(r => `<tr class="hover cursor-pointer" data-id="${r.id}">
+      <td class="w-12"><img src="${esc(r.thumb)}" class="size-10 rounded object-cover bg-base-200" onerror="this.remove()"></td>
+      <td><div class="font-medium">${esc(r.title)}</div><div class="text-xs text-base-content/50">${esc([r.year, r.country, r.format, r.label, r.catno].filter(Boolean).join(' · '))}</div></td>
+      <td class="text-right"><button class="btn btn-xs">Select</button></td></tr>`).join('')}</tbody></table>`
+      : '<p class="text-base-content/50 text-sm">No releases found.</p>';
+    $('tbody').querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => tedPick(tr.dataset.id));
+  } catch (err) { tedBusy(false, err.message); }
+}
+
+async function tedPick(rid) {
+  tedBusy(true);
+  try {
+    const d = await post('/api/tracks/propose', {path: ted.path, release_id: rid});
+    ted.rid = rid; ted.release = d.release; ted.files = d.files; tedBusy(false); renderTed();
+  } catch (err) { tedBusy(false, err.message); }
+}
+
+function renderTed() {
+  const r = ted.release, used = {};
+  ted.files.forEach(f => { if (f.rel !== null) used[f.rel] = (used[f.rel] || 0) + 1; });
+  const dup = Object.values(used).some(n => n > 1), n = Object.keys(used).length;
+  const opt = (f, t) => `<option value="${t.i}" ${f.rel === t.i ? 'selected' : ''}>${esc(t.position || t.i + 1)}  ${esc(t.title)}${t.duration ? ' (' + mmss(t.duration) + ')' : ''}</option>`;
+  const y = $('tbody').scrollTop;
+  $('tbody').innerHTML = `
+    <div class="text-sm mb-3"><span class="font-medium">${esc(r.artist)} - ${esc(r.title)}</span> <span class="text-base-content/50">${esc(r.year)} · ${r.tracks.length} tracks on release · ${ted.files.length} files</span></div>
+    <table class="table table-sm"><thead><tr><th>File</th><th>Release track</th><th></th></tr></thead><tbody>
+    ${ted.files.map((f, k) => `<tr>
+      <td class="w-1/2"><div class="truncate max-w-xs" title="${esc(f.file)}">${esc(f.title)}</div><div class="text-xs text-base-content/50">${esc(f.file)} · ${mmss(f.duration)}</div></td>
+      <td><select class="select select-sm w-full ${f.rel !== null && used[f.rel] > 1 ? 'select-error' : ''}" data-k="${k}"><option value="">Skip (leave as is)</option>${r.tracks.map(t => opt(f, t)).join('')}</select></td>
+      <td class="w-16 text-right">${f.rel === null ? '<span class="badge badge-ghost badge-xs">skip</span>' : f.conf >= 0.6 ? '<span class="badge badge-success badge-soft badge-xs">match</span>' : '<span class="badge badge-warning badge-soft badge-xs">check</span>'}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="text-xs text-base-content/50 mt-3">Not in this album: ${r.tracks.filter(t => !used[t.i]).map(t => esc(t.title)).join(', ') || 'none'}</div>`;
+  $('tbody').scrollTop = y;
+  $('tbody').querySelectorAll('select[data-k]').forEach(sel => sel.onchange = () => {
+    const f = ted.files[+sel.dataset.k]; f.rel = sel.value === '' ? null : +sel.value; f.conf = 1; renderTed();
+  });
+  $('terr').textContent = dup ? 'A release track is assigned to more than one file.' : '';
+  $('tapply').disabled = dup || n === 0;
+  $('tapply').textContent = `Apply (${n} of ${ted.files.length})`;
+}
+
+async function tedApply() {
+  tedBusy(true);
+  try {
+    const d = await post('/api/tracks/apply', {path: ted.path, release_id: ted.rid, assignments: ted.files.map(f => ({file: f.file, rel: f.rel}))});
+    $('tdlg').close(); addLog(d.log); toast('Tracks assigned'); await refreshOne(ted.path);
+  } catch (err) { tedBusy(false, err.message); }
+}
+$('tform').onsubmit = tedSearch;
+$('tclose').onclick = () => $('tdlg').close();
+$('tapply').onclick = tedApply;
 
 async function openSettings() {
   try {
