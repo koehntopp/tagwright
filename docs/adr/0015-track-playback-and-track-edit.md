@@ -14,8 +14,8 @@ UC-8. Checking a track by ear and fixing its title or lyrics should not need ano
 - **Edit**: the pen opens a dialog with title and lyrics (monospace textarea, synced `[mm:ss.xx]` or plain). `GET /api/track` reads, `POST /api/track` writes `TITLE` (must not be empty) and `LYRICS` (empty removes the tag), then renames the file ([0010](0010-bliss-file-naming.md)). Refused while a job runs.
 - **Marker buttons** in the lyrics field of the edit dialog:
   - **Instrumental** replaces the whole field with `[00:00.00] [Instrumental]`.
-  - **Spoken Intro** inserts `[00:00.00](Spoken Intro)` as the first line, keeping the existing text (not added twice).
-  Both only change the text field; nothing is stored until Save. `update_lyrics.py` normalises the instrumental marker into its canonical block on its next run; the spoken-intro line is an ordinary synced line.
+  - **Spoken Intro** replaces the whole field with `[00:00.00](Spoken Intro)`.
+  Both clear the existing lyrics first and only change the text field; nothing is stored until Save (Cancel keeps the old lyrics). `update_lyrics.py` normalises the instrumental marker into its canonical block on its next run; the spoken-intro line is an ordinary synced line.
 - Lyrics are written as a single `LYRICS` value, the tag `update_lyrics.py` and the status model use ([0006](0006-status-model-and-pipeline-steps.md)). Editing lyrics does not set or clear `LYRICS_LANGUAGE`.
 
 ## Consequences
