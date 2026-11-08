@@ -232,7 +232,7 @@ function renderGrid() {
         <span class="badge badge-sm ${badgeCls[a.status]} absolute top-3 left-3 shadow">${STATUS[a.status]}</span></figure>
       <div class="card-body p-4 gap-1">
         <h3 class="font-semibold leading-snug truncate">${esc(title(a))}</h3>
-        <p class="text-base-content/60 text-[13px] truncate">${esc(a.artist || 'Unknown artist')}${a.year ? ' · ' + esc(a.year) : ''}</p>
+        <p class="text-base-content/60 text-[13px] truncate">${esc(a.artist || 'No artist')}${a.year ? ' · ' + esc(a.year) : ''}</p>
         <p class="text-base-content/40 text-xs truncate">${esc(a.edition) || '&nbsp;'}</p>
         <div class="flex items-center gap-1.5 flex-nowrap overflow-hidden mt-1 min-h-5">${cardMeta(a)}</div>
         <div class="flex items-center gap-2 mt-2">
@@ -296,7 +296,7 @@ function renderInspector() {
         </div>
         <div class="min-w-0">
           <div class="flex items-center gap-1 text-xs text-base-content/50">
-            <span class="truncate" title="${a.artist_is_albumartist ? '' : 'from ARTIST tag'}">${esc(a.artist || 'Unknown artist')}</span>
+            <span class="truncate" title="${a.artist_is_albumartist ? '' : 'from ARTIST tag'}">${esc(a.artist || 'No artist')}</span>
             <button class="btn btn-ghost btn-circle btn-xs shrink-0" data-album-edit title="Edit album artist and title">${svg(ico.pen, 'size-3')}</button>
           </div>
           <h2 class="text-xl font-semibold leading-tight">${esc(title(a))}<button class="btn btn-ghost btn-circle btn-xs ml-1 align-middle" data-album-edit title="Edit album artist and title">${svg(ico.pen, 'size-3')}</button></h2>
@@ -311,7 +311,7 @@ function renderInspector() {
       </div>
       ${needs ? `<div role="alert" class="alert alert-warning alert-soft mt-4 text-[13px]">${svg(ico.warn)}<span>Add a Discogs release ID before running fixes.</span><button class="btn btn-xs" id="search">Search</button></div>` : ''}
       <div class="mt-6">
-        <div class="py-2 border-b border-base-200 text-[13px]"><div class="text-base-content/50 mb-1">New folder</div><code class="text-xs break-all">${esc(a.new_title)}</code></div>
+        <div class="py-2 border-b border-base-200 text-[13px]"><div class="text-base-content/50 mb-1">New folder</div>${a.new_title ? `<code class="text-xs break-all">${esc(a.new_title)}</code>` : '<span class="text-xs text-base-content/40">Not ready: artist or album is empty</span>'}</div>
       </div>
       <h4 class="text-xs font-medium uppercase tracking-wider text-base-content/50 mt-6 mb-2">Pipeline</h4>
       <ul class="steps w-full text-[11px] leading-tight [&_.step]:min-w-0 [&_.step]:px-0">${a.steps.map(step).join('')}</ul>

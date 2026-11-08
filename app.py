@@ -98,20 +98,28 @@ def clean(text: str) -> str:
 	return sanitize_filename(slugify(text, lowercase=False, separator='_'))
 
 
-def bliss_name(t) -> str:
-	"""Bliss file name: <disc>_<track>_<title>.flac."""
+def bliss_name(t) -> str | None:
+	"""Bliss file name <disc>_<track>_<title>.flac, or None while TITLE or TRACKNUMBER is empty.
+
+	An empty tag means the album is not ready; nothing is invented (no "Unknown Title", no track 00). A missing
+	DISCNUMBER is disc 01, as in bliss.py (single-disc albums often have none).
+	"""
+	title, number = tag(t, 'TITLE'), tag(t, 'TRACKNUMBER')
+	if not title or not number:
+		return None
 	disc = (tag(t, 'DISCNUMBER') or '01').split('/')[0].zfill(2)
-	track = (tag(t, 'TRACKNUMBER') or '00').split('/')[0].zfill(2)
-	return f'{disc}_{track}_{clean(tag(t, "TITLE") or "Unknown Title")}.flac'
+	return f'{disc}_{number.split("/")[0].zfill(2)}_{clean(title)}.flac'
 
 
 def bliss_album(t) -> str:
-	"""Bliss library path: <album artist>/<album [version]>."""
-	album = tag(t, 'ALBUM') or 'Unknown Album'
+	"""Bliss library path <album artist>/<album [version]>, or '' while the artist or the album is empty (not ready)."""
+	album, artist = tag(t, 'ALBUM'), tag(t, 'ALBUMARTIST', 'ARTIST')
+	if not album or not artist:
+		return ''
 	ver = tag(t, 'VERSION')
 	if ver and ver not in album:
 		album = f'{album} {ver}'
-	return f'{clean(tag(t, "ALBUMARTIST", "ARTIST") or "Unknown Artist")}/{clean(album)}'
+	return f'{clean(artist)}/{clean(album)}'
 
 
 def same_name(a: str, b: str) -> bool:
@@ -124,6 +132,9 @@ def rename_files(album: Path) -> list[str]:
 	out = []
 	for f in flacs(album):
 		new = bliss_name(FLAC(f).tags or {})
+		if new is None:
+			out.append(f'skip {f.name}: title or track number is empty')
+			continue
 		if f.name == new:
 			continue
 		dest = f.with_name(new)
@@ -241,7 +252,7 @@ def summarize(album: Path) -> dict:
 		('Fingerprints', have('ACOUSTID_FINGERPRINT', 'ACOUSTID FINGERPRINT')),
 		('Tags and cover', bool(did) and req),
 		('Lyrics', mis == 0),
-		('Filenames', all(f.name == bliss_name(t) for f, t in zip(files, tags))),
+		('Filenames', all(f.name == bliss_name(t) for f, t in zip(files, tags))),  # None (not ready) never equals a name
 	]
 	out.update(
 		dr=tag(t0, 'ALBUM_DR') or track_dr_mean(tags),
