@@ -14,6 +14,13 @@ UC-6. `fixtags` needs a `DISCOGS_RELEASE_ID` and writes only album-level tags; p
 - Search results carry no tracklist, so the track count of each result is fetched separately (`GET /api/discogs/tracks?id=`), three at a time, filling in after the list appears. A failed lookup shows `?`. Parsed releases are cached in memory for the life of the process because Discogs allows 60 requests a minute.
 - If the album already has a Discogs ID, the dialog opens on that release.
 
+### Rate limiting (copied from the discogs repository)
+Same rules as `fixtags.discogs_fetch` and discogs ADR 0001 section 6, because the pipeline and the UI share one Discogs key and its limit of 60 requests a minute:
+- All Discogs calls go through one lock: **one request at a time, 1 s apart**.
+- A **429** or an empty/invalid response body is retried up to **3 times after 60 s**. The lock is held during the wait, so concurrent calls pause together instead of bursting afterwards.
+- A 404 is not retried (HTTP 404 "not found"); other HTTP errors answer 502; when the retries are exhausted the API answers 429 "Discogs rate limit reached; try again in a minute". A failed request is reported as failed, never as "not found".
+- Consequence: the track counts of 20 search results take about 25 s to fill in. Parsed releases are cached, so each release is fetched once per server start.
+
 ### Tracklist
 Entries of type `track` only (headings and index entries are skipped). Position `D-T` or `CDD-T` gives disc and track; any other position (vinyl `A1`, plain numbers, empty) is numbered sequentially on disc 1. Track artists come from the release's per-track artists, else the release artists; the Discogs `(n)` disambiguation suffix is removed.
 

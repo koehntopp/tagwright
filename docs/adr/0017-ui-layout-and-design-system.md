@@ -11,7 +11,7 @@ The first UI did not match the intended design. The target is specified in `ui-r
 
 `ui-redesign/DESIGN.md` is the base specification; where this ADR differs, this ADR wins.
 
-- **Layout**: three full-height columns, no page scroll, each column scrolls itself. Sidebar 240 px (navigation with counts, pipeline status footer with the settings gear). Main area: sticky header (title, sort select, search with a ⌘K hint, rescan, **Run all ready**) and an auto-fill card grid (minimum card width 250 px). Inspector 600 px.
+- **Layout**: three full-height columns, no page scroll, each column scrolls itself. Sidebar 240 px (navigation with counts; pipeline status footer with the status dot, job line, a red outlined **Stop** button that appears only while a job runs, and the settings gear; dot: blue pulsing running, green idle/done, red failed, amber stopped). Main area: sticky header (title, sort select, search with a ⌘K hint, rescan, **Run all ready**) and an auto-fill card grid (minimum card width 250 px). Inspector 600 px.
 - **No stats bar, no filter tabs, no watched-folder box**: they duplicated the sidebar navigation; filtering is the sidebar's job.
 - **Cards**: cover with status badge, title, `artist · year`, edition, a single badge row (Discogs and MusicBrainz favicons as links, DR, LRC in green, TXT in yellow), and a progress bar of done steps out of six.
 - **Colours carry meaning**: status Needs IDs red, Ready blue, Fixed green; steps green when done, **yellow when done but partial**, grey when open; lyrics LRC green, TXT yellow, Instrumental blue, No lyrics red (badge columns are 6 rem wide so the longest label fits); Run fixes is the indigo primary action; Tag Editor is neutral dark. Do not reuse a colour for a different meaning.

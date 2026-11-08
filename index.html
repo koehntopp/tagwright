@@ -20,7 +20,8 @@
     <div class="mt-auto p-4 flex items-center gap-3 border-t border-base-300">
       <span class="size-2 rounded-full bg-base-300 shrink-0" id="dot"></span>
       <div class="text-xs leading-tight min-w-0"><div class="font-medium">Pipeline</div><div class="text-base-content/50 truncate" id="jobline">Idle</div></div>
-      <button class="btn btn-ghost btn-xs btn-square ml-auto shrink-0" id="settings" aria-label="Settings" title="Settings">
+      <button class="btn btn-error btn-outline btn-xs ml-auto shrink-0 hidden" id="stopjob" title="Stop the running job">Stop</button>
+      <button class="btn btn-ghost btn-xs btn-square shrink-0" id="settings" aria-label="Settings" title="Settings">
         <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </div>
@@ -356,9 +357,10 @@ function renderInspector() {
 function renderJob() {
   const running = job.state === 'running';
   const cur = albums.find(a => a.path === job.path);
-  $('dot').className = 'size-2 rounded-full shrink-0 ' + (running ? 'bg-info animate-pulse' : job.state === 'failed' ? 'bg-error' : 'bg-success');
-  $('jobline').textContent = running ? `Running: ${cur ? title(cur) : '…'}${job.queue.length ? ' (+' + job.queue.length + ' queued)' : ''}` : job.state === 'failed' ? 'Last run failed' : 'Idle';
+  $('dot').className = 'size-2 rounded-full shrink-0 ' + (running ? 'bg-info animate-pulse' : job.state === 'failed' ? 'bg-error' : job.state === 'stopped' ? 'bg-warning' : 'bg-success');
+  $('jobline').textContent = running ? `Running: ${cur ? title(cur) : '…'}${job.queue.length ? ' (+' + job.queue.length + ' queued)' : ''}` : job.state === 'failed' ? 'Last run failed' : job.state === 'stopped' ? 'Last run stopped' : 'Idle';
   $('runall').disabled = running;
+  $('stopjob').classList.toggle('hidden', !running);
 }
 function renderAll() { renderNav(); renderGrid(); renderInspector(); renderJob(); }
 
@@ -405,7 +407,8 @@ async function tick() {
     renderJob(); poll = setTimeout(tick, 1000);
   } else {
     await load();
-    toast(job.state === 'failed' ? 'Run finished with errors' : 'Run finished', job.state === 'failed' ? 'alert-error' : 'alert-success');
+    toast(job.state === 'failed' ? 'Run finished with errors' : job.state === 'stopped' ? 'Run stopped' : 'Run finished', job.state === 'failed' ? 'alert-error' : job.state === 'stopped' ? 'alert-warning' : 'alert-success');
+    renderJob();
   }
 }
 async function move() {
@@ -655,6 +658,7 @@ async function openSettings() {
   } catch (e) { toast(e.message, 'alert-error'); }
 }
 $('settings').onclick = openSettings;
+$('stopjob').onclick = async () => { try { await post('/api/stop', {}); toast('Stopping…', 'alert-warning'); } catch (e) { toast(e.message, 'alert-error'); } };
 $('sclose').onclick = () => $('sdlg').close();
 $('ssave').onclick = async () => {
   try {

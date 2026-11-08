@@ -15,7 +15,7 @@ No state is stored besides settings ([0009](0009-settings-and-api-keys.md)). Eve
 
 ### Album folders
 
-An album is a folder that contains FLAC files. Folders named `Disc N` or `CD N` (any case) are grouped into their parent so a multi-disc album is one album. `ROOT` itself is never an album.
+An album is a folder that contains FLAC files. Folders named `Disc N` or `CD N` (any case, optional space) are grouped into their parent so a multi-disc album is one album. This is the same rule as `DISC_DIR_RE` in the discogs `disc_layout.py` (widened from `Disc N` only so the pipeline agrees): `ALBUM_DR` is always the mean over all discs, otherwise the discs would get different `VERSION` strings and album folder names. The two patterns must stay identical. `ROOT` itself is never an album.
 
 ### Six steps (in pipeline order)
 

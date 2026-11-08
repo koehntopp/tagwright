@@ -13,8 +13,10 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import threading
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -51,14 +53,14 @@ if SETTINGS_FILE.is_file():
 	settings = json.loads(SETTINGS_FILE.read_text())
 	ROOT = Path(settings.get('input') or ROOT)
 	INGEST = Path(settings.get('output') or INGEST)
-DISC_RE = re.compile(r'^(disc|cd)\s*\d+$', re.I)
+DISC_RE = re.compile(r'^(?:Disc|CD)\s*\d+$', re.I)  # same rule as discogs disc_layout.DISC_DIR_RE
 MIN_COVER = 1400  # px; smaller covers turn the Tags and cover step yellow
 COVER_NOTE = f'Cover is {{c}}, below {MIN_COVER}x{MIN_COVER}'
 SYNCED_RE = re.compile(r'\[\d{2}:\d{2}\.\d{2}\]')  # strict [MM:SS.xx], as in the discogs lrc_count.py
 INSTRUMENTAL_RE = re.compile(r'\[instrumental:true\]|\[\d{2}:\d{2}\.\d{2}\]\s*(?:\[instrumental\]|\(instrumental\))', re.I)
 
 app = FastAPI()
-job = {'path': None, 'state': 'idle', 'lines': [], 'rc': None, 'queue': []}  # lines accumulate across runs
+job = {'path': None, 'state': 'idle', 'lines': [], 'rc': None, 'queue': [], 'stop': False, 'proc': None}  # lines accumulate across runs
 lock = threading.Lock()
 
 
@@ -377,11 +379,15 @@ def runner(path: Path):
 		p = subprocess.Popen(
 			[str(SCRIPTS / 'nzbfix.py'), str(path)],
 			stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, cwd=SCRIPTS,
+			start_new_session=True,  # own process group, so Stop can end nzbfix and the tools it started
 		)
+		job['proc'] = p
 		for line in p.stdout:
 			job['lines'].append(line.rstrip())
 		rc = p.wait()
-		if rc == 0:
+		if job['stop']:
+			job['lines'].append('-- stopped by user')
+		elif rc == 0:
 			job['lines'].append('-- rename files')
 			job['lines'].extend(rename_files(path))
 	except Exception as e:  # noqa: BLE001  # surface launch failures in the log pane
@@ -394,10 +400,12 @@ def worker(paths: list[Path]):
 	"""Process the queue one album at a time; a failure is logged and the queue continues."""
 	failed = 0
 	for p in paths:
+		if job['stop']:
+			break
 		job['queue'] = [str(x) for x in paths[paths.index(p) + 1:]]
 		if runner(p) != 0:
 			failed += 1
-	job.update(queue=[], rc=1 if failed else 0, state='failed' if failed else 'done')
+	job.update(queue=[], proc=None, rc=1 if failed else 0, state='stopped' if job['stop'] else 'failed' if failed else 'done')
 
 
 @app.post('/api/run')
@@ -408,9 +416,31 @@ def run(body: dict):
 	with lock:  # one heavy task at a time
 		if job['state'] == 'running':
 			raise HTTPException(409, 'a job is already running')
-		job.update(path=str(paths[0]), state='running', rc=None, queue=[str(x) for x in paths[1:]])
+		job.update(path=str(paths[0]), state='running', rc=None, stop=False, proc=None, queue=[str(x) for x in paths[1:]])
 	threading.Thread(target=worker, args=(paths,), daemon=True).start()
 	return {'ok': True, 'count': len(paths)}
+
+
+@app.post('/api/stop')
+def stop():
+	"""Stop the running job: clear the queue and end nzbfix with everything it started (SIGTERM, SIGKILL after 10 s)."""
+	with lock:
+		if job['state'] != 'running':
+			raise HTTPException(409, 'no job is running')
+		job['stop'] = True
+		job['queue'] = []
+		p = job['proc']
+
+	def end(sig):
+		try:
+			os.killpg(p.pid, sig)  # start_new_session made the group id the pid
+		except ProcessLookupError:
+			pass
+
+	if p and p.poll() is None:
+		end(signal.SIGTERM)
+		threading.Timer(10, lambda: p.poll() is None and end(signal.SIGKILL)).start()
+	return {'ok': True}
 
 
 def hint(v: str) -> str:
@@ -484,19 +514,40 @@ def discogs_key() -> str:
 	return m.group(1) if m else ''
 
 
+# Same rate-limit handling as discogs fixtags.discogs_fetch and its ADR 0001 section 6: Discogs allows 60 requests a
+# minute, so requests are sent one at a time, 1 s apart; a 429 or an empty body is retried up to 3 times after 60 s,
+# and the wait is shared (the lock is held) so concurrent calls do not pause and then burst together.
+discogs_lock = threading.Lock()
+DISCOGS_PAUSE, DISCOGS_RETRIES, DISCOGS_BACKOFF = 1.0, 3, 60.0
+
+
 def discogs(path: str, **params) -> dict:
 	key = discogs_key()
 	if not key:
 		raise HTTPException(400, 'Discogs API key not set (Settings)')
 	url = 'https://api.discogs.com' + path + ('?' + urlencode(params) if params else '')
 	req = urllib.request.Request(url, headers={'User-Agent': 'Tagwright/0.2', 'Authorization': f'Discogs token={key}'})
-	try:
-		with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
-			return json.load(r)
-	except urllib.error.HTTPError as e:
-		raise HTTPException(404 if e.code == 404 else 502, f'Discogs: HTTP {e.code}') from e
-	except OSError as e:
-		raise HTTPException(502, f'Discogs: {e}') from e
+	with discogs_lock:
+		for attempt in range(DISCOGS_RETRIES + 1):
+			try:
+				with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
+					data = json.load(r)
+				time.sleep(DISCOGS_PAUSE)
+				return data
+			except urllib.error.HTTPError as e:
+				if e.code == 404:
+					raise HTTPException(404, 'Discogs: not found') from e
+				if e.code != 429:
+					raise HTTPException(502, f'Discogs: HTTP {e.code}') from e
+				err = HTTPException(429, 'Discogs rate limit reached; try again in a minute')
+			except json.JSONDecodeError:  # an empty body is how Discogs sometimes signals the limit
+				err = HTTPException(502, 'Discogs sent an empty response; try again in a minute')
+			except OSError as e:
+				raise HTTPException(502, f'Discogs: {e}') from e
+			if attempt < DISCOGS_RETRIES:
+				time.sleep(DISCOGS_BACKOFF)
+			else:
+				raise err
 
 
 def artist_names(artists: list[dict]) -> str:
