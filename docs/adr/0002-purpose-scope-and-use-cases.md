@@ -20,7 +20,7 @@ Tagwright is a single-user, self-hosted web app that lets one person work throug
 | UC-3 | Run the fix pipeline for one album, or for every ready album in sequence ("Run all ready"), and follow a live log. | [0004](0004-pipeline-engine-reuses-discogs-scripts.md), [0008](0008-job-model.md) |
 | UC-4 | See per pipeline step whether it is done, and which tracks are missing it. | [0006](0006-status-model-and-pipeline-steps.md) |
 | UC-5 | Move a fully fixed album to the ingest folder. | [0011](0011-ingestion-move.md) |
-| UC-6 | Give an album the right Discogs release: search Discogs, assign the album's files to the release's tracks (the album often holds only a subset), renumber. | [0013](0013-discogs-track-assignment.md) |
+| UC-6 | Give an album the right Discogs release: search Discogs, assign the album's files to the release's tracks (the album often holds only a subset), renumber, and fill the tags the pipeline expects a tagger to have imported (artist, album artist, album title, catalog number, cover) when they are missing. | [0013](0013-discogs-track-assignment.md) |
 | UC-7 | Edit tags the pipeline never overwrites (album artist/title overrides, format, edition, catalog number, MusicBrainz ID, per-track title/artist/disc/track/disc subtitle) and see, read-only, what Discogs writes. | [0014](0014-internal-tag-editor.md) |
 | UC-8 | Play a track; edit a track's title and lyrics. | [0015](0015-track-playback-and-track-edit.md) |
 | UC-9 | See the cover's pixel size, be warned when it is small, replace it by uploading an image. | [0016](0016-cover-art.md) |

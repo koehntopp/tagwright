@@ -306,13 +306,8 @@ def album(path: str):
 	return get_summary(safe(path))
 
 
-@app.put('/api/cover')
-async def set_cover(path: str, request: Request):
-	"""Replace the embedded front cover of every file with the uploaded image (raw request body)."""
-	if job['state'] == 'running':
-		raise HTTPException(409, 'a job is running')
-	album = safe(path)
-	data = await request.body()
+def make_picture(data: bytes) -> Picture:
+	"""Front-cover Picture from image bytes; JPEG and PNG are kept, anything else becomes JPEG (400 if unreadable)."""
 	try:
 		with Image.open(io.BytesIO(data)) as im:
 			fmt, w, h, mode = im.format, im.width, im.height, im.mode
@@ -325,14 +320,30 @@ async def set_cover(path: str, request: Request):
 	pic = Picture()
 	pic.type, pic.mime, pic.desc, pic.width, pic.height, pic.data = 3, f'image/{fmt.lower()}', '', w, h, data
 	pic.depth = {'1': 1, 'L': 8, 'P': 8, 'RGB': 24, 'RGBA': 32}.get(mode, 24)
+	return pic
+
+
+def embed_cover(album: Path, pic: Picture, only_missing: bool = False) -> None:
+	"""Replace the front and untyped covers of every file (back cover etc. stay); only_missing: files without any picture."""
 	for f in flacs(album):
 		a = FLAC(f)
-		keep = [p for p in a.pictures if p.type not in (0, 3)]  # front and untyped covers are replaced; back cover etc. stay
+		if only_missing and a.pictures:
+			continue
+		keep = [p for p in a.pictures if p.type not in (0, 3)]
 		a.clear_pictures()
 		a.add_picture(pic)
 		for p in keep:
 			a.add_picture(p)
 		a.save()
+
+
+@app.put('/api/cover')
+async def set_cover(path: str, request: Request):
+	"""Replace the embedded front cover of every file with the uploaded image (raw request body)."""
+	if job['state'] == 'running':
+		raise HTTPException(409, 'a job is running')
+	album = safe(path)
+	embed_cover(album, make_picture(await request.body()))
 	return get_summary(album)
 
 
@@ -550,6 +561,21 @@ def discogs(path: str, **params) -> dict:
 				raise err
 
 
+def discogs_image(url: str) -> bytes:
+	"""Download a release image with the same pacing as API calls (one request at a time, 1 s apart)."""
+	req = urllib.request.Request(url, headers={'User-Agent': 'Tagwright/0.2', 'Authorization': f'Discogs token={discogs_key()}'})
+	with discogs_lock:
+		try:
+			with urllib.request.urlopen(req, timeout=30) as r:  # noqa: S310
+				data = r.read(20_000_001)
+		except (urllib.error.URLError, OSError) as e:
+			raise HTTPException(502, f'Discogs image: {e}') from e
+		time.sleep(DISCOGS_PAUSE)
+	if len(data) > 20_000_000:
+		raise HTTPException(502, 'Discogs image is too large')
+	return data
+
+
 def artist_names(artists: list[dict]) -> str:
 	"""'Name (2)' disambiguation suffixes dropped; Discogs join words ('&', ',') kept."""
 	out = ''
@@ -586,9 +612,27 @@ def release_tracks(rid: str) -> dict:
 			'artist': artist_names(t.get('artists', [])) or album_artist,
 		})
 	catno = next((c for lb in r.get('labels', []) if (c := (lb.get('catno') or '').strip()) and c.lower() != 'none'), '')
-	out = {'id': str(r['id']), 'title': r.get('title', ''), 'artist': album_artist, 'year': r.get('year', ''), 'catno': catno, 'tracks': tracks}
+	images = r.get('images') or []
+	image = next((i for i in images if i.get('type') == 'primary'), images[0] if images else {}).get('uri', '')
+	out = {
+		'id': str(r['id']), 'title': r.get('title', ''), 'artist': album_artist, 'year': r.get('year', ''), 'catno': catno,
+		'master_id': r.get('master_id') or 0, 'image': image, 'tracks': tracks,
+	}
 	releases[rid] = out
 	return out
+
+
+def release_album_title(rel: dict) -> str:
+	"""Album title as fixtags derives it: master title, else the release title (fetched once, cached in rel)."""
+	if 'album_title' not in rel:
+		title = rel['title'].strip()
+		if rel['master_id']:
+			try:
+				title = discogs(f'/masters/{rel["master_id"]}').get('title', title).strip()
+			except HTTPException:
+				pass
+		rel['album_title'] = title
+	return rel['album_title']
 
 
 def brief(r: dict) -> dict:
@@ -694,6 +738,21 @@ def tracks_apply(body: dict):
 	for d, _ in final.values():
 		per_disc[d] = per_disc.get(d, 0) + 1
 	log = []
+	filled: dict[str, int] = {}
+
+	def fill(a: FLAC, key: str, value: str, *alts: str) -> None:
+		# Tags the pipeline reads as user input (the tagger used to import them from Discogs): filled when empty,
+		# never overwritten (discogs ADR 0002 section 1 and 2).
+		if value and not tag(a.tags, key, *alts):
+			a[key] = [value]
+			filled[key] = filled.get(key, 0) + 1
+
+	cover = None
+	if not FLAC(flacs(album)[0]).pictures and rel['image']:
+		try:
+			cover = make_picture(discogs_image(rel['image']))
+		except HTTPException as e:
+			log.append(f'cover not fetched: {e.detail}')
 	for fn, i in picked:
 		t = rel['tracks'][i]
 		d, n = final[fn]
@@ -701,8 +760,12 @@ def tracks_apply(body: dict):
 		if a.tags is None:
 			a.add_tags()
 		a['DISCOGS_RELEASE_ID'] = [rel['id']]
-		if rel['catno'] and not tag(a.tags, 'CATALOGNUMBER', 'CATALOG NUMBER', 'CATALOG_NUMBER', 'CATALOGNO'):
-			a['CATALOGNUMBER'] = [rel['catno']]  # user-set values are never overwritten (discogs ADR 0002 section 2)
+		fill(a, 'CATALOGNUMBER', rel['catno'], 'CATALOG NUMBER', 'CATALOG_NUMBER', 'CATALOGNO')
+		fill(a, 'ARTIST', t['artist'])
+		if not tag(a.tags, 'ALBUM_ARTIST_OVERRIDE'):
+			fill(a, 'ALBUMARTIST', rel['artist'])
+		if not tag(a.tags, 'ALBUM_TITLE_OVERRIDE') and not tag(a.tags, 'ALBUM'):
+			fill(a, 'ALBUM', release_album_title(rel))
 		a['TITLE'] = [t['title']]
 		a['TRACKNUMBER'] = [str(n)]
 		a['DISCNUMBER'] = [str(d)]
@@ -710,6 +773,11 @@ def tracks_apply(body: dict):
 		a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(per_disc))]
 		a.save()
 		log.append(f'{fn}: {d}-{n:02d} {t["title"]}')
+	if cover:
+		embed_cover(album, cover, only_missing=True)
+		filled['cover'] = 1
+	if filled:
+		log.append('filled from Discogs: ' + ', '.join(f'{k} x{v}' if v > 1 else k for k, v in filled.items()))
 	log += rename_files(album)
 	return {'log': log, 'album': get_summary(album)}
 

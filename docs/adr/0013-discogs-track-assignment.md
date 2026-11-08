@@ -31,8 +31,17 @@ Entries of type `track` only (headings and index entries are skipped). Position 
 - The dialog lists each file with a dropdown of release tracks (or "Skip") and a match/check/skip badge; release tracks not used are listed as "Not in this album". One release track cannot be given to two files (Apply is disabled).
 - Disc and track numbers are editable per file. Default: tracks are renumbered `1..n` per disc in release order over the **selected** files, discs renumbered from 1, so a subset has no gaps.
 - `POST /api/tracks/apply` writes per assigned file: `DISCOGS_RELEASE_ID`, `TITLE`, `TRACKNUMBER`, `DISCNUMBER`, `TRACKTOTAL` and `TOTALTRACKS` (files on that disc), `DISCTOTAL` and `TOTALDISCS` (distinct discs). Files set to Skip are untouched. Then files are renamed ([0010](0010-bliss-file-naming.md)).
-- **`CATALOGNUMBER` is filled from the release** (first label catalogue number that is not `none`) **only when the file has none** (any of `CATALOGNUMBER`, `CATALOG NUMBER`, `CATALOG_NUMBER`, `CATALOGNO`). An existing value is a user-set tag and is never overwritten (discogs ADR 0002 section 2); change it in the tag editor ([0014](0014-internal-tag-editor.md)). The next fix run then puts it into `VERSION`. Run fixes itself (`fixtags.py`) never writes `CATALOGNUMBER`; it only writes `ALBUM_RELEASE_CATALOGNUMBERS`.
-- **Track `ARTIST` is never written.** It is a tagger tag and can carry rip-specific billing (for example "Roy Orbison With Guests") that the library folder name and the lyrics lookup depend on (discogs ADR 0002 §1 and §6). The Discogs track artists are parsed and returned by the API but never applied.
+- **Tags the pipeline treats as user input are filled from the release, when missing.** Tagwright replaces the tagger (Yate) that used to import the Discogs data, and no later pipeline step writes these, so the assignment must. Per file, **only when that tag is empty** (an existing value is a user-set tag and is never overwritten, discogs ADR 0002 sections 1 and 2):
+
+  | Tag | From Discogs |
+  |-----|--------------|
+  | `ARTIST` | the track's artists, else the release artists (names without the `(n)` suffix, join words kept) |
+  | `ALBUMARTIST` | the release artists; skipped when `ALBUM_ARTIST_OVERRIDE` is set (`fixtags.py` writes the override) |
+  | `ALBUM` | the master title, else the release title (the rule of discogs ADR 0002 section 3); skipped when `ALBUM_TITLE_OVERRIDE` is set. `fixtags.py` rewrites `ALBUM` on every run anyway |
+  | `CATALOGNUMBER` | the first label catalogue number that is not `none`; checked under all four spellings (`CATALOGNUMBER`, `CATALOG NUMBER`, `CATALOG_NUMBER`, `CATALOGNO`). The next fix run puts it into `VERSION` |
+  | cover | the release's primary image, **only when the first file has no embedded picture** ([0016](0016-cover-art.md)) |
+
+  The result is logged as `filled from Discogs: ...`. A cover that cannot be fetched is logged (`cover not fetched: ...`) and does not fail the assignment. Everything else Discogs-derived (dates, labels, genres, credits, ...) is written by `fixtags.py` on the next Run fixes ([0014](0014-internal-tag-editor.md) "From Discogs"). Not filled, because they are the owner's own tags with no Discogs source: `ALBUM_FORMAT`, `ALBUM_EDITION`, `SET SUBTITLE`, `MUSICBRAINZ_ALBUMID`.
 - Discogs release positions are not stored in a tag, because `fixtags` removes tag families it manages.
 
 ### Entry points

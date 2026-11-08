@@ -623,7 +623,8 @@ function renderTed() {
       <td><select class="select select-sm w-full ${f.rel !== null && used[f.rel] > 1 ? 'select-error' : ''}" data-k="${k}"><option value="">Skip (leave as is)</option>${r.tracks.map(t => opt(f, t)).join('')}</select></td>
       <td class="w-16 text-right">${f.rel === null ? '<span class="badge badge-ghost badge-xs">skip</span>' : f.conf >= 0.6 ? '<span class="badge badge-success badge-soft badge-xs">match</span>' : '<span class="badge badge-warning badge-soft badge-xs">check</span>'}</td></tr>`).join('')}
     </tbody></table>
-    <div class="text-xs text-base-content/50 mt-3">Not in this album: ${r.tracks.filter(t => !used[t.i]).map(t => esc(t.title)).join(', ') || 'none'}</div>`;
+    <div class="text-xs text-base-content/50 mt-3">Also fills what the tagger used to import and the album lacks: artist, album artist, album title, catalog number and a missing cover. Existing values are kept.</div>
+    <div class="text-xs text-base-content/50 mt-1">Not in this album: ${r.tracks.filter(t => !used[t.i]).map(t => esc(t.title)).join(', ') || 'none'}</div>`;
   $('tbody').scrollTop = y;
   $('tbody').querySelectorAll('select[data-k]').forEach(sel => sel.onchange = () => {
     const f = ted.files[+sel.dataset.k]; f.rel = sel.value === '' ? null : +sel.value; f.conf = 1; f.d = f.t = null; renderTed();
