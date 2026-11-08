@@ -143,7 +143,7 @@ def track_dr_mean(tags) -> str:
 	return str(round(sum(vals) / len(vals))).zfill(2) if vals else ''
 
 
-def track_files(files, tags, has_discogs: bool) -> list[dict]:
+def track_files(album: Path, files, tags, has_discogs: bool) -> list[dict]:
 	"""Per-track rows; checks[i] answers pipeline step i (same order as steps in summarize)."""
 	out = []
 	for f, t in zip(files, tags):
@@ -151,6 +151,7 @@ def track_files(files, tags, has_discogs: bool) -> list[dict]:
 		tags_ok = has_discogs and all(tag(t, k) for k in ('ARTIST', 'TITLE', 'ALBUM', 'TRACKNUMBER')) and bool(tag(t, 'DATE', 'YEAR'))
 		out.append({
 			'name': f.name,
+			'file': str(f.relative_to(album)),
 			'disc': tag(t, 'DISCNUMBER'),
 			'track': tag(t, 'TRACKNUMBER'),
 			'title': tag(t, 'TITLE') or f.stem,
@@ -214,7 +215,7 @@ def summarize(album: Path) -> dict:
 	]
 	out.update(
 		dr=tag(t0, 'ALBUM_DR') or track_dr_mean(tags),
-		files=track_files(files, tags, bool(did)),
+		files=track_files(album, files, tags, bool(did)),
 		lyrics={'synced': syn, 'plain': pla, 'instrumental': ins, 'missing': mis},
 		steps=[{'name': a, 'done': b, 'partial': a == 'Lyrics' and b and pla > 0} for a, b in steps],  # partial: lyrics complete but some only plain text; still counts as done
 		tags_ok=req,
@@ -554,32 +555,84 @@ def tracks_apply(body: dict):
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	rel = release_tracks(str(body.get('release_id', '')).strip())
-	chosen = {a['file']: a['rel'] for a in body.get('assignments', []) if a.get('rel') is not None}
+	asg = [a for a in body.get('assignments', []) if a.get('rel') is not None]
+	chosen = {a['file']: a['rel'] for a in asg}
 	if len({*chosen.values()}) != len(chosen):
 		raise HTTPException(400, 'a release track is assigned twice')
+	# default numbering: 1..n per disc in release order; the UI may override disc and track per file
 	picked = sorted(chosen.items(), key=lambda kv: kv[1])
-	disc_of = {fn: rel['tracks'][i]['disc'] for fn, i in picked}
-	discs = sorted(set(disc_of.values()))
-	count = {d: sum(1 for v in disc_of.values() if v == d) for d in discs}
+	discs = sorted({rel['tracks'][i]['disc'] for _, i in picked})
 	seen: dict[int, int] = {}
+	final: dict[str, tuple[int, int]] = {}
+	for fn, i in picked:
+		d = rel['tracks'][i]['disc']
+		seen[d] = seen.get(d, 0) + 1
+		final[fn] = (discs.index(d) + 1, seen[d])
+	for a in asg:
+		try:
+			final[a['file']] = (int(a.get('disc') or final[a['file']][0]), int(a.get('track') or final[a['file']][1]))
+		except (TypeError, ValueError) as e:
+			raise HTTPException(400, 'disc and track must be numbers') from e
+	per_disc: dict[int, int] = {}
+	for d, _ in final.values():
+		per_disc[d] = per_disc.get(d, 0) + 1
 	log = []
 	for fn, i in picked:
-		t, d = rel['tracks'][i], disc_of[fn]
-		seen[d] = seen.get(d, 0) + 1
+		t = rel['tracks'][i]
+		d, n = final[fn]
 		a = FLAC(album / fn)
 		if a.tags is None:
 			a.add_tags()
 		a['DISCOGS_RELEASE_ID'] = [rel['id']]
 		a['TITLE'] = [t['title']]
 		a['ARTIST'] = [t['artist']]
-		a['TRACKNUMBER'] = [str(seen[d])]
-		a['DISCNUMBER'] = [str(discs.index(d) + 1)]
-		a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(count[d])]
-		a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(discs))]
+		a['TRACKNUMBER'] = [str(n)]
+		a['DISCNUMBER'] = [str(d)]
+		a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]
+		a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(per_disc))]
 		a.save()
-		log.append(f'{fn}: {discs.index(d) + 1}-{seen[d]:02d} {t["title"]}')
+		log.append(f'{fn}: {d}-{n:02d} {t["title"]}')
 	log += rename_files(album)
 	return {'log': log, 'album': get_summary(album)}
+
+
+def track_path(album: str, file: str) -> Path:
+	f = safe(str(safe(album) / file))
+	if f.suffix.lower() != '.flac' or not f.is_file():
+		raise HTTPException(404, 'no such track')
+	return f
+
+
+@app.get('/api/audio')
+def audio(path: str, file: str):
+	return FileResponse(track_path(path, file), media_type='audio/flac')
+
+
+@app.get('/api/track')
+def get_track(path: str, file: str):
+	t = FLAC(track_path(path, file)).tags or {}
+	return {'title': tag(t, 'TITLE'), 'lyrics': tag(t, 'LYRICS')}
+
+
+@app.post('/api/track')
+def set_track(body: dict):
+	"""Edit title and lyrics of one file; the file is renamed to match the new title."""
+	if job['state'] == 'running':
+		raise HTTPException(409, 'a job is running')
+	album = safe(body.get('path', ''))
+	a = FLAC(track_path(body.get('path', ''), body.get('file', '')))
+	if a.tags is None:
+		a.add_tags()
+	title, lyrics = str(body.get('title', '')).strip(), str(body.get('lyrics', ''))
+	if not title:
+		raise HTTPException(400, 'title must not be empty')
+	a['TITLE'] = [title]
+	if lyrics.strip():
+		a['LYRICS'] = [lyrics.strip('\n')]
+	elif 'LYRICS' in a.tags:
+		del a.tags['LYRICS']
+	a.save()
+	return {'log': [f'edited {body["file"]}', *rename_files(album)], 'album': get_summary(album)}
 
 
 app.mount('/static', StaticFiles(directory=Path(__file__).parent / 'static'), name='static')

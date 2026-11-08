@@ -53,6 +53,24 @@
   <aside id="inspector" class="w-[480px] shrink-0 bg-base-100 border-l border-base-300 overflow-y-auto"></aside>
 </div>
 
+<dialog id="edlg" class="modal">
+  <div class="modal-box w-11/12 max-w-[48rem] overflow-x-hidden">
+    <h3 class="font-semibold text-lg">Edit track</h3>
+    <div class="text-xs text-base-content/50 font-mono mt-1 truncate" id="e_file"></div>
+    <fieldset class="fieldset mt-3"><legend class="fieldset-legend">Title</legend>
+      <input id="e_title" type="text" class="input input-sm w-full" autocomplete="off"></fieldset>
+    <fieldset class="fieldset"><legend class="fieldset-legend">Lyrics</legend>
+      <textarea id="e_lyrics" class="textarea w-full h-72 font-mono text-xs leading-relaxed" spellcheck="false"></textarea>
+      <p class="label whitespace-normal">Plain text or synced ([mm:ss.xx] lines). Empty removes the lyrics. The file is renamed to match the title.</p></fieldset>
+    <p class="text-error text-sm mt-2" id="eerr"></p>
+    <div class="modal-action">
+      <button class="btn btn-sm" id="eclose">Cancel</button>
+      <button class="btn btn-sm btn-primary" id="esave">Save</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
 <dialog id="tdlg" class="modal">
   <div class="modal-box w-11/12 max-w-[64rem] overflow-x-hidden">
     <h3 class="font-semibold text-lg">Assign tracks to a release</h3>
@@ -124,6 +142,9 @@ const ico = {
   warn: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
+  pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  play: '<polygon points="7 4 20 12 7 20 7 4" fill="currentColor"/>',
+  pause: '<rect x="6" y="4" width="4" height="16" fill="currentColor"/><rect x="14" y="4" width="4" height="16" fill="currentColor"/>',
   dir: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
 };
 const svg = (p, c = 'size-4') => `<svg class="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
@@ -218,11 +239,13 @@ function renderInspector() {
   const lyBadge = {lrc: '<span class="badge badge-success badge-xs">LRC</span>', txt: '<span class="badge badge-warning badge-xs">TXT</span>',
     instr: '<span class="badge badge-info badge-soft badge-xs">Instr.</span>', none: '<span class="badge badge-error badge-soft badge-xs">No lyrics</span>'};
   const trackRow = f => `<li class="flex items-center gap-2 py-1.5 border-b border-base-300/60 last:border-0 text-[13px]">
+      <button class="btn btn-ghost btn-circle btn-xs shrink-0" data-play="${esc(f.file)}" title="Play">${playIcon(a.path, f.file)}</button>
       <span class="w-6 text-base-content/40 tabular-nums shrink-0">${esc(String(f.track).split('/')[0].padStart(2, '0'))}</span>
       <span class="truncate flex-1" title="${esc(f.name)}">${esc(f.title)}</span>
       ${stepSel !== null ? (f.checks[stepSel] ? (f.lyrics === 'txt' && a.steps[stepSel].name === 'Lyrics' ? '<span class="text-warning font-semibold" title="plain text lyrics">✓</span>' : '<span class="text-success font-semibold" title="done">✓</span>') : '<span class="text-error font-semibold" title="missing">✗</span>') : ''}
       ${f.dr ? `<span class="badge badge-success badge-soft badge-xs">DR${esc(f.dr)}</span>` : '<span class="badge badge-ghost badge-xs">DR —</span>'}
-      ${lyBadge[f.lyrics]}</li>`;
+      ${lyBadge[f.lyrics]}
+      <button class="btn btn-ghost btn-circle btn-xs shrink-0" data-edit="${esc(f.file)}" title="Edit title and lyrics">${svg(ico.pen, 'size-3')}</button></li>`;
   const drBadge = a.dr ? `<span class="badge badge-success badge-soft badge-sm" title="Album dynamic range">DR${esc(a.dr)}</span>` : '';
   $('inspector').innerHTML = `
     <div class="p-6">
@@ -269,6 +292,8 @@ function renderInspector() {
   $('run').onclick = () => runFixes([a.path], title(a));
   $('move').onclick = move;
   $('assign').onclick = openTed;
+  document.querySelectorAll('#inspector [data-play]').forEach(b => b.onclick = () => togglePlay(a.path, b.dataset.play));
+  document.querySelectorAll('#inspector [data-edit]').forEach(b => b.onclick = () => openEdit(a.path, b.dataset.edit));
   const sb = $('search');
   if (sb) sb.onclick = openTed;
 }
@@ -352,6 +377,45 @@ $('sort').onchange = e => { sortKey = e.target.value; renderGrid(); };
 $('q').oninput = e => { query = e.target.value; renderGrid(); };
 document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); $('q').focus(); } });
 
+// ---- player: one shared audio element, play/pause per track ----
+const player = new Audio();
+let playing = null;  // album path + '|' + file
+const playIcon = (path, file) => svg(playing === path + '|' + file ? ico.pause : ico.play, 'size-3');
+function updatePlayIcons() {
+  document.querySelectorAll('#inspector [data-play]').forEach(b => {
+    b.innerHTML = playIcon(selAlbum.path, b.dataset.play);
+    b.title = playing === selAlbum.path + '|' + b.dataset.play ? 'Pause' : 'Play';
+  });
+}
+function togglePlay(path, file) {
+  const key = path + '|' + file;
+  if (playing === key) { player.pause(); playing = null; }
+  else {
+    player.src = '/api/audio?path=' + encodeURIComponent(path) + '&file=' + encodeURIComponent(file);
+    player.play().catch(e => { playing = null; updatePlayIcons(); toast(e.message, 'alert-error'); });
+    playing = key;
+  }
+  updatePlayIcons();
+}
+player.onended = () => { playing = null; updatePlayIcons(); };
+
+// ---- single track: title and lyrics ----
+let edt = null;
+async function openEdit(path, file) {
+  try {
+    const t = await api('/api/track?path=' + encodeURIComponent(path) + '&file=' + encodeURIComponent(file));
+    edt = {path, file}; $('e_file').textContent = file; $('e_title').value = t.title; $('e_lyrics').value = t.lyrics; $('eerr').textContent = '';
+    $('edlg').showModal();
+  } catch (e) { toast(e.message, 'alert-error'); }
+}
+$('eclose').onclick = () => $('edlg').close();
+$('esave').onclick = async () => {
+  try {
+    const d = await post('/api/track', {...edt, title: $('e_title').value, lyrics: $('e_lyrics').value});
+    $('edlg').close(); addLog(d.log); toast('Track saved'); await refreshOne(edt.path);
+  } catch (e) { $('eerr').textContent = e.message; }
+};
+
 // ---- track editor: search a Discogs release, assign album files to its tracks ----
 let ted = null;  // {path, rid, release, files: [{file, title, duration, rel, conf}]}
 const mmss = n => n ? Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0') : '';
@@ -390,7 +454,15 @@ async function tedPick(rid) {
   } catch (err) { tedBusy(false, err.message); }
 }
 
+// default numbering (same rule as the server): 1..n per disc in release order; f.d / f.t hold manual overrides
+function autoNumber() {
+  const sel = ted.files.filter(f => f.rel !== null).sort((x, y) => x.rel - y.rel), seen = {};
+  const discs = [...new Set(sel.map(f => ted.release.tracks[f.rel].disc))].sort((x, y) => x - y);
+  sel.forEach(f => { const d = ted.release.tracks[f.rel].disc; seen[d] = (seen[d] || 0) + 1; f.ad = discs.indexOf(d) + 1; f.at = seen[d]; });
+}
+
 function renderTed() {
+  autoNumber();
   const r = ted.release, used = {};
   ted.files.forEach(f => { if (f.rel !== null) used[f.rel] = (used[f.rel] || 0) + 1; });
   const dup = Object.values(used).some(n => n > 1), n = Object.keys(used).length;
@@ -398,17 +470,20 @@ function renderTed() {
   const y = $('tbody').scrollTop;
   $('tbody').innerHTML = `
     <div class="text-sm mb-3"><span class="font-medium">${esc(r.artist)} - ${esc(r.title)}</span> <span class="text-base-content/50">${esc(r.year)} · ${r.tracks.length} tracks on release · ${ted.files.length} files</span></div>
-    <table class="table table-sm"><thead><tr><th>File</th><th>Release track</th><th></th></tr></thead><tbody>
+    <table class="table table-sm"><thead><tr><th>File</th><th class="w-16">Disc</th><th class="w-16">Track</th><th>Release track</th><th></th></tr></thead><tbody>
     ${ted.files.map((f, k) => `<tr>
       <td class="w-1/2"><div class="truncate max-w-xs" title="${esc(f.file)}">${esc(f.title)}</div><div class="text-xs text-base-content/50">${esc(f.file)} · ${mmss(f.duration)}</div></td>
+      <td>${f.rel === null ? '' : `<input type="number" min="1" class="input input-xs w-14" data-k="${k}" data-n="d" value="${f.d ?? f.ad}">`}</td>
+      <td>${f.rel === null ? '' : `<input type="number" min="1" class="input input-xs w-14" data-k="${k}" data-n="t" value="${f.t ?? f.at}">`}</td>
       <td><select class="select select-sm w-full ${f.rel !== null && used[f.rel] > 1 ? 'select-error' : ''}" data-k="${k}"><option value="">Skip (leave as is)</option>${r.tracks.map(t => opt(f, t)).join('')}</select></td>
       <td class="w-16 text-right">${f.rel === null ? '<span class="badge badge-ghost badge-xs">skip</span>' : f.conf >= 0.6 ? '<span class="badge badge-success badge-soft badge-xs">match</span>' : '<span class="badge badge-warning badge-soft badge-xs">check</span>'}</td></tr>`).join('')}
     </tbody></table>
     <div class="text-xs text-base-content/50 mt-3">Not in this album: ${r.tracks.filter(t => !used[t.i]).map(t => esc(t.title)).join(', ') || 'none'}</div>`;
   $('tbody').scrollTop = y;
   $('tbody').querySelectorAll('select[data-k]').forEach(sel => sel.onchange = () => {
-    const f = ted.files[+sel.dataset.k]; f.rel = sel.value === '' ? null : +sel.value; f.conf = 1; renderTed();
+    const f = ted.files[+sel.dataset.k]; f.rel = sel.value === '' ? null : +sel.value; f.conf = 1; f.d = f.t = null; renderTed();
   });
+  $('tbody').querySelectorAll('input[data-n]').forEach(inp => inp.onchange = () => { ted.files[+inp.dataset.k][inp.dataset.n] = inp.value === '' ? null : +inp.value; });
   $('terr').textContent = dup ? 'A release track is assigned to more than one file.' : '';
   $('tapply').disabled = dup || n === 0;
   $('tapply').textContent = `Apply (${n} of ${ted.files.length})`;
@@ -417,7 +492,7 @@ function renderTed() {
 async function tedApply() {
   tedBusy(true);
   try {
-    const d = await post('/api/tracks/apply', {path: ted.path, release_id: ted.rid, assignments: ted.files.map(f => ({file: f.file, rel: f.rel}))});
+    const d = await post('/api/tracks/apply', {path: ted.path, release_id: ted.rid, assignments: ted.files.map(f => ({file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at}))});
     $('tdlg').close(); addLog(d.log); toast('Tracks assigned'); await refreshOne(ted.path);
   } catch (err) { tedBusy(false, err.message); }
 }
