@@ -170,7 +170,7 @@ let job = {state: 'idle', path: null, queue: []}, since = 0, ticks = 0, poll = n
 let logLines = [], logOpen = false, tracksOpen = true, stepSel = null, sortKey = 'recent';
 const ORDER = {needs: 0, ready: 1, fixed: 2};
 
-const STATUS = {needs: 'Needs IDs', ready: 'Ready', fixed: 'Fixed'};
+const STATUS = {needs: 'Needs input', ready: 'Ready', fixed: 'Fixed'};
 const badgeCls = {needs: 'badge-error', ready: 'badge-info', fixed: 'badge-success'};
 const ico = {
   lib: '<path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l4 1-3 14-4-1z"/>',
@@ -197,7 +197,7 @@ function cover(a, cls) {
 }
 
 function renderNav() {
-  const items = [['all', 'All albums', ico.lib], ['needs', 'Needs IDs', ico.warn], ['ready', 'Ready', ico.clock], ['fixed', 'Fixed', ico.check]];
+  const items = [['all', 'All albums', ico.lib], ['needs', 'Needs input', ico.warn], ['ready', 'Ready', ico.clock], ['fixed', 'Fixed', ico.check]];
   $('nav').innerHTML = items.map(([k, l, i]) => `<li><a class="${filter === k ? 'menu-active' : ''}" data-f="${k}">${svg(i)}${l}
     <span class="badge badge-sm ${filter === k ? '' : 'badge-ghost'} ml-auto">${count(k)}</span></a></li>`).join('');
   document.querySelectorAll('[data-f]').forEach(el => el.onclick = () => { filter = el.dataset.f; renderNav(); renderGrid(); });
@@ -455,7 +455,7 @@ player.onended = () => { playing = null; updatePlayIcons(); };
 const KFIELDS = [
   ['ALBUM_ARTIST_OVERRIDE', 'Album artist', 'Written to ALBUMARTIST on every fix and used in the folder name. Empty: remove the override and restore the Discogs artist.'],
   ['ALBUM_TITLE_OVERRIDE', 'Album title', 'Replaces the Discogs title. Empty: remove the override and restore the Discogs master title.'],
-  ['ALBUM_FORMAT', 'Format', 'For example CD, SACD, Vinyl. Empty: CD.'],
+  ['ALBUM_FORMAT', 'Format', 'For example CD, SACD, Vinyl. Required.'],
   ['ALBUM_EDITION', 'Edition', 'For example Remastered or Gold Disc. Part of the version string.'],
   ['CATALOGNUMBER', 'Catalog number', 'Part of the version string. Must not be empty: enter none if the release has none.'],
   ['MUSICBRAINZ_ALBUMID', 'MusicBrainz release ID', 'Anchors the language tags to a MusicBrainz release.'],
@@ -504,6 +504,7 @@ $('ksave').onclick = async () => {
   Object.keys(kd.fields).forEach(k => { if (kd.fields[k].trim() !== kd.d.fields[k]) fields[k] = kd.fields[k]; });
   kd.tracks.forEach((t, i) => { if (KTRACK.some(([k]) => t[k] !== kd.d.tracks[i][k])) tracks.push(t); });
   if (!Object.keys(fields).length && !tracks.length) { $('kdlg').close(); return; }
+  if ('ALBUM_FORMAT' in fields && !fields.ALBUM_FORMAT.trim()) { $('kerr').textContent = 'Album format must not be empty (for example CD, SACD, Vinyl).'; return; }
   if ('CATALOGNUMBER' in fields && !fields.CATALOGNUMBER.trim()) { $('kerr').textContent = 'Catalog number must not be empty (enter none if the release has none).'; return; }
   if (tracks.some(t => !['title', 'disc', 'track'].every(k => String(t[k]).trim()))) { $('kerr').textContent = 'Title, disc and track must not be empty.'; return; }
   try {

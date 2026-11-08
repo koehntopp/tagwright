@@ -24,7 +24,7 @@ An album is a folder that contains FLAC files. Folders named `Disc N` or `CD N` 
 | Dynamic range | every track has `DYNAMIC_RANGE` |
 | ReplayGain | every track has `REPLAYGAIN_ALBUM_GAIN` |
 | Fingerprints | every track has `ACOUSTID_FINGERPRINT` |
-| Tags and cover | a `DISCOGS_RELEASE_ID` exists, every track has `ARTIST`, `TITLE`, `ALBUM`, `TRACKNUMBER`, `DISCNUMBER`, `CATALOGNUMBER` (any of its four spellings; Discogs' own value `none` counts) and `DATE` or `YEAR` |
+| Tags and cover | a `DISCOGS_RELEASE_ID` exists and every track has `ARTIST`, `ALBUMARTIST`, `TITLE`, `ALBUM`, `TRACKNUMBER`, `DISCNUMBER`, `ALBUM_FORMAT`, `CATALOGNUMBER` (any of its four spellings; Discogs' own value `none` counts) and `DATE` or `YEAR` |
 | Lyrics | no track is missing lyrics (see below) |
 | Filenames | every file name equals the bliss name of its tags ([0010](0010-bliss-file-naming.md)) |
 
@@ -42,9 +42,11 @@ A track is "missing" only when it is `none`. Any non-empty lyrics, synced, plain
 
 ### Album status
 
-- `needs`: no `DISCOGS_RELEASE_ID` (fixtags cannot run without it).
-- `fixed`: all six steps done.
+- `needs` (shown as **Needs input**): at least one blocking (`warn`) issue, see "Issue lines": no `DISCOGS_RELEASE_ID` (fixtags cannot run without it), an empty required tag, or files that disagree on an album-level tag. The server refuses to run such an album (409).
+- `fixed`: no blocking issue and all six steps done.
 - `ready`: everything else.
+
+**Why the editor checks what the pipeline cannot:** the discogs scripts assume an external tag editor has filled the tags and silently substitute defaults (for example `fixtags.py` assumes the format `CD`, and `bliss.py` falls back to `ARTIST` and to track `00`). Tagwright is a tag editor too, so it does not let an album proceed with an empty required tag, and `ALBUMARTIST` (the album name is built from it) is required and has no `ARTIST` fallback.
 
 ### Issue lines
 
@@ -54,6 +56,8 @@ A track is "missing" only when it is `none`. Any non-empty lyrics, synced, plain
 |-------|-------|--------|
 | no `DISCOGS_RELEASE_ID` on the first file | warn | Search (Discogs assignment) |
 | no catalog number (all tracks: "Add a catalog number (enter none ...)"; some: "N of M tracks have no catalog number") | warn | Tag Editor, Album tab |
+| no album artist (`ALBUMARTIST`) or album format (`ALBUM_FORMAT`), on all or some tracks | warn | Tag Editor, Album tab |
+| the files **disagree** on an album-level tag that `fixtags.py` and `bliss.py` read from the **first file only**: Discogs release ID, album artist, catalog number, album format (different values), and edition, MusicBrainz ID and the two overrides (different values, or set on only some tracks) | warn | Search for the release ID, else Tag Editor, Album tab (one save writes every file) |
 | tracks without disc number, track number, title or artist (one line per tag, with counts) | warn | Tag Editor, Tracks tab |
 | the same disc/track number on more than one file | warn | Tag Editor, Tracks tab |
 | cover smaller than 1400x1400, or none | info | Upload |

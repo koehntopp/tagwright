@@ -57,7 +57,7 @@ if SETTINGS_FILE.is_file():
 DISC_RE = re.compile(r'^(?:Disc|CD)\s*\d+$', re.I)  # same rule as discogs disc_layout.DISC_DIR_RE
 CATALOG_KEYS = ('CATALOGNUMBER', 'CATALOG NUMBER', 'CATALOG_NUMBER', 'CATALOGNO')  # spellings fixtags reads, first present wins
 # One entry per required tag (alternative spellings together); an empty one means the album is not ready.
-REQUIRED_TAGS = (('ARTIST',), ('TITLE',), ('ALBUM',), ('TRACKNUMBER',), ('DISCNUMBER',), CATALOG_KEYS)
+REQUIRED_TAGS = (('ARTIST',), ('ALBUMARTIST',), ('TITLE',), ('ALBUM',), ('TRACKNUMBER',), ('DISCNUMBER',), ('ALBUM_FORMAT',), CATALOG_KEYS)
 MIN_COVER = 1400  # px; smaller covers turn the Tags and cover step yellow
 COVER_NOTE = f'Cover is {{c}}, below {MIN_COVER}x{MIN_COVER}'
 SYNCED_RE = re.compile(r'\[\d{2}:\d{2}\.\d{2}\]')  # strict [MM:SS.xx], as in the discogs lrc_count.py
@@ -113,8 +113,8 @@ def bliss_name(t) -> str | None:
 
 
 def bliss_album(t) -> str:
-	"""Bliss library path <album artist>/<album [version]>, or '' while the artist or the album is empty (not ready)."""
-	album, artist = tag(t, 'ALBUM'), tag(t, 'ALBUMARTIST', 'ARTIST')
+	"""Bliss library path <album artist>/<album [version]>, or '' while ALBUMARTIST or ALBUM is empty (not ready)."""
+	album, artist = tag(t, 'ALBUM'), tag(t, 'ALBUMARTIST')
 	if not album or not artist:
 		return ''
 	ver = tag(t, 'VERSION')
@@ -276,18 +276,43 @@ def count_text(n: int, total: int, what: str) -> str:
 	return f'{n} of {total} tracks {"has" if n == 1 else "have"} no {what.split(" ", 1)[-1]}.'
 
 
+# Album-level tags the pipeline reads from the FIRST file only (fixtags, bliss): all files must agree.
+# (label, keys, action); Discogs-derived tags such as ALBUM are not listed: the next fix run makes them uniform.
+ALBUM_LEVEL = (
+	('Discogs release ID', ('DISCOGS_RELEASE_ID',), 'search', True),
+	('album artist', ('ALBUMARTIST',), 'album', True),
+	('catalog number', CATALOG_KEYS, 'album', True),
+	('album format', ('ALBUM_FORMAT',), 'album', True),
+	('edition', ('ALBUM_EDITION',), 'album', False),
+	('MusicBrainz release ID', ('MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID'), 'album', False),
+	('album artist override', ('ALBUM_ARTIST_OVERRIDE',), 'album', False),
+	('album title override', ('ALBUM_TITLE_OVERRIDE',), 'album', False),
+)
+MISSING_TEXT = {
+	'album artist': 'Set the album artist.', 'catalog number': 'Add a catalog number (enter none if the release has none).',
+	'album format': 'Set the album format (for example CD, SACD, Vinyl).',
+}
+
+
 def album_issues(out: dict, tags: list, small_cover: bool) -> list[dict]:
 	"""Clearly identifiable problems, one line each: {text, action, level}; recomputed from the tags on every refresh.
 
-	level 'warn' blocks the album, 'info' is a notice. action tells the UI which button to offer.
+	level 'warn' blocks the album (status needs), 'info' is a notice. action tells the UI which button to offer.
 	"""
 	n, issues = len(tags), []
+	missing = lambda *keys: sum(1 for t in tags if not tag(t, *keys))  # noqa: E731
 	if not out['discogs']:
 		issues.append({'text': 'Add a Discogs release ID before running fixes.', 'action': 'search', 'level': 'warn'})
-	missing = lambda *keys: sum(1 for t in tags if not tag(t, *keys))  # noqa: E731
-	if m := missing(*CATALOG_KEYS):
-		text = 'Add a catalog number (enter none if the release has none).' if m == n else f'{m} of {n} tracks have no catalog number.'
-		issues.append({'text': text, 'action': 'album', 'level': 'warn'})
+	for label, keys, action, required in ALBUM_LEVEL:
+		values = [tag(t, *keys) for t in tags]
+		if required and (m := values.count('')) and not (label == 'Discogs release ID' and m == n):  # all empty: the Discogs line above
+			text = MISSING_TEXT[label] if m == n else f'{m} of {n} tracks have no {label}.'
+			issues.append({'text': text, 'action': action, 'level': 'warn'})
+		filled = [v for v in values if v]
+		if len(set(filled)) > 1:
+			issues.append({'text': f'The files disagree on the {label} ({len(set(filled))} different values); it is read from the first file only.', 'action': action, 'level': 'warn'})
+		elif not required and filled and len(filled) < n:  # a gap in a required tag is reported above
+			issues.append({'text': f'The {label} is set on only {len(filled)} of {n} tracks; it is read from the first file only.', 'action': action, 'level': 'warn'})
 	for key, what in (('DISCNUMBER', 'a disc number'), ('TRACKNUMBER', 'a track number'), ('TITLE', 'a title'), ('ARTIST', 'an artist')):
 		if m := missing(key):
 			issues.append({'text': count_text(m, n, what), 'action': 'tracks', 'level': 'warn'})
@@ -301,8 +326,8 @@ def album_issues(out: dict, tags: list, small_cover: bool) -> list[dict]:
 
 
 def status(s: dict) -> str:
-	"""needs: no Discogs id (fixtags requires it); fixed: all steps done; else ready."""
-	if not s['discogs']:
+	"""needs: a blocking issue (no Discogs id, an empty required tag, files that disagree); fixed: all steps done; else ready."""
+	if any(i['level'] == 'warn' for i in s['issues']):
 		return 'needs'
 	return 'fixed' if s['steps_done'] == len(s['steps']) else 'ready'
 
@@ -468,6 +493,9 @@ def run(body: dict):
 	"""Body: {path} for one album or {paths: [...]} for a queue (Run all ready)."""
 	raw = body.get('paths') or [body.get('path', '')]
 	paths = [safe(p) for p in raw]
+	for path in paths:
+		if get_summary(path)['status'] == 'needs':
+			raise HTTPException(409, f'{path.name} is not ready: fix the problems listed for it first')
 	with lock:  # one heavy task at a time
 		if job['state'] == 'running':
 			raise HTTPException(409, 'a job is already running')
@@ -1085,6 +1113,8 @@ def set_tags(body: dict):
 	fields = {k: v for k, v in body.get('fields', {}).items() if k in ALBUM_FIELDS}
 	if 'CATALOGNUMBER' in fields and not str(fields['CATALOGNUMBER']).strip():
 		raise HTTPException(400, 'catalog number must not be empty (enter none if the release has none)')
+	if 'ALBUM_FORMAT' in fields and not str(fields['ALBUM_FORMAT']).strip():
+		raise HTTPException(400, 'album format must not be empty (for example CD, SACD, Vinyl)')
 	if fields:
 		write_album_fields(album, fields)
 	log = [f'album: {k} = {v or "(removed)"}' for k, v in fields.items()]

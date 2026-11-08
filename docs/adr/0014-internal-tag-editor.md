@@ -19,7 +19,7 @@ Written to every file of the album; an emptied field removes the tag.
 |-----|---------|
 | `ALBUM_ARTIST_OVERRIDE` | also written to `ALBUMARTIST` immediately; clearing restores the Discogs artist (see below) |
 | `ALBUM_TITLE_OVERRIDE` | also written to `ALBUM` immediately; clearing restores the Discogs master title (see below) |
-| `ALBUM_FORMAT` | for example CD, SACD (empty: CD) |
+| `ALBUM_FORMAT` | for example CD, SACD, Vinyl; **must not be empty** (otherwise `fixtags.py` would silently assume CD) |
 | `ALBUM_EDITION` | part of the version string |
 | `CATALOGNUMBER` | part of the version string; **must not be empty** (enter `none` if the release has none, as Discogs does); alternative spellings are removed when it is changed |
 | `MUSICBRAINZ_ALBUMID` | anchors language tags |
