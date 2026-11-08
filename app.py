@@ -2,7 +2,7 @@
 # /// script
 # dependencies = ["fastapi", "uvicorn", "mutagen", "python-slugify", "unidecode", "pathvalidate"]
 # ///
-"""Albumfixer: web UI over the discogs nzbfix pipeline.
+"""Tagwright: web UI over the discogs nzbfix pipeline.
 
 Env: ROOT (base dir, default /staging), INGEST_DIR (default /flac/ingest),
 DISCOGS_DIR (dir holding nzbfix.py, default /opt/discogs), PORT (8080).
@@ -298,7 +298,7 @@ def overlay_env(env: dict) -> None:
 	d = DATA / 'overlay'
 	d.mkdir(parents=True, exist_ok=True)
 	f = d / 'config.py'
-	f.write_text(f'{text}\n# albumfixer settings overrides{extra}\n')
+	f.write_text(f'{text}\n# tagwright settings overrides{extra}\n')
 	f.chmod(0o600)
 	env['CONFIG_DIR'] = str(d)
 
