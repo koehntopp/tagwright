@@ -50,8 +50,26 @@
     </div>
   </main>
 
-  <aside id="inspector" class="w-[480px] shrink-0 bg-base-100 border-l border-base-300 overflow-y-auto"></aside>
+  <aside id="inspector" class="w-[600px] shrink-0 bg-base-100 border-l border-base-300 overflow-y-auto"></aside>
 </div>
+
+<dialog id="adlg" class="modal">
+  <div class="modal-box w-11/12 max-w-[40rem] overflow-x-hidden">
+    <h3 class="font-semibold text-lg">Edit album</h3>
+    <fieldset class="fieldset mt-3"><legend class="fieldset-legend">Album artist</legend>
+      <input id="a_artist" type="text" class="input input-sm w-full" autocomplete="off">
+      <p class="label whitespace-normal">Saved as ALBUM_ARTIST_OVERRIDE and used instead of the Discogs artist. Empty removes the override.</p></fieldset>
+    <fieldset class="fieldset"><legend class="fieldset-legend">Album title</legend>
+      <input id="a_title" type="text" class="input input-sm w-full" autocomplete="off">
+      <p class="label whitespace-normal">Saved as ALBUM_TITLE_OVERRIDE and used instead of the Discogs title. Empty removes the override.</p></fieldset>
+    <p class="text-error text-sm mt-2" id="aerr"></p>
+    <div class="modal-action">
+      <button class="btn btn-sm" id="aclose">Cancel</button>
+      <button class="btn btn-sm btn-primary" id="asave">Save</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
 
 <dialog id="edlg" class="modal">
   <div class="modal-box w-11/12 max-w-[48rem] overflow-x-hidden">
@@ -242,6 +260,7 @@ function renderInspector() {
       <button class="btn btn-ghost btn-circle btn-xs shrink-0" data-play="${esc(f.file)}" title="Play">${playIcon(a.path, f.file)}</button>
       <span class="w-6 text-base-content/40 tabular-nums shrink-0">${esc(String(f.track).split('/')[0].padStart(2, '0'))}</span>
       <span class="truncate flex-1" title="${esc(f.name)}">${esc(f.title)}</span>
+      <span class="w-10 text-right text-base-content/50 tabular-nums shrink-0" title="Length">${esc(mmss(f.length))}</span>
       ${stepSel !== null ? (f.checks[stepSel] ? (f.lyrics === 'txt' && a.steps[stepSel].name === 'Lyrics' ? '<span class="text-warning font-semibold" title="plain text lyrics">✓</span>' : '<span class="text-success font-semibold" title="done">✓</span>') : '<span class="text-error font-semibold" title="missing">✗</span>') : ''}
       ${f.dr ? `<span class="badge badge-success badge-soft badge-xs">DR${esc(f.dr)}</span>` : '<span class="badge badge-ghost badge-xs">DR —</span>'}
       ${lyBadge[f.lyrics]}
@@ -252,8 +271,11 @@ function renderInspector() {
       <div class="flex gap-4">
         ${cover(a, 'size-24 rounded-box overflow-hidden shrink-0 shadow')}
         <div class="min-w-0">
-          <div class="text-xs text-base-content/50 truncate" title="${a.artist_is_albumartist ? '' : 'from ARTIST tag'}">${esc(a.artist || 'Unknown artist')}</div>
-          <h2 class="text-xl font-semibold leading-tight">${esc(title(a))}</h2>
+          <div class="flex items-center gap-1 text-xs text-base-content/50">
+            <span class="truncate" title="${a.artist_is_albumartist ? '' : 'from ARTIST tag'}">${esc(a.artist || 'Unknown artist')}</span>
+            <button class="btn btn-ghost btn-circle btn-xs shrink-0" data-album-edit title="Edit album artist and title">${svg(ico.pen, 'size-3')}</button>
+          </div>
+          <h2 class="text-xl font-semibold leading-tight">${esc(title(a))}<button class="btn btn-ghost btn-circle btn-xs ml-1 align-middle" data-album-edit title="Edit album artist and title">${svg(ico.pen, 'size-3')}</button></h2>
           <div class="text-xs text-base-content/50 mt-0.5">${esc([a.edition, a.year].filter(Boolean).join(' · '))}</div>
           <div class="flex flex-wrap gap-1 mt-2">${id('D', a.discogs)}${id('MB', a.mbid)}${drBadge}</div>
         </div>
@@ -292,6 +314,7 @@ function renderInspector() {
   $('run').onclick = () => runFixes([a.path], title(a));
   $('move').onclick = move;
   $('assign').onclick = openTed;
+  document.querySelectorAll('#inspector [data-album-edit]').forEach(b => b.onclick = openAlbumEdit);
   document.querySelectorAll('#inspector [data-play]').forEach(b => b.onclick = () => togglePlay(a.path, b.dataset.play));
   document.querySelectorAll('#inspector [data-edit]').forEach(b => b.onclick = () => openEdit(a.path, b.dataset.edit));
   const sb = $('search');
@@ -398,6 +421,23 @@ function togglePlay(path, file) {
   updatePlayIcons();
 }
 player.onended = () => { playing = null; updatePlayIcons(); };
+
+// ---- album artist / title overrides ----
+function openAlbumEdit() {
+  const a = selAlbum;
+  $('a_artist').value = a.artist_override || a.artist; $('a_title').value = a.title_override || a.album; $('aerr').textContent = '';
+  $('adlg').showModal();
+}
+$('aclose').onclick = () => $('adlg').close();
+$('asave').onclick = async () => {
+  const a = selAlbum;
+  // unchanged values are not stored as overrides unless one already exists
+  const artist = $('a_artist').value.trim(), title = $('a_title').value.trim();
+  try {
+    await post('/api/overrides', {path: a.path, artist: artist === a.artist && !a.artist_override ? '' : artist, title: title === a.album && !a.title_override ? '' : title});
+    $('adlg').close(); toast('Album saved'); await refreshOne(a.path);
+  } catch (e) { $('aerr').textContent = e.message; }
+};
 
 // ---- single track: title and lyrics ----
 let edt = null;

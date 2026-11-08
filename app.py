@@ -143,14 +143,15 @@ def track_dr_mean(tags) -> str:
 	return str(round(sum(vals) / len(vals))).zfill(2) if vals else ''
 
 
-def track_files(album: Path, files, tags, has_discogs: bool) -> list[dict]:
+def track_files(album: Path, files, tags, lengths, has_discogs: bool) -> list[dict]:
 	"""Per-track rows; checks[i] answers pipeline step i (same order as steps in summarize)."""
 	out = []
-	for f, t in zip(files, tags):
+	for f, t, length in zip(files, tags, lengths):
 		kind = lyric_kind(t)
 		tags_ok = has_discogs and all(tag(t, k) for k in ('ARTIST', 'TITLE', 'ALBUM', 'TRACKNUMBER')) and bool(tag(t, 'DATE', 'YEAR'))
 		out.append({
 			'name': f.name,
+			'length': round(length),
 			'file': str(f.relative_to(album)),
 			'disc': tag(t, 'DISCNUMBER'),
 			'track': tag(t, 'TRACKNUMBER'),
@@ -173,7 +174,8 @@ def summarize(album: Path) -> dict:
 	files = flacs(album)
 	if not files:
 		raise HTTPException(404, 'no flac files')
-	tags = [FLAC(f).tags or {} for f in files]
+	audio = [FLAC(f) for f in files]
+	tags = [a.tags or {} for a in audio]
 	t0 = tags[0]
 	did = tag(t0, 'DISCOGS_RELEASE_ID')
 	mid = tag(t0, 'MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID')
@@ -184,6 +186,8 @@ def summarize(album: Path) -> dict:
 		'artist_is_albumartist': bool(tag(t0, 'ALBUMARTIST')),
 		'new_title': bliss_album(t0),
 		'album': tag(t0, 'ALBUM'),
+		'artist_override': tag(t0, 'ALBUM_ARTIST_OVERRIDE'),
+		'title_override': tag(t0, 'ALBUM_TITLE_OVERRIDE'),
 		'year': tag(t0, 'DATE', 'YEAR')[:4],
 		'discogs': did,
 		'mbid': mid,
@@ -215,7 +219,7 @@ def summarize(album: Path) -> dict:
 	]
 	out.update(
 		dr=tag(t0, 'ALBUM_DR') or track_dr_mean(tags),
-		files=track_files(album, files, tags, bool(did)),
+		files=track_files(album, files, tags, [a.info.length for a in audio], bool(did)),
 		lyrics={'synced': syn, 'plain': pla, 'instrumental': ins, 'missing': mis},
 		steps=[{'name': a, 'done': b, 'partial': a == 'Lyrics' and b and pla > 0} for a, b in steps],  # partial: lyrics complete but some only plain text; still counts as done
 		tags_ok=req,
@@ -633,6 +637,30 @@ def set_track(body: dict):
 		del a.tags['LYRICS']
 	a.save()
 	return {'log': [f'edited {body["file"]}', *rename_files(album)], 'album': get_summary(album)}
+
+
+@app.post('/api/overrides')
+def set_overrides(body: dict):
+	"""Set ALBUM_ARTIST_OVERRIDE / ALBUM_TITLE_OVERRIDE (blank removes) on every file.
+
+	fixtags applies them to ALBUMARTIST / ALBUM; set those now as well so the change shows before the next run.
+	"""
+	if job['state'] == 'running':
+		raise HTTPException(409, 'a job is running')
+	album = safe(body.get('path', ''))
+	artist, title = str(body.get('artist', '')).strip(), str(body.get('title', '')).strip()
+	for f in flacs(album):
+		a = FLAC(f)
+		if a.tags is None:
+			a.add_tags()
+		for key, applied, value in (('ALBUM_ARTIST_OVERRIDE', 'ALBUMARTIST', artist), ('ALBUM_TITLE_OVERRIDE', 'ALBUM', title)):
+			if value:
+				a[key] = [value]
+				a[applied] = [value]
+			elif key in a.tags:
+				del a.tags[key]
+		a.save()
+	return get_summary(album)
 
 
 app.mount('/static', StaticFiles(directory=Path(__file__).parent / 'static'), name='static')
