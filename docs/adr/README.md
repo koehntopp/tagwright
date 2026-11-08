@@ -22,7 +22,8 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0016](0016-cover-art.md) | Cover art: display, size warning, replacement | Accepted |
 | [0017](0017-ui-layout-and-design-system.md) | UI layout and design system | Accepted |
 | [0018](0018-verification.md) | Verification without touching real data | Accepted |
-| [0019](0019-version-control-and-releases.md) | Version control and releases | Accepted |
+| [0019](0019-version-control-and-releases.md) | Version control and releases | Superseded by 0020 |
+| [0020](0020-work-directly-on-main.md) | Work directly on main; no feature branches | Accepted |
 
 ## Which ADR covers what
 
@@ -44,4 +45,4 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | cover display, size warning, cover upload | 0016 |
 | layout, colours, widths, dialogs, `index.html` styling | 0017 |
 | how to test | 0018 |
-| branches, commits, tags | 0019 |
+| commits, pushing, tags (no branches) | 0020 |

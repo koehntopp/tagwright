@@ -1,6 +1,6 @@
 # ADR 0019: Version control and releases
 
-- **Status**: Accepted
+- **Status**: Superseded by [ADR 0020](0020-work-directly-on-main.md)
 - **Date**: 2026-11-08
 
 ## Decision

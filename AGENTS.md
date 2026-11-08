@@ -34,11 +34,12 @@ Tagwright is a self-hosted web app (FastAPI + one-file frontend) around the disc
 - Check API behaviour with `curl`, tags and pictures on disk with `metaflac`, and the UI in a browser at 1440 px with a clean console. Report what you did **not** verify.
 - Do not claim a feature works until you ran it. If something failed or was skipped, say so.
 
-## 5. Git (ADR 0019)
+## 5. Git (ADR 0020)
 
-- Work on a branch, not on `main`. Do not merge, push to `main`, tag or delete branches unless the owner tells you to.
+- **Never create a branch.** Work and commit directly on `main`, then push to `origin main`. `main` is the only branch; if any other exists, tell the owner. Do not tag unless asked.
 - Never commit `data/`, `node_modules/`, `__pycache__/`, keys or music files.
-- Keep commits focused, with a message that says what and why.
+- Keep commits focused, with a message that says what and why. Verify first ([ADR 0018](docs/adr/0018-verification.md)); there is no branch to catch a bad change.
+- Never force-push or rewrite history.
 
 ## 6. Before you say "done"
 
