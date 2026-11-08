@@ -650,7 +650,6 @@ def tracks_apply(body: dict):
 			a.add_tags()
 		a['DISCOGS_RELEASE_ID'] = [rel['id']]
 		a['TITLE'] = [t['title']]
-		a['ARTIST'] = [t['artist']]
 		a['TRACKNUMBER'] = [str(n)]
 		a['DISCNUMBER'] = [str(d)]
 		a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]

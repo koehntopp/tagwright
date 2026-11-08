@@ -23,7 +23,8 @@ Entries of type `track` only (headings and index entries are skipped). Position 
 ### Adjusting and applying
 - The dialog lists each file with a dropdown of release tracks (or "Skip") and a match/check/skip badge; release tracks not used are listed as "Not in this album". One release track cannot be given to two files (Apply is disabled).
 - Disc and track numbers are editable per file. Default: tracks are renumbered `1..n` per disc in release order over the **selected** files, discs renumbered from 1, so a subset has no gaps.
-- `POST /api/tracks/apply` writes per assigned file: `DISCOGS_RELEASE_ID`, `TITLE`, `ARTIST`, `TRACKNUMBER`, `DISCNUMBER`, `TRACKTOTAL` and `TOTALTRACKS` (files on that disc), `DISCTOTAL` and `TOTALDISCS` (distinct discs). Files set to Skip are untouched. Then files are renamed ([0010](0010-bliss-file-naming.md)).
+- `POST /api/tracks/apply` writes per assigned file: `DISCOGS_RELEASE_ID`, `TITLE`, `TRACKNUMBER`, `DISCNUMBER`, `TRACKTOTAL` and `TOTALTRACKS` (files on that disc), `DISCTOTAL` and `TOTALDISCS` (distinct discs). Files set to Skip are untouched. Then files are renamed ([0010](0010-bliss-file-naming.md)).
+- **Track `ARTIST` is never written.** It is a tagger tag and can carry rip-specific billing (for example "Roy Orbison With Guests") that the library folder name and the lyrics lookup depend on (discogs ADR 0002 §1 and §6). The Discogs track artists are parsed and returned by the API but never applied.
 - Discogs release positions are not stored in a tag, because `fixtags` removes tag families it manages.
 
 ### Entry points
