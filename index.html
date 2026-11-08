@@ -266,15 +266,15 @@ function renderInspector() {
   const idIcon = l => `<img src="${l === 'D' ? '/static/discogs.png' : '/static/musicbrainz.ico'}" alt="${l}" class="size-3.5 rounded-sm">`;
   const idUrl = (l, v) => (l === 'D' ? 'https://www.discogs.com/release/' : 'https://musicbrainz.org/release/') + encodeURIComponent(v);
   const id = (l, v) => v ? `<a href="${idUrl(l, v)}" target="_blank" rel="noopener" class="badge badge-ghost badge-sm font-mono gap-1 hover:badge-primary hover:badge-soft" title="${l === 'D' ? 'Discogs' : 'MusicBrainz'} release ${esc(v)}">${idIcon(l)}${esc(v.length > 13 ? v.slice(0, 8) : v)}</a>` : `<span class="badge badge-error badge-soft badge-sm gap-1">${idIcon(l)}missing</span>`;
-  const lyBadge = {lrc: '<span class="badge badge-success badge-xs">LRC</span>', txt: '<span class="badge badge-warning badge-xs">TXT</span>',
-    instr: '<span class="badge badge-info badge-soft badge-xs">Instr.</span>', none: '<span class="badge badge-error badge-soft badge-xs">No lyrics</span>'};
+  const lyBadge = {lrc: '<span class="badge w-[4.5rem] justify-center shrink-0 badge-success badge-xs">LRC</span>', txt: '<span class="badge w-[4.5rem] justify-center shrink-0 badge-warning badge-xs">TXT</span>',
+    instr: '<span class="badge w-[4.5rem] justify-center shrink-0 badge-info badge-soft badge-xs">Instr.</span>', none: '<span class="badge w-[4.5rem] justify-center shrink-0 badge-error badge-soft badge-xs">No lyrics</span>'};
   const trackRow = f => `<li class="flex items-center gap-2 py-1.5 border-b border-base-300/60 last:border-0 text-[13px]">
       <button class="btn btn-ghost btn-circle btn-xs shrink-0" data-play="${esc(f.file)}" title="Play">${playIcon(a.path, f.file)}</button>
       <span class="w-6 text-base-content/40 tabular-nums shrink-0">${esc(String(f.track).split('/')[0].padStart(2, '0'))}</span>
       <span class="truncate flex-1" title="${esc(f.name)}">${esc(f.title)}</span>
       <span class="w-10 text-right text-base-content/50 tabular-nums shrink-0" title="Length">${esc(mmss(f.length))}</span>
       ${stepSel !== null ? (f.checks[stepSel] ? (f.lyrics === 'txt' && a.steps[stepSel].name === 'Lyrics' ? '<span class="text-warning font-semibold" title="plain text lyrics">✓</span>' : '<span class="text-success font-semibold" title="done">✓</span>') : '<span class="text-error font-semibold" title="missing">✗</span>') : ''}
-      ${f.dr ? `<span class="badge badge-success badge-soft badge-xs">DR${esc(f.dr)}</span>` : '<span class="badge badge-ghost badge-xs">DR —</span>'}
+      ${f.dr ? `<span class="badge w-12 justify-center shrink-0 badge-success badge-soft badge-xs">DR${esc(f.dr)}</span>` : '<span class="badge w-12 justify-center shrink-0 badge-ghost badge-xs">DR —</span>'}
       ${lyBadge[f.lyrics]}
       <button class="btn btn-ghost btn-circle btn-xs shrink-0" data-edit="${esc(f.file)}" title="Edit title and lyrics">${svg(ico.pen, 'size-3')}</button></li>`;
   const drBadge = a.dr ? `<span class="badge badge-success badge-soft badge-sm" title="Album dynamic range">DR${esc(a.dr)}</span>` : '';
@@ -300,7 +300,7 @@ function renderInspector() {
         </div>
       </div>
       <div class="flex gap-2 mt-5">
-        <button class="btn btn-sm flex-1" id="editor">Tag Editor</button>
+        <button class="btn btn-sm btn-neutral flex-1" id="editor">Tag Editor</button>
         <button class="btn btn-primary btn-sm flex-1" id="run" ${needs || job.state === 'running' ? 'disabled' : ''}>Run fixes</button>
         <button class="btn btn-sm flex-1" id="move" ${a.status !== 'fixed' || job.state === 'running' ? 'disabled' : ''}>Move to ingest</button>
       </div>
@@ -313,7 +313,7 @@ function renderInspector() {
       <div class="collapse collapse-arrow bg-base-200 mt-4">
         <input type="checkbox" id="trackstoggle" ${tracksOpen ? 'checked' : ''}>
         <div class="collapse-title text-[13px] font-medium">Tracks <span class="badge badge-ghost badge-xs ml-1">${a.tracks}</span>${stepSel !== null ? `<span class="text-xs text-primary ml-2">${esc(a.steps[stepSel].name.replace(' and ', ' & '))}</span>` : ''}</div>
-        <div class="collapse-content"><button class="btn btn-xs mb-2" id="assign">Assign to release…</button><ul class="max-h-80 overflow-y-auto">${a.files.map(trackRow).join('')}</ul></div>
+        <div class="collapse-content"><ul class="max-h-80 overflow-y-auto">${a.files.map(trackRow).join('')}</ul></div>
       </div>
       <div class="collapse collapse-arrow bg-base-200 mt-4">
         <input type="checkbox" id="logtoggle" ${logOpen ? 'checked' : ''}>
@@ -332,7 +332,6 @@ function renderInspector() {
   });
   $('run').onclick = () => runFixes([a.path], title(a));
   $('move').onclick = move;
-  $('assign').onclick = openTed;
   $('editor').onclick = () => openTagEditor('album');
   document.querySelectorAll('#inspector [data-album-edit]').forEach(b => b.onclick = openAlbumEdit);
   $('coveredit').onclick = () => $('coverfile').click();
@@ -563,10 +562,25 @@ async function tedSearch(e) {
     $('tbody').innerHTML = rs.length ? `<table class="table table-sm"><tbody>${rs.map(r => `<tr class="hover cursor-pointer" data-id="${r.id}">
       <td class="w-12"><img src="${esc(r.thumb)}" class="size-10 rounded object-cover bg-base-200" onerror="this.remove()"></td>
       <td><div class="font-medium">${esc(r.title)}</div><div class="text-xs text-base-content/50">${esc([r.year, r.country, r.format, r.label, r.catno].filter(Boolean).join(' · '))}</div></td>
+      <td class="w-24 text-xs text-base-content/50 whitespace-nowrap" data-count="${r.id}"><span class="loading loading-dots loading-xs"></span></td>
       <td class="text-right"><button class="btn btn-xs">Select</button></td></tr>`).join('')}</tbody></table>`
       : '<p class="text-base-content/50 text-sm">No releases found.</p>';
     $('tbody').querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => tedPick(tr.dataset.id));
+    tedCounts(rs.map(r => r.id));
   } catch (err) { tedBusy(false, err.message); }
+}
+
+// Search hits carry no tracklist: fetch the counts one by one (Discogs allows 60 requests a minute); results are cached server-side.
+async function tedCounts(ids) {
+  const queue = [...ids], token = ted.search = {};
+  const next = async () => {
+    for (let id; (id = queue.shift()) && ted.search === token;) {
+      let txt = '?';
+      try { txt = (await api('/api/discogs/tracks?id=' + id)).count + ' tracks'; } catch (_) {}
+      const td = $('tbody').querySelector(`[data-count="${id}"]`); if (td) td.textContent = txt;
+    }
+  };
+  await Promise.all([next(), next(), next()]);
 }
 
 async function tedPick(rid) {

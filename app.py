@@ -563,6 +563,12 @@ def discogs_search(q: str):
 	return [brief(r) for r in discogs('/database/search', type='release', q=q, per_page=20).get('results', [])]
 
 
+@app.get('/api/discogs/tracks')
+def discogs_tracks(id: str):
+	"""Track count of a release (cached with the parsed tracklist)."""
+	return {'count': len(release_tracks(id.strip())['tracks'])}
+
+
 def norm_title(s: str) -> str:
 	return re.sub(r'[^a-z0-9]+', ' ', unicodedata.normalize('NFD', s.lower()).encode('ascii', 'ignore').decode()).strip()
 
