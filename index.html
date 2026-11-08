@@ -141,6 +141,9 @@
       <fieldset class="fieldset"><legend class="fieldset-legend">Output folder</legend>
         <input id="s_out" type="text" class="input input-sm w-full font-mono" autocomplete="off">
         <p class="label whitespace-normal">Fixed albums are moved here.</p></fieldset>
+      <fieldset class="fieldset"><legend class="fieldset-legend">Minimum cover size (pixels)</legend>
+        <input id="s_min" type="number" min="0" max="20000" step="50" class="input input-sm w-40 font-mono">
+        <p class="label whitespace-normal">An album whose cover is smaller than this on either side, or has none, is blocked (Needs input). 0 turns the check off.</p></fieldset>
       <fieldset class="fieldset"><legend class="fieldset-legend">Discogs API key</legend>
         <input id="s_d" type="password" class="input input-sm w-full font-mono" autocomplete="off">
         <p class="label whitespace-normal">Leave blank to keep the stored key.</p></fieldset>
@@ -457,7 +460,7 @@ const KFIELDS = [
   ['ALBUM_TITLE_OVERRIDE', 'Album title', 'Replaces the Discogs title. Empty: remove the override and restore the Discogs master title.'],
   ['ALBUM_FORMAT', 'Format', 'For example CD, SACD, Vinyl. Required.'],
   ['ALBUM_EDITION', 'Edition', 'For example Remastered or Gold Disc. Part of the version string.'],
-  ['CATALOGNUMBER', 'Catalog number', 'Part of the version string. Must not be empty: enter none if the release has none.'],
+  ['CATALOGNUMBER', 'Catalog number', "Part of the version string. Add a catalog number (enter 'none' if the release has none)."],
   ['MUSICBRAINZ_ALBUMID', 'MusicBrainz release ID', 'Anchors the language tags to a MusicBrainz release.'],
 ];
 const KTRACK = [['disc', 'Disc', 'w-14'], ['track', 'Track', 'w-14'], ['title', 'Title', 'w-full min-w-40'], ['artist', 'Artist', 'w-full min-w-32'], ['subtitle', 'Disc subtitle', 'w-full min-w-28']];
@@ -505,7 +508,7 @@ $('ksave').onclick = async () => {
   kd.tracks.forEach((t, i) => { if (KTRACK.some(([k]) => t[k] !== kd.d.tracks[i][k])) tracks.push(t); });
   if (!Object.keys(fields).length && !tracks.length) { $('kdlg').close(); return; }
   if ('ALBUM_FORMAT' in fields && !fields.ALBUM_FORMAT.trim()) { $('kerr').textContent = 'Album format must not be empty (for example CD, SACD, Vinyl).'; return; }
-  if ('CATALOGNUMBER' in fields && !fields.CATALOGNUMBER.trim()) { $('kerr').textContent = 'Catalog number must not be empty (enter none if the release has none).'; return; }
+  if ('CATALOGNUMBER' in fields && !fields.CATALOGNUMBER.trim()) { $('kerr').textContent = "Add a catalog number (enter 'none' if the release has none)."; return; }
   if (tracks.some(t => !['title', 'disc', 'track'].every(k => String(t[k]).trim()))) { $('kerr').textContent = 'Title, disc and track must not be empty.'; return; }
   try {
     const r = await post('/api/tags', {path: kd.path, fields, tracks});
@@ -653,7 +656,7 @@ $('tapply').onclick = tedApply;
 async function openSettings() {
   try {
     const s = await api('/api/settings');
-    $('s_in').value = s.input; $('s_out').value = s.output;
+    $('s_in').value = s.input; $('s_out').value = s.output; $('s_min').value = s.min_cover;
     $('s_d').value = ''; $('s_l').value = '';
     $('s_d').placeholder = s.discogs_api_key_hint || 'Not set';
     $('s_l').placeholder = s.lrclib_api_key_hint || 'Not set';
@@ -666,7 +669,7 @@ $('stopjob').onclick = async () => { try { await post('/api/stop', {}); toast('S
 $('sclose').onclick = () => $('sdlg').close();
 $('ssave').onclick = async () => {
   try {
-    await post('/api/settings', {input: $('s_in').value.trim(), output: $('s_out').value.trim(), discogs_api_key: $('s_d').value, lrclib_api_key: $('s_l').value});
+    await post('/api/settings', {input: $('s_in').value.trim(), output: $('s_out').value.trim(), min_cover: $('s_min').value, discogs_api_key: $('s_d').value, lrclib_api_key: $('s_l').value});
     $('sdlg').close(); toast('Settings saved');
     selected = null; selAlbum = null; await load('');
   } catch (e) { $('serr').textContent = e.message; }

@@ -58,8 +58,12 @@ DISC_RE = re.compile(r'^(?:Disc|CD)\s*\d+$', re.I)  # same rule as discogs disc_
 CATALOG_KEYS = ('CATALOGNUMBER', 'CATALOG NUMBER', 'CATALOG_NUMBER', 'CATALOGNO')  # spellings fixtags reads, first present wins
 # One entry per required tag (alternative spellings together); an empty one means the album is not ready.
 REQUIRED_TAGS = (('ARTIST',), ('ALBUMARTIST',), ('TITLE',), ('ALBUM',), ('TRACKNUMBER',), ('DISCNUMBER',), ('ALBUM_FORMAT',), CATALOG_KEYS)
-MIN_COVER = 1400  # px; smaller covers turn the Tags and cover step yellow
-COVER_NOTE = f'Cover is {{c}}, below {MIN_COVER}x{MIN_COVER}'
+MIN_COVER = int(settings.get('min_cover', 1400))  # px, either side; a smaller or missing cover blocks the album; 0 turns the check off
+
+
+def cover_note(cov: dict | None) -> str:
+	return f'Cover is {cov["w"]}x{cov["h"]}, below the minimum {MIN_COVER}x{MIN_COVER}.' if cov else 'The album has no cover.'
+
 SYNCED_RE = re.compile(r'\[\d{2}:\d{2}\.\d{2}\]')  # strict [MM:SS.xx], as in the discogs lrc_count.py
 INSTRUMENTAL_RE = re.compile(r'\[instrumental:true\]|\[\d{2}:\d{2}\.\d{2}\]\s*(?:\[instrumental\]|\(instrumental\))', re.I)
 
@@ -246,7 +250,7 @@ def summarize(album: Path) -> dict:
 	syn, pla, ins, mis = (kinds.count(k) for k in ('lrc', 'txt', 'instr', 'none'))
 	req = all(have(*k) for k in REQUIRED_TAGS) and have('DATE', 'YEAR')
 	cov = out['cover']
-	small_cover = not cov or cov['w'] < MIN_COVER or cov['h'] < MIN_COVER
+	small_cover = MIN_COVER > 0 and (not cov or cov['w'] < MIN_COVER or cov['h'] < MIN_COVER)
 	steps = [
 		('Dynamic range', have('DYNAMIC_RANGE')),
 		('ReplayGain', have('REPLAYGAIN_ALBUM_GAIN')),
@@ -261,7 +265,7 @@ def summarize(album: Path) -> dict:
 		lyrics={'synced': syn, 'plain': pla, 'instrumental': ins, 'missing': mis},
 		# partial = done but worth a look (yellow, still counts as done): some lyrics are plain text only, or the cover is small
 		steps=[{'name': a, 'done': b, 'partial': b and ((a == 'Lyrics' and pla > 0) or (a == 'Tags and cover' and small_cover)),
-			'note': COVER_NOTE.format(c=cov and f"{cov['w']}x{cov['h']}" or 'none') if a == 'Tags and cover' and small_cover else ''} for a, b in steps],
+			'note': cover_note(cov) if a == 'Tags and cover' and small_cover else ''} for a, b in steps],
 		tags_ok=req,
 		steps_done=sum(1 for _, ok in steps if ok),
 	)
@@ -289,7 +293,7 @@ ALBUM_LEVEL = (
 	('album title override', ('ALBUM_TITLE_OVERRIDE',), 'album', False),
 )
 MISSING_TEXT = {
-	'album artist': 'Set the album artist.', 'catalog number': 'Add a catalog number (enter none if the release has none).',
+	'album artist': 'Set the album artist.', 'catalog number': "Add a catalog number (enter 'none' if the release has none).",
 	'album format': 'Set the album format (for example CD, SACD, Vinyl).',
 }
 
@@ -320,8 +324,7 @@ def album_issues(out: dict, tags: list, small_cover: bool) -> list[dict]:
 	if dup := sum(1 for v in {x: numbers.count(x) for x in numbers}.values() if v > 1):
 		issues.append({'text': f'{dup} disc/track number{" is" if dup == 1 else "s are"} used by more than one file.', 'action': 'tracks', 'level': 'warn'})
 	if small_cover:
-		cov = out['cover']
-		issues.append({'text': COVER_NOTE.format(c=f"{cov['w']}x{cov['h']}") if cov else 'The album has no cover.', 'action': 'cover', 'level': 'info'})
+		issues.append({'text': cover_note(out['cover']), 'action': 'cover', 'level': 'warn'})
 	return issues
 
 
@@ -532,15 +535,21 @@ def hint(v: str) -> str:
 
 @app.get('/api/settings')
 def get_settings():
-	return {'input': str(ROOT), 'output': str(INGEST), **{k + '_hint': hint(settings.get(k, '')) for k in KEYS}}
+	return {'input': str(ROOT), 'output': str(INGEST), 'min_cover': MIN_COVER, **{k + '_hint': hint(settings.get(k, '')) for k in KEYS}}
 
 
 @app.post('/api/settings')
 def set_settings(body: dict):
 	"""Blank key keeps the stored key; {clear_<key>: true} removes it."""
-	global ROOT, INGEST
+	global ROOT, INGEST, MIN_COVER
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
+	try:
+		new_min = int(body.get('min_cover', MIN_COVER))
+	except (TypeError, ValueError) as e:
+		raise HTTPException(400, 'Minimum cover size must be a whole number of pixels') from e
+	if not 0 <= new_min <= 20000:
+		raise HTTPException(400, 'Minimum cover size must be between 0 and 20000 pixels')
 	new_in = Path(str(body.get('input') or ROOT)).expanduser()
 	new_out = Path(str(body.get('output') or INGEST)).expanduser()
 	for label, p in (('Input folder', new_in), ('Output folder', new_out)):
@@ -548,7 +557,7 @@ def set_settings(body: dict):
 			raise HTTPException(400, f'{label} must be an absolute path')
 	if not new_in.is_dir():
 		raise HTTPException(400, 'Input folder does not exist')
-	settings.update(input=str(new_in.resolve()), output=str(new_out.resolve()))
+	settings.update(input=str(new_in.resolve()), output=str(new_out.resolve()), min_cover=new_min)
 	for k in KEYS:
 		if body.get('clear_' + k):
 			settings.pop(k, None)
@@ -557,7 +566,7 @@ def set_settings(body: dict):
 	DATA.mkdir(parents=True, exist_ok=True)
 	SETTINGS_FILE.write_text(json.dumps(settings, indent=2))
 	SETTINGS_FILE.chmod(0o600)
-	ROOT, INGEST = Path(settings['input']), Path(settings['output'])
+	ROOT, INGEST, MIN_COVER = Path(settings['input']), Path(settings['output']), new_min
 	cache.clear()
 	return get_settings()
 
@@ -1112,7 +1121,7 @@ def set_tags(body: dict):
 			raise HTTPException(400, f'title, disc and track must not be empty ({tr.get("file")})')
 	fields = {k: v for k, v in body.get('fields', {}).items() if k in ALBUM_FIELDS}
 	if 'CATALOGNUMBER' in fields and not str(fields['CATALOGNUMBER']).strip():
-		raise HTTPException(400, 'catalog number must not be empty (enter none if the release has none)')
+		raise HTTPException(400, "Add a catalog number (enter 'none' if the release has none).")
 	if 'ALBUM_FORMAT' in fields and not str(fields['ALBUM_FORMAT']).strip():
 		raise HTTPException(400, 'album format must not be empty (for example CD, SACD, Vinyl)')
 	if fields:
