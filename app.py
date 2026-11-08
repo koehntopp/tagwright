@@ -55,6 +55,7 @@ if SETTINGS_FILE.is_file():
 	ROOT = Path(settings.get('input') or ROOT)
 	INGEST = Path(settings.get('output') or INGEST)
 DISC_RE = re.compile(r'^(?:Disc|CD)\s*\d+$', re.I)  # same rule as discogs disc_layout.DISC_DIR_RE
+REQUIRED_TAGS = ('ARTIST', 'TITLE', 'ALBUM', 'TRACKNUMBER', 'DISCNUMBER')  # an empty one means the album is not ready
 MIN_COVER = 1400  # px; smaller covers turn the Tags and cover step yellow
 COVER_NOTE = f'Cover is {{c}}, below {MIN_COVER}x{MIN_COVER}'
 SYNCED_RE = re.compile(r'\[\d{2}:\d{2}\.\d{2}\]')  # strict [MM:SS.xx], as in the discogs lrc_count.py
@@ -99,16 +100,14 @@ def clean(text: str) -> str:
 
 
 def bliss_name(t) -> str | None:
-	"""Bliss file name <disc>_<track>_<title>.flac, or None while TITLE or TRACKNUMBER is empty.
+	"""Bliss file name <disc>_<track>_<title>.flac, or None while TITLE, TRACKNUMBER or DISCNUMBER is empty.
 
-	An empty tag means the album is not ready; nothing is invented (no "Unknown Title", no track 00). A missing
-	DISCNUMBER is disc 01, as in bliss.py (single-disc albums often have none).
+	An empty tag means the album is not ready; nothing is invented (no "Unknown Title", no track 00, no disc 01).
 	"""
-	title, number = tag(t, 'TITLE'), tag(t, 'TRACKNUMBER')
-	if not title or not number:
+	title, number, disc = tag(t, 'TITLE'), tag(t, 'TRACKNUMBER'), tag(t, 'DISCNUMBER')
+	if not title or not number or not disc:
 		return None
-	disc = (tag(t, 'DISCNUMBER') or '01').split('/')[0].zfill(2)
-	return f'{disc}_{number.split("/")[0].zfill(2)}_{clean(title)}.flac'
+	return f'{disc.split("/")[0].zfill(2)}_{number.split("/")[0].zfill(2)}_{clean(title)}.flac'
 
 
 def bliss_album(t) -> str:
@@ -167,7 +166,7 @@ def track_files(album: Path, files, tags, lengths, has_discogs: bool) -> list[di
 	out = []
 	for f, t, length in zip(files, tags, lengths):
 		kind = lyric_kind(t)
-		tags_ok = has_discogs and all(tag(t, k) for k in ('ARTIST', 'TITLE', 'ALBUM', 'TRACKNUMBER')) and bool(tag(t, 'DATE', 'YEAR'))
+		tags_ok = has_discogs and all(tag(t, k) for k in REQUIRED_TAGS) and bool(tag(t, 'DATE', 'YEAR'))
 		out.append({
 			'name': f.name,
 			'length': round(length),
@@ -243,7 +242,7 @@ def summarize(album: Path) -> dict:
 	have = lambda *k: sum(1 for t in tags if tag(t, *k)) == n  # noqa: E731
 	kinds = [lyric_kind(t) for t in tags]
 	syn, pla, ins, mis = (kinds.count(k) for k in ('lrc', 'txt', 'instr', 'none'))
-	req = all(have(k) for k in ('ARTIST', 'TITLE', 'ALBUM', 'TRACKNUMBER')) and have('DATE', 'YEAR')
+	req = all(have(k) for k in REQUIRED_TAGS) and have('DATE', 'YEAR')
 	cov = out['cover']
 	small_cover = not cov or cov['w'] < MIN_COVER or cov['h'] < MIN_COVER
 	steps = [
@@ -1046,6 +1045,9 @@ def set_tags(body: dict):
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	album = safe(body.get('path', ''))
+	for tr in body.get('tracks', []):  # checked before anything is written
+		if not all(str(tr.get(k, '')).strip() for k in ('title', 'disc', 'track')):
+			raise HTTPException(400, f'title, disc and track must not be empty ({tr.get("file")})')
 	fields = {k: v for k, v in body.get('fields', {}).items() if k in ALBUM_FIELDS}
 	if fields:
 		write_album_fields(album, fields)
@@ -1054,11 +1056,10 @@ def set_tags(body: dict):
 		a = FLAC(track_path(body.get('path', ''), tr.get('file', '')))
 		if a.tags is None:
 			a.add_tags()
-		title = str(tr.get('title', '')).strip()
-		if not title:
-			raise HTTPException(400, f'title must not be empty ({tr.get("file")})')
-		a['TITLE'] = [title]
-		for key, field in (('ARTIST', 'artist'), ('DISCNUMBER', 'disc'), ('TRACKNUMBER', 'track'), ('SET SUBTITLE', 'subtitle')):
+		a['TITLE'] = [str(tr['title']).strip()]
+		a['DISCNUMBER'] = [str(tr['disc']).strip()]
+		a['TRACKNUMBER'] = [str(tr['track']).strip()]
+		for key, field in (('ARTIST', 'artist'), ('SET SUBTITLE', 'subtitle')):
 			value = str(tr.get(field, '')).strip()
 			if value:
 				a[key] = [value]
