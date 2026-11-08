@@ -585,7 +585,8 @@ def release_tracks(rid: str) -> dict:
 			'title': t.get('title', ''), 'duration': seconds(t.get('duration', '')),
 			'artist': artist_names(t.get('artists', [])) or album_artist,
 		})
-	out = {'id': str(r['id']), 'title': r.get('title', ''), 'artist': album_artist, 'year': r.get('year', ''), 'tracks': tracks}
+	catno = next((c for lb in r.get('labels', []) if (c := (lb.get('catno') or '').strip()) and c.lower() != 'none'), '')
+	out = {'id': str(r['id']), 'title': r.get('title', ''), 'artist': album_artist, 'year': r.get('year', ''), 'catno': catno, 'tracks': tracks}
 	releases[rid] = out
 	return out
 
@@ -700,6 +701,8 @@ def tracks_apply(body: dict):
 		if a.tags is None:
 			a.add_tags()
 		a['DISCOGS_RELEASE_ID'] = [rel['id']]
+		if rel['catno'] and not tag(a.tags, 'CATALOGNUMBER', 'CATALOG NUMBER', 'CATALOG_NUMBER', 'CATALOGNO'):
+			a['CATALOGNUMBER'] = [rel['catno']]  # user-set values are never overwritten (discogs ADR 0002 section 2)
 		a['TITLE'] = [t['title']]
 		a['TRACKNUMBER'] = [str(n)]
 		a['DISCNUMBER'] = [str(d)]
