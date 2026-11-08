@@ -52,6 +52,8 @@ if SETTINGS_FILE.is_file():
 	ROOT = Path(settings.get('input') or ROOT)
 	INGEST = Path(settings.get('output') or INGEST)
 DISC_RE = re.compile(r'^(disc|cd)\s*\d+$', re.I)
+MIN_COVER = 1400  # px; smaller covers turn the Tags and cover step yellow
+COVER_NOTE = f'Cover is {{c}}, below {MIN_COVER}x{MIN_COVER}'
 SYNCED_RE = re.compile(r'\[\d+:\d+')
 
 app = FastAPI()
@@ -236,6 +238,8 @@ def summarize(album: Path) -> dict:
 		else:
 			mis += 1
 	req = all(have(k) for k in ('ARTIST', 'TITLE', 'ALBUM', 'TRACKNUMBER')) and have('DATE', 'YEAR')
+	cov = out['cover']
+	small_cover = not cov or cov['w'] < MIN_COVER or cov['h'] < MIN_COVER
 	steps = [
 		('Dynamic range', have('DYNAMIC_RANGE', 'DYNAMIC RANGE')),
 		('ReplayGain', have('REPLAYGAIN_ALBUM_GAIN')),
@@ -248,7 +252,9 @@ def summarize(album: Path) -> dict:
 		dr=tag(t0, 'ALBUM_DR') or track_dr_mean(tags),
 		files=track_files(album, files, tags, [a.info.length for a in audio], bool(did)),
 		lyrics={'synced': syn, 'plain': pla, 'instrumental': ins, 'missing': mis},
-		steps=[{'name': a, 'done': b, 'partial': a == 'Lyrics' and b and pla > 0} for a, b in steps],  # partial: lyrics complete but some only plain text; still counts as done
+		# partial = done but worth a look (yellow, still counts as done): some lyrics are plain text only, or the cover is small
+		steps=[{'name': a, 'done': b, 'partial': b and ((a == 'Lyrics' and pla > 0) or (a == 'Tags and cover' and small_cover)),
+			'note': COVER_NOTE.format(c=cov and f"{cov['w']}x{cov['h']}" or 'none') if a == 'Tags and cover' and small_cover else ''} for a, b in steps],
 		tags_ok=req,
 		steps_done=sum(1 for _, ok in steps if ok),
 	)
