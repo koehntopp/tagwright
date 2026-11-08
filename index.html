@@ -98,6 +98,10 @@
     <fieldset class="fieldset mt-3"><legend class="fieldset-legend">Title</legend>
       <input id="e_title" type="text" class="input input-sm w-full" autocomplete="off"></fieldset>
     <fieldset class="fieldset"><legend class="fieldset-legend">Lyrics</legend>
+      <div class="flex gap-2 mb-1">
+        <button type="button" class="btn btn-xs" id="e_instr" title="Replace the lyrics with an instrumental marker">Instrumental</button>
+        <button type="button" class="btn btn-xs" id="e_intro" title="Insert a spoken-intro line at the top">Spoken Intro</button>
+      </div>
       <textarea id="e_lyrics" class="textarea w-full h-72 font-mono text-xs leading-relaxed" spellcheck="false"></textarea>
       <p class="label whitespace-normal">Plain text or synced ([mm:ss.xx] lines). Empty removes the lyrics. The file is renamed to match the title.</p></fieldset>
     <p class="text-error text-sm mt-2" id="eerr"></p>
@@ -266,8 +270,8 @@ function renderInspector() {
   const idIcon = l => `<img src="${l === 'D' ? '/static/discogs.png' : '/static/musicbrainz.ico'}" alt="${l}" class="size-3.5 rounded-sm">`;
   const idUrl = (l, v) => (l === 'D' ? 'https://www.discogs.com/release/' : 'https://musicbrainz.org/release/') + encodeURIComponent(v);
   const id = (l, v) => v ? `<a href="${idUrl(l, v)}" target="_blank" rel="noopener" class="badge badge-ghost badge-sm font-mono gap-1 hover:badge-primary hover:badge-soft" title="${l === 'D' ? 'Discogs' : 'MusicBrainz'} release ${esc(v)}">${idIcon(l)}${esc(v.length > 13 ? v.slice(0, 8) : v)}</a>` : `<span class="badge badge-error badge-soft badge-sm gap-1">${idIcon(l)}missing</span>`;
-  const lyBadge = {lrc: '<span class="badge w-[4.5rem] justify-center shrink-0 badge-success badge-xs">LRC</span>', txt: '<span class="badge w-[4.5rem] justify-center shrink-0 badge-warning badge-xs">TXT</span>',
-    instr: '<span class="badge w-[4.5rem] justify-center shrink-0 badge-info badge-soft badge-xs">Instr.</span>', none: '<span class="badge w-[4.5rem] justify-center shrink-0 badge-error badge-soft badge-xs">No lyrics</span>'};
+  const lyBadge = {lrc: '<span class="badge w-24 justify-center shrink-0 badge-success badge-xs">LRC</span>', txt: '<span class="badge w-24 justify-center shrink-0 badge-warning badge-xs">TXT</span>',
+    instr: '<span class="badge w-24 justify-center shrink-0 badge-info badge-soft badge-xs">Instrumental</span>', none: '<span class="badge w-24 justify-center shrink-0 badge-error badge-soft badge-xs">No lyrics</span>'};
   const trackRow = f => `<li class="flex items-center gap-2 py-1.5 border-b border-base-300/60 last:border-0 text-[13px]">
       <button class="btn btn-ghost btn-circle btn-xs shrink-0" data-play="${esc(f.file)}" title="Play">${playIcon(a.path, f.file)}</button>
       <span class="w-6 text-base-content/40 tabular-nums shrink-0">${esc(String(f.track).split('/')[0].padStart(2, '0'))}</span>
@@ -530,6 +534,11 @@ async function openEdit(path, file) {
   } catch (e) { toast(e.message, 'alert-error'); }
 }
 $('eclose').onclick = () => $('edlg').close();
+$('e_instr').onclick = () => { $('e_lyrics').value = '[00:00.00] [Instrumental]'; };
+$('e_intro').onclick = () => {
+  const mark = '[00:00.00](Spoken Intro)', box = $('e_lyrics');
+  if (!box.value.startsWith(mark)) box.value = box.value.trim() ? mark + '\n' + box.value : mark;
+};
 $('esave').onclick = async () => {
   try {
     const d = await post('/api/track', {...edt, title: $('e_title').value, lyrics: $('e_lyrics').value});

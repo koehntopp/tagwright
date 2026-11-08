@@ -54,7 +54,8 @@ if SETTINGS_FILE.is_file():
 DISC_RE = re.compile(r'^(disc|cd)\s*\d+$', re.I)
 MIN_COVER = 1400  # px; smaller covers turn the Tags and cover step yellow
 COVER_NOTE = f'Cover is {{c}}, below {MIN_COVER}x{MIN_COVER}'
-SYNCED_RE = re.compile(r'\[\d+:\d+')
+SYNCED_RE = re.compile(r'\[\d{2}:\d{2}\.\d{2}\]')  # strict [MM:SS.xx], as in the discogs lrc_count.py
+INSTRUMENTAL_RE = re.compile(r'\[instrumental:true\]|\[\d{2}:\d{2}\.\d{2}\]\s*(?:\[instrumental\]|\(instrumental\))', re.I)
 
 app = FastAPI()
 job = {'path': None, 'state': 'idle', 'lines': [], 'rc': None, 'queue': []}  # lines accumulate across runs
@@ -132,13 +133,13 @@ def rename_files(album: Path) -> list[str]:
 
 
 def lyric_kind(t) -> str:
-	"""lrc (synced), txt (plain), instr (zxx marker, no lyrics) or none."""
+	"""instr (instrumental marker, or no lyrics with language zxx), lrc (synced), txt (plain) or none."""
 	ly = tag(t, 'LYRICS')
-	if SYNCED_RE.search(ly):
-		return 'lrc'
-	if ly.strip():
-		return 'txt'
-	return 'instr' if tag(t, 'LYRICS_LANGUAGE') == 'zxx' else 'none'
+	if not ly.strip():
+		return 'instr' if tag(t, 'LYRICS_LANGUAGE') == 'zxx' else 'none'
+	if INSTRUMENTAL_RE.search(ly):  # before lrc: the canonical block contains [00:00.00]
+		return 'instr'
+	return 'lrc' if SYNCED_RE.search(ly) else 'txt'
 
 
 def track_dr_mean(tags) -> str:
@@ -226,17 +227,8 @@ def summarize(album: Path) -> dict:
 	}
 	n = len(tags)
 	have = lambda *k: sum(1 for t in tags if tag(t, *k)) == n  # noqa: E731
-	syn = pla = ins = mis = 0
-	for t in tags:
-		ly = tag(t, 'LYRICS')
-		if SYNCED_RE.search(ly):
-			syn += 1
-		elif ly.strip():
-			pla += 1
-		elif tag(t, 'LYRICS_LANGUAGE') == 'zxx':
-			ins += 1
-		else:
-			mis += 1
+	kinds = [lyric_kind(t) for t in tags]
+	syn, pla, ins, mis = (kinds.count(k) for k in ('lrc', 'txt', 'instr', 'none'))
 	req = all(have(k) for k in ('ARTIST', 'TITLE', 'ALBUM', 'TRACKNUMBER')) and have('DATE', 'YEAR')
 	cov = out['cover']
 	small_cover = not cov or cov['w'] < MIN_COVER or cov['h'] < MIN_COVER
