@@ -15,8 +15,8 @@ UC-6. `fixtags` needs a `DISCOGS_RELEASE_ID` and writes only album-level tags; p
 - If the album already has a Discogs ID, the dialog opens on that release.
 
 ### Rate limiting (copied from the discogs repository)
-Same rules as `fixtags.discogs_fetch` and discogs ADR 0001 section 6, because the pipeline and the UI share one Discogs key and its limit of 60 requests a minute:
-- All Discogs calls go through one lock: **one request at a time, 1 s apart**.
+Same rules as the discogs repository (`fixtags.discogs_fetch`, `find_audiophile_upgrades.py`, discogs ADR 0001 section 6), because the pipeline and the UI share one Discogs key and its limit of 60 requests a minute:
+- All Discogs calls go through one lock: **one request at a time, at least 1.1 s apart** (the `min_interval` of `find_audiophile_upgrades.py` and the 1.1 s of `SPEC.md`). When the `X-Discogs-Ratelimit-Remaining` header drops below 3, an extra **5 s** pause follows (also from that script).
 - A **429** or an empty/invalid response body is retried up to **3 times after 60 s**. The lock is held during the wait, so concurrent calls pause together instead of bursting afterwards.
 - A 404 is not retried (HTTP 404 "not found"); other HTTP errors answer 502; when the retries are exhausted the API answers 429 "Discogs rate limit reached; try again in a minute". A failed request is reported as failed, never as "not found".
 - Consequence: the track counts of 20 search results take about 25 s to fill in. Parsed releases are cached, so each release is fetched once per server start.

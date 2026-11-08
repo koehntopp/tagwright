@@ -1,5 +1,6 @@
 #!/usr/bin/env -S uv run
 # /// script
+# requires-python = ">=3.14"
 # dependencies = ["fastapi", "uvicorn", "mutagen", "python-slugify", "unidecode", "pathvalidate", "pillow"]
 # ///
 """Tagwright: web UI over the discogs nzbfix pipeline.
@@ -526,11 +527,25 @@ def discogs_key() -> str:
 	return m.group(1) if m else ''
 
 
-# Same rate-limit handling as discogs fixtags.discogs_fetch and its ADR 0001 section 6: Discogs allows 60 requests a
-# minute, so requests are sent one at a time, 1 s apart; a 429 or an empty body is retried up to 3 times after 60 s,
-# and the wait is shared (the lock is held) so concurrent calls do not pause and then burst together.
+# Same rate-limit handling as the discogs repository (find_audiophile_upgrades: min_interval 1.1 s and a 5 s pause when
+# X-Discogs-Ratelimit-Remaining drops below 3; fixtags.discogs_fetch and ADR 0001 section 6: a 429 or an empty body is
+# retried up to 3 times after 60 s). Discogs allows 60 requests a minute, so requests are sent one at a time, at least
+# 1.1 s apart, and the waits are shared (the lock is held) so concurrent calls do not pause and then burst together.
 discogs_lock = threading.Lock()
-DISCOGS_PAUSE, DISCOGS_RETRIES, DISCOGS_BACKOFF = 1.0, 3, 60.0
+DISCOGS_INTERVAL, DISCOGS_LOW_PAUSE, DISCOGS_RETRIES, DISCOGS_BACKOFF = 1.1, 5.0, 3, 60.0
+discogs_last = 0.0  # time the last request ended; guarded by discogs_lock
+
+
+def discogs_wait() -> None:
+	time.sleep(max(0.0, DISCOGS_INTERVAL - (time.time() - discogs_last)))
+
+
+def discogs_done(headers) -> None:
+	global discogs_last
+	discogs_last = time.time()
+	remaining = headers.get('X-Discogs-Ratelimit-Remaining') if headers else None
+	if remaining and remaining.isdigit() and int(remaining) < 3:
+		time.sleep(DISCOGS_LOW_PAUSE)
 
 
 def discogs(path: str, **params) -> dict:
@@ -541,12 +556,14 @@ def discogs(path: str, **params) -> dict:
 	req = urllib.request.Request(url, headers={'User-Agent': 'Tagwright/0.2', 'Authorization': f'Discogs token={key}'})
 	with discogs_lock:
 		for attempt in range(DISCOGS_RETRIES + 1):
+			discogs_wait()
 			try:
 				with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
 					data = json.load(r)
-				time.sleep(DISCOGS_PAUSE)
+					discogs_done(r.headers)
 				return data
 			except urllib.error.HTTPError as e:
+				discogs_done(e.headers)
 				if e.code == 404:
 					raise HTTPException(404, 'Discogs: not found') from e
 				if e.code != 429:
@@ -563,15 +580,16 @@ def discogs(path: str, **params) -> dict:
 
 
 def discogs_image(url: str) -> bytes:
-	"""Download a release image with the same pacing as API calls (one request at a time, 1 s apart)."""
+	"""Download a release image with the same pacing as API calls (one request at a time, 1.1 s apart)."""
 	req = urllib.request.Request(url, headers={'User-Agent': 'Tagwright/0.2', 'Authorization': f'Discogs token={discogs_key()}'})
 	with discogs_lock:
+		discogs_wait()
 		try:
 			with urllib.request.urlopen(req, timeout=30) as r:  # noqa: S310
 				data = r.read(20_000_001)
+				discogs_done(r.headers)
 		except (urllib.error.URLError, OSError) as e:
 			raise HTTPException(502, f'Discogs image: {e}') from e
-		time.sleep(DISCOGS_PAUSE)
 	if len(data) > 20_000_000:
 		raise HTTPException(502, 'Discogs image is too large')
 	return data

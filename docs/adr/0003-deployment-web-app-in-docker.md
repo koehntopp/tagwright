@@ -10,7 +10,7 @@ The first idea was a native macOS app. The pipeline needs `rsgain`, Python tools
 ## Decision
 
 - Tagwright is a **web app served by a Linux server**, packaged as a Docker image (`Dockerfile`, `compose.yaml`). The browser is the only client.
-- The image holds Python 3.13, `uv`, `flac`, `chromaprint-tools` (`fpcalc`). `rsgain` and `drmeter` binaries are expected in `./bin/` of the build context (not committed; they have no apt packages).
+- The image holds Python 3.14 (the version the discogs scripts target), `uv`, `flac`, `chromaprint-tools` (`fpcalc`). `rsgain` and `drmeter` binaries are expected in `./bin/` of the build context (not committed; they have no apt packages).
 - Mounts: input folder at `/staging`, ingest folder at `/flac/ingest`, a checkout of the discogs repo read-only at `/opt/discogs`, and `./data` at `/data` for settings.
 - The same code runs directly on macOS for development: `ROOT=... INGEST_DIR=... DISCOGS_DIR=... ./app.py` (shebang `uv run`).
 - Environment: `ROOT`, `INGEST_DIR`, `DISCOGS_DIR`, `DATA_DIR`, `PORT` (default 8080). Paths must be absolute; `~` is expanded by the app but a relative path is a startup error.
