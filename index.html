@@ -53,6 +53,26 @@
   <aside id="inspector" class="w-[600px] shrink-0 bg-base-100 border-l border-base-300 overflow-y-auto"></aside>
 </div>
 
+<dialog id="kdlg" class="modal">
+  <div class="modal-box w-11/12 max-w-[72rem] overflow-x-hidden">
+    <div class="flex items-center gap-3">
+      <h3 class="font-semibold text-lg">Tag editor</h3>
+      <div role="tablist" class="tabs tabs-box tabs-sm ml-auto" id="ktabs">
+        <button role="tab" class="tab" data-tab="album">Album</button>
+        <button role="tab" class="tab" data-tab="tracks">Tracks</button>
+        <button role="tab" class="tab" data-tab="discogs">From Discogs</button>
+      </div>
+    </div>
+    <div id="kbody" class="mt-4 max-h-[62vh] overflow-y-auto pr-1"></div>
+    <p class="text-error text-sm mt-2" id="kerr"></p>
+    <div class="modal-action">
+      <button class="btn btn-sm" id="kclose">Cancel</button>
+      <button class="btn btn-sm btn-primary" id="ksave">Save</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
 <dialog id="adlg" class="modal">
   <div class="modal-box w-11/12 max-w-[40rem] overflow-x-hidden">
     <h3 class="font-semibold text-lg">Edit album</h3>
@@ -113,12 +133,6 @@
       <fieldset class="fieldset"><legend class="fieldset-legend">Input folder</legend>
         <input id="s_in" type="text" class="input input-sm w-full font-mono" autocomplete="off">
         <p class="label whitespace-normal">Albums to fix are read from here.</p></fieldset>
-      <fieldset class="fieldset"><legend class="fieldset-legend">Input folder on this computer</legend>
-        <input id="s_local" type="text" class="input input-sm w-full font-mono" autocomplete="off" placeholder="/path/to/staging">
-        <p class="label whitespace-normal">Where the input folder is mounted here. Used for the Tag Editor link; saved in this browser only.</p></fieldset>
-      <fieldset class="fieldset"><legend class="fieldset-legend">Tag editor link</legend>
-        <input id="s_editor" type="text" class="input input-sm w-full font-mono" autocomplete="off" placeholder="yate://load{path}">
-        <p class="label whitespace-normal">URL opened by Tag Editor; {path} is replaced by the album's path on this computer. Saved in this browser only.</p></fieldset>
       <fieldset class="fieldset"><legend class="fieldset-legend">Output folder</legend>
         <input id="s_out" type="text" class="input input-sm w-full font-mono" autocomplete="off">
         <p class="label whitespace-normal">Fixed albums are moved here.</p></fieldset>
@@ -148,8 +162,6 @@ const post = (u, b) => api(u, {method: 'POST', headers: {'content-type': 'applic
 
 let albums = [], base = '', filter = 'all', query = '', selected = null, selAlbum = null;
 let job = {state: 'idle', path: null, queue: []}, since = 0, ticks = 0, poll = null;
-let serverRoot = '', localRoot = localStorage.getItem('localRoot') || '';
-let editorTpl = localStorage.getItem('editorTpl') || 'yate://load{path}';
 let logLines = [], logOpen = false, tracksOpen = true, stepSel = null, sortKey = 'recent';
 const ORDER = {needs: 0, ready: 1, fixed: 2};
 
@@ -281,7 +293,7 @@ function renderInspector() {
         </div>
       </div>
       <div class="flex gap-2 mt-5">
-        <a class="btn btn-sm flex-1" id="editor" href="${esc(editorUrl(a.path))}" title="${esc(localPath(a.path))}">Tag Editor</a>
+        <button class="btn btn-sm flex-1" id="editor">Tag Editor</button>
         <button class="btn btn-primary btn-sm flex-1" id="run" ${needs || job.state === 'running' ? 'disabled' : ''}>Run fixes</button>
         <button class="btn btn-sm flex-1" id="move" ${a.status !== 'fixed' || job.state === 'running' ? 'disabled' : ''}>Move to ingest</button>
       </div>
@@ -314,6 +326,7 @@ function renderInspector() {
   $('run').onclick = () => runFixes([a.path], title(a));
   $('move').onclick = move;
   $('assign').onclick = openTed;
+  $('editor').onclick = () => openTagEditor('album');
   document.querySelectorAll('#inspector [data-album-edit]').forEach(b => b.onclick = openAlbumEdit);
   document.querySelectorAll('#inspector [data-play]').forEach(b => b.onclick = () => togglePlay(a.path, b.dataset.play));
   document.querySelectorAll('#inspector [data-edit]').forEach(b => b.onclick = () => openEdit(a.path, b.dataset.edit));
@@ -342,13 +355,6 @@ async function load(path = base) {
   base = r.base; albums = r.albums;
   if (selected) { selAlbum = albums.find(a => a.path === selected) || null; if (!selAlbum) selected = null; }
   renderAll();
-}
-// Server path -> path on this machine (mount point differs); {path} in the editor template is that path, URL-encoded.
-function localPath(p) {
-  return localRoot && serverRoot && p.startsWith(serverRoot) ? localRoot.replace(/\/+$/, '') + p.slice(serverRoot.length) : p;
-}
-function editorUrl(p) {
-  return editorTpl.replace('{path}', localPath(p).split('/').map(encodeURIComponent).join('/'));
 }
 function select(p) { stepSel = null; selected = p; selAlbum = albums.find(a => a.path === p); renderGrid(); renderInspector(); }
 
@@ -421,6 +427,66 @@ function togglePlay(path, file) {
   updatePlayIcons();
 }
 player.onended = () => { playing = null; updatePlayIcons(); };
+
+// ---- tag editor: fields fixtags never overwrites are editable, what Discogs writes is shown read-only ----
+const KFIELDS = [
+  ['ALBUM_ARTIST_OVERRIDE', 'Album artist', 'Written to ALBUMARTIST on every fix and used in the folder name. Empty: use the ARTIST tag.'],
+  ['ALBUM_TITLE_OVERRIDE', 'Album title', 'Replaces the Discogs title. Empty: use the Discogs master title.'],
+  ['ALBUM_FORMAT', 'Format', 'For example CD, SACD, Vinyl. Empty: CD.'],
+  ['ALBUM_EDITION', 'Edition', 'For example Remastered or Gold Disc. Part of the version string.'],
+  ['SUBTITLE', 'Subtitle', 'Used as the format when Format is empty.'],
+  ['CATALOGNUMBER', 'Catalog number', 'Part of the version string.'],
+  ['MUSICBRAINZ_ALBUMID', 'MusicBrainz release ID', 'Anchors the language tags to a MusicBrainz release.'],
+];
+const KTRACK = [['disc', 'Disc', 'w-14'], ['track', 'Track', 'w-14'], ['title', 'Title', 'w-full min-w-40'], ['artist', 'Artist', 'w-full min-w-32'], ['subtitle', 'Disc subtitle', 'w-full min-w-28']];
+let kd = null;  // {path, d: loaded data, fields, tracks: edited copies, tab}
+
+async function openTagEditor(tab) {
+  const a = selAlbum; if (!a) return;
+  try {
+    const d = await api('/api/tags?path=' + encodeURIComponent(a.path));
+    kd = {path: a.path, d, fields: {...d.fields}, tracks: d.tracks.map(t => ({...t})), tab: tab || kd?.tab || 'album'};
+    $('kerr').textContent = ''; renderKd(); if (!$('kdlg').open) $('kdlg').showModal();
+  } catch (e) { toast(e.message, 'alert-error'); }
+}
+
+function renderKd() {
+  document.querySelectorAll('#ktabs [data-tab]').forEach(b => { b.classList.toggle('tab-active', b.dataset.tab === kd.tab); b.onclick = () => { kd.tab = b.dataset.tab; renderKd(); }; });
+  const body = $('kbody');
+  if (kd.tab === 'album') {
+    body.innerHTML = `<div class="grid grid-cols-2 gap-x-6 gap-y-1">${KFIELDS.map(([k, label, help]) => `
+      <fieldset class="fieldset"><legend class="fieldset-legend">${label}</legend>
+        <input type="text" class="input input-sm w-full" data-f="${k}" value="${esc(kd.fields[k])}" autocomplete="off">
+        <p class="label whitespace-normal">${help}</p></fieldset>`).join('')}</div>
+      <div class="flex items-center gap-3 mt-4 p-3 rounded-box bg-base-200 text-[13px]">
+        <span class="text-base-content/50">Discogs release</span>
+        ${kd.d.discogs_id ? `<a class="link link-primary font-mono" href="https://www.discogs.com/release/${esc(kd.d.discogs_id)}" target="_blank" rel="noopener">${esc(kd.d.discogs_id)}</a>` : '<span class="text-error">missing</span>'}
+        <button class="btn btn-xs ml-auto" id="kchange">${kd.d.discogs_id ? 'Change release…' : 'Choose release…'}</button></div>`;
+    body.querySelectorAll('input[data-f]').forEach(i => i.oninput = () => { kd.fields[i.dataset.f] = i.value; });
+    $('kchange').onclick = openTed;
+  } else if (kd.tab === 'tracks') {
+    body.innerHTML = `<table class="table table-sm"><thead><tr>${KTRACK.map(c => `<th>${c[1]}</th>`).join('')}<th></th></tr></thead><tbody>
+      ${kd.tracks.map((t, i) => `<tr>${KTRACK.map(([k, , w]) => `<td><input type="text" class="input input-xs ${w}" data-i="${i}" data-k="${k}" value="${esc(t[k])}" autocomplete="off"></td>`).join('')}
+        <td><button class="btn btn-ghost btn-circle btn-xs" data-lyrics="${i}" title="Edit lyrics">${svg(ico.pen, 'size-3')}</button></td></tr>`).join('')}</tbody></table>`;
+    body.querySelectorAll('input[data-i]').forEach(i => i.oninput = () => { kd.tracks[+i.dataset.i][i.dataset.k] = i.value; });
+    body.querySelectorAll('[data-lyrics]').forEach(b => b.onclick = () => openEdit(kd.path, kd.tracks[+b.dataset.lyrics].file));
+  } else {
+    body.innerHTML = `<p class="text-[13px] text-base-content/60 mb-3">Written from the Discogs release on every run, so edit the release choice rather than these values. The album title and artist overrides on the Album tab take precedence over ALBUM and ALBUMARTIST.</p>
+      <table class="table table-sm"><tbody>${kd.d.discogs.map(r => `<tr class="text-base-content/70"><td class="font-mono text-xs w-72 align-top">${esc(r.key)}</td><td class="whitespace-pre-wrap break-words">${esc(r.value)}</td></tr>`).join('') || '<tr><td class="text-base-content/50">No Discogs tags yet. Run fixes to write them.</td></tr>'}</tbody></table>`;
+  }
+}
+
+$('kclose').onclick = () => $('kdlg').close();
+$('ksave').onclick = async () => {
+  const fields = {}, tracks = [];
+  Object.keys(kd.fields).forEach(k => { if (kd.fields[k].trim() !== kd.d.fields[k]) fields[k] = kd.fields[k]; });
+  kd.tracks.forEach((t, i) => { if (KTRACK.some(([k]) => t[k] !== kd.d.tracks[i][k])) tracks.push(t); });
+  if (!Object.keys(fields).length && !tracks.length) { $('kdlg').close(); return; }
+  try {
+    const r = await post('/api/tags', {path: kd.path, fields, tracks});
+    $('kdlg').close(); addLog(r.log); toast('Tags saved'); await refreshOne(kd.path);
+  } catch (e) { $('kerr').textContent = e.message; }
+};
 
 // ---- album artist / title overrides ----
 function openAlbumEdit() {
@@ -533,7 +599,7 @@ async function tedApply() {
   tedBusy(true);
   try {
     const d = await post('/api/tracks/apply', {path: ted.path, release_id: ted.rid, assignments: ted.files.map(f => ({file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at}))});
-    $('tdlg').close(); addLog(d.log); toast('Tracks assigned'); await refreshOne(ted.path);
+    $('tdlg').close(); addLog(d.log); toast('Tracks assigned'); await refreshOne(ted.path); if ($('kdlg').open) await openTagEditor();
   } catch (err) { tedBusy(false, err.message); }
 }
 $('tform').onsubmit = tedSearch;
@@ -543,7 +609,7 @@ $('tapply').onclick = tedApply;
 async function openSettings() {
   try {
     const s = await api('/api/settings');
-    serverRoot = s.input; $('s_in').value = s.input; $('s_out').value = s.output; $('s_local').value = localRoot; $('s_editor').value = editorTpl;
+    $('s_in').value = s.input; $('s_out').value = s.output;
     $('s_d').value = ''; $('s_l').value = '';
     $('s_d').placeholder = s.discogs_api_key_hint || 'Not set';
     $('s_l').placeholder = s.lrclib_api_key_hint || 'Not set';
@@ -555,16 +621,13 @@ $('settings').onclick = openSettings;
 $('sclose').onclick = () => $('sdlg').close();
 $('ssave').onclick = async () => {
   try {
-    serverRoot = (await post('/api/settings', {input: $('s_in').value.trim(), output: $('s_out').value.trim(), discogs_api_key: $('s_d').value, lrclib_api_key: $('s_l').value})).input;
-    localRoot = $('s_local').value.trim(); localStorage.setItem('localRoot', localRoot);
-    editorTpl = $('s_editor').value.trim() || 'yate://load{path}'; localStorage.setItem('editorTpl', editorTpl);
+    await post('/api/settings', {input: $('s_in').value.trim(), output: $('s_out').value.trim(), discogs_api_key: $('s_d').value, lrclib_api_key: $('s_l').value});
     $('sdlg').close(); toast('Settings saved');
     selected = null; selAlbum = null; await load('');
   } catch (e) { $('serr').textContent = e.message; }
 };
 
 (async () => {
-  api('/api/settings').then(s => { serverRoot = s.input; if (selAlbum) renderInspector(); }).catch(() => {});
   await load('');
   const j = await api('/api/job?since=0');
   since = j.next; job = {state: j.state, path: j.path, queue: j.queue || []};

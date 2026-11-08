@@ -639,27 +639,108 @@ def set_track(body: dict):
 	return {'log': [f'edited {body["file"]}', *rename_files(album)], 'album': get_summary(album)}
 
 
-@app.post('/api/overrides')
-def set_overrides(body: dict):
-	"""Set ALBUM_ARTIST_OVERRIDE / ALBUM_TITLE_OVERRIDE (blank removes) on every file.
+# Album tags that fixtags reads as user input (it never overwrites them) and may therefore be edited here.
+# The override keys are also applied to ALBUMARTIST / ALBUM so the change shows before the next run.
+ALBUM_FIELDS = {
+	'ALBUM_ARTIST_OVERRIDE': ('ALBUMARTIST',), 'ALBUM_TITLE_OVERRIDE': ('ALBUM',), 'ALBUM_FORMAT': (), 'ALBUM_EDITION': (),
+	'SUBTITLE': (), 'CATALOGNUMBER': ('CATALOG NUMBER', 'CATALOG_NUMBER', 'CATALOGNO'), 'MUSICBRAINZ_ALBUMID': ('MUSICBRAINZ ALBUM ID',),
+}
+OVERRIDES = {'ALBUM_ARTIST_OVERRIDE': 'ALBUMARTIST', 'ALBUM_TITLE_OVERRIDE': 'ALBUM'}
+# Tags fixtags writes from the Discogs release (see discogs/fixtags.py); shown read-only.
+DISCOGS_FIXED = (
+	'DATE', 'YEAR', 'RELEASEDATE', 'ORIGINALDATE', 'ORIGINALRELEASEDATE', 'ORIGINAL DATE', 'ORIGINAL YEAR', 'ALBUM', 'VERSION',
+	'ALBUM_MASTER_TITLE', 'ALBUM_RELEASE_TITLE', 'ORIGINAL_TITLE', 'ALBUM_MASTER_YEAR', 'ALBUM_RELEASE_YEAR', 'ALBUM_MAX_RESOLUTION',
+	'ALBUM_RELEASE_COUNTRY', 'ALBUM_RELEASE_LABEL', 'ALBUM_RELEASE_LABELS', 'ALBUM_RELEASE_CATALOGNUMBERS', 'ALBUM_RELEASE_FORMAT',
+	'ALBUM_RELEASE_FORMAT_DESCRIPTIONS', 'ALBUM_RELEASE_FORMAT_TEXT', 'ALBUM_RELEASE_GENRES', 'ALBUM_RELEASE_STYLES',
+	'ALBUM_RELEASE_NOTES', 'ALBUM_RELEASE_DATE_FULL', 'ALBUM_RELEASE_DATA_QUALITY', 'ALBUM_RELEASE_SERIES', 'ALBUM_DR',
+)
+DISCOGS_PREFIXES = ('ALBUM_COMPANY_', 'ALBUM_CREDIT_', 'ALBUM_IDENT_')
 
-	fixtags applies them to ALBUMARTIST / ALBUM; set those now as well so the change shows before the next run.
-	"""
-	if job['state'] == 'running':
-		raise HTTPException(409, 'a job is running')
-	album = safe(body.get('path', ''))
-	artist, title = str(body.get('artist', '')).strip(), str(body.get('title', '')).strip()
+
+@app.get('/api/tags')
+def get_tags(path: str):
+	album = safe(path)
+	files = flacs(album)
+	if not files:
+		raise HTTPException(404, 'no flac files')
+	t0 = FLAC(files[0]).tags or {}
+	keys = {k.upper(): k for k in t0.keys()}
+	fixed = [k for k in DISCOGS_FIXED if k in keys]
+	extra = sorted(k for k in keys if k.startswith(DISCOGS_PREFIXES))
+	tracks = []
+	for f in files:
+		t = FLAC(f).tags or {}
+		tracks.append({
+			'file': str(f.relative_to(album)), 'title': tag(t, 'TITLE'), 'artist': tag(t, 'ARTIST'),
+			'disc': tag(t, 'DISCNUMBER'), 'track': tag(t, 'TRACKNUMBER'), 'subtitle': tag(t, 'SET SUBTITLE'),
+		})
+	return {
+		'fields': {k: tag(t0, k, *alts) for k, alts in ALBUM_FIELDS.items()},
+		'discogs_id': tag(t0, 'DISCOGS_RELEASE_ID'),
+		'discogs': [{'key': k, 'value': ' / '.join(str(v) for v in t0[keys[k]])} for k in [*fixed, *extra]],
+		'tracks': tracks,
+	}
+
+
+def write_album_fields(album: Path, fields: dict) -> None:
 	for f in flacs(album):
 		a = FLAC(f)
 		if a.tags is None:
 			a.add_tags()
-		for key, applied, value in (('ALBUM_ARTIST_OVERRIDE', 'ALBUMARTIST', artist), ('ALBUM_TITLE_OVERRIDE', 'ALBUM', title)):
+		for key, value in fields.items():
+			value = str(value).strip()
 			if value:
 				a[key] = [value]
-				a[applied] = [value]
+				if key in OVERRIDES:
+					a[OVERRIDES[key]] = [value]
+			else:
+				for k in (key, *ALBUM_FIELDS[key]) if key not in OVERRIDES else (key,):
+					if k in a.tags:
+						del a.tags[k]
+		a.save()
+
+
+@app.post('/api/tags')
+def set_tags(body: dict):
+	"""Write edited album fields to every file and edited per-track fields to the listed files; rename to match titles."""
+	if job['state'] == 'running':
+		raise HTTPException(409, 'a job is running')
+	album = safe(body.get('path', ''))
+	fields = {k: v for k, v in body.get('fields', {}).items() if k in ALBUM_FIELDS}
+	if fields:
+		write_album_fields(album, fields)
+	log = [f'album: {k} = {v or "(removed)"}' for k, v in fields.items()]
+	for tr in body.get('tracks', []):
+		a = FLAC(track_path(body.get('path', ''), tr.get('file', '')))
+		if a.tags is None:
+			a.add_tags()
+		title = str(tr.get('title', '')).strip()
+		if not title:
+			raise HTTPException(400, f'title must not be empty ({tr.get("file")})')
+		a['TITLE'] = [title]
+		for key, field in (('ARTIST', 'artist'), ('DISCNUMBER', 'disc'), ('TRACKNUMBER', 'track'), ('SET SUBTITLE', 'subtitle')):
+			value = str(tr.get(field, '')).strip()
+			if value:
+				a[key] = [value]
 			elif key in a.tags:
 				del a.tags[key]
+		sub = str(tr.get('subtitle', '')).strip()
+		if sub:
+			a['DISCSUBTITLE'] = [sub]
+		elif 'DISCSUBTITLE' in a.tags:
+			del a.tags['DISCSUBTITLE']
 		a.save()
+		log.append(f'track: {tr["file"]}')
+	return {'log': [*log, *rename_files(album)], 'album': get_summary(album)}
+
+
+@app.post('/api/overrides')
+def set_overrides(body: dict):
+	"""Album artist / title overrides only (the pencil dialog); same effect as the Tag Editor fields."""
+	if job['state'] == 'running':
+		raise HTTPException(409, 'a job is running')
+	album = safe(body.get('path', ''))
+	write_album_fields(album, {'ALBUM_ARTIST_OVERRIDE': body.get('artist', ''), 'ALBUM_TITLE_OVERRIDE': body.get('title', '')})
 	return get_summary(album)
 
 
