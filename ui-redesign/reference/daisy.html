@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="fixer">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Album Fixer — daisyUI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="daisy.css">
+<script src="data.js"></script>
+</head>
+<body class="bg-base-200 font-[Inter] text-[14px]">
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-60 shrink-0 bg-base-100 border-r border-base-300 flex flex-col">
+    <div class="flex items-center gap-2 px-5 h-16">
+      <div class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      </div>
+      <span class="font-semibold tracking-tight">Album Fixer</span>
+    </div>
+    <ul class="menu w-full px-3 gap-0.5" id="nav"></ul>
+    <div class="px-5 mt-6 mb-2 text-xs font-medium text-base-content/50 uppercase tracking-wider">Watched folder</div>
+    <div class="mx-3 p-3 rounded-box bg-base-200 text-xs">
+      <div class="flex items-center gap-2 font-mono truncate">
+        <svg class="size-4 shrink-0 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        /path/to/staging</div>
+      <div class="flex gap-1 mt-2">
+        <button class="btn btn-xs btn-ghost">Change</button>
+        <button class="btn btn-xs btn-ghost" onclick="toast('Rescanned · 6 albums found')">Rescan</button>
+      </div>
+    </div>
+    <div class="mt-auto p-4 flex items-center gap-3 border-t border-base-300">
+      <div class="avatar avatar-placeholder"><div class="bg-neutral text-neutral-content w-8 rounded-full text-xs">MK</div></div>
+      <div class="text-xs leading-tight"><div class="font-medium">Local library</div><div class="text-base-content/50">Roon ingest · idle</div></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 overflow-y-auto">
+    <header class="sticky top-0 z-10 bg-base-200/80 backdrop-blur border-b border-base-300">
+      <div class="flex items-center gap-3 px-8 h-16">
+        <h1 class="text-lg font-semibold">Library</h1>
+        <label class="input input-sm ml-auto w-72 bg-base-100">
+          <svg class="size-4 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" placeholder="Search albums, artists, IDs">
+          <kbd class="kbd kbd-xs">⌘K</kbd>
+        </label>
+        <button class="btn btn-sm btn-primary" onclick="toast('Queued fixes for 2 ready albums')">
+          <svg class="size-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Run all ready</button>
+      </div>
+    </header>
+
+    <div class="px-8 py-6 space-y-6">
+      <div class="stats bg-base-100 shadow-sm w-full border border-base-300" id="stats"></div>
+
+      <div class="flex items-center gap-3">
+        <div role="tablist" class="tabs tabs-box tabs-sm bg-base-100 border border-base-300" id="filters"></div>
+        <span class="text-sm text-base-content/50 ml-auto">Sorted by recently added</span>
+      </div>
+
+      <div class="grid gap-5 grid-cols-[repeat(auto-fill,minmax(190px,1fr))]" id="grid"></div>
+    </div>
+  </main>
+
+  <!-- Inspector -->
+  <aside id="inspector" class="w-[400px] shrink-0 bg-base-100 border-l border-base-300 overflow-y-auto transition-all"></aside>
+</div>
+
+<div class="toast toast-end z-50" id="toasts"></div>
+
+<script>
+const { ALBUMS, STEPS, LOG, STATUS, cover } = APP;
+let filter = "all", selected = 2;
+const badgeCls = { needs: "badge-error", ready: "badge-info", fixed: "badge-success" };
+const ico = {
+  lib: '<path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l4 1-3 14-4-1z"/>',
+  warn: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',
+};
+const svg = (p, c = "size-4") => `<svg class="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const count = s => ALBUMS.filter(a => s === "all" || a.status === s).length;
+
+function renderNav() {
+  const items = [["all", "All albums", ico.lib], ["needs", "Needs IDs", ico.warn], ["ready", "Ready", ico.clock], ["fixed", "Fixed", ico.check]];
+  nav.innerHTML = items.map(([k, l, i]) => `<li><a class="${filter === k ? "menu-active" : ""}" onclick="setFilter('${k}')">${svg(i)}${l}
+    <span class="badge badge-sm ${filter === k ? "" : "badge-ghost"} ml-auto">${count(k)}</span></a></li>`).join("") +
+    `<li><a>${svg(ico.inbox)}Ingested<span class="badge badge-sm badge-ghost ml-auto">142</span></a></li>`;
+  filters.innerHTML = [["all", "All"], ["needs", "Needs IDs"], ["ready", "Ready"], ["fixed", "Fixed"]]
+    .map(([k, l]) => `<a role="tab" class="tab ${filter === k ? "tab-active" : ""}" onclick="setFilter('${k}')">${l}</a>`).join("");
+}
+function renderStats() {
+  const s = (t, v, d, c = "") => `<div class="stat py-4"><div class="stat-title">${t}</div><div class="stat-value text-2xl ${c}">${v}</div><div class="stat-desc">${d}</div></div>`;
+  stats.innerHTML = s("In folder", ALBUMS.length, "125 tracks · 4.1 GB") + s("Needs IDs", count("needs"), "Discogs / MusicBrainz", "text-error")
+    + s("Ready to fix", count("ready"), "IDs matched", "text-info") + s("Fixed", count("fixed"), "Waiting for ingest", "text-success");
+}
+function renderGrid() {
+  grid.innerHTML = ALBUMS.filter(a => filter === "all" || a.status === filter).map(a => `
+    <div class="card bg-base-100 border ${a.id === selected ? "border-primary ring-2 ring-primary/20" : "border-base-300"} shadow-sm hover:shadow-md transition cursor-pointer" onclick="select(${a.id})">
+      <figure class="relative aspect-square">${cover(a, "w-full h-full")}
+        <span class="badge badge-sm ${badgeCls[a.status]} absolute top-3 left-3 shadow">${STATUS[a.status]}</span></figure>
+      <div class="card-body p-4 gap-1">
+        <h3 class="font-semibold leading-snug truncate">${a.title}</h3>
+        <p class="text-base-content/60 text-[13px] truncate">${a.artist} · ${a.year}</p>
+        <p class="text-base-content/40 text-xs truncate">${a.edition}</p>
+        <div class="flex items-center gap-2 mt-2">
+          <progress class="progress ${a.done === 6 ? "progress-success" : "progress-primary"} h-1.5" value="${a.done}" max="6"></progress>
+          <span class="text-xs text-base-content/50 tabular-nums">${a.done}/6</span></div>
+      </div></div>`).join("");
+}
+function renderInspector() {
+  const a = ALBUMS.find(x => x.id === selected);
+  const step = (s, i) => `<li class="step ${i < a.done ? "step-success" : ""}" ${i < a.done ? 'data-content="✓"' : ""}>${s}</li>`;
+  const row = (k, v) => `<div class="flex justify-between gap-4 py-2 border-b border-base-200 text-[13px]"><span class="text-base-content/50">${k}</span><span class="text-right font-medium">${v}</span></div>`;
+  const id = (l, v) => v ? `<span class="badge badge-ghost badge-sm font-mono">${l} ${v}</span>` : `<span class="badge badge-error badge-soft badge-sm">${l} missing</span>`;
+  inspector.innerHTML = `
+    <div class="p-6">
+      <div class="flex gap-4">
+        <div class="size-24 rounded-box overflow-hidden shrink-0 shadow">${cover(a, "w-full h-full")}</div>
+        <div class="min-w-0">
+          <div class="text-xs text-base-content/50">${a.artist}</div>
+          <h2 class="text-xl font-semibold leading-tight">${a.title}</h2>
+          <div class="text-xs text-base-content/50 mt-0.5">${a.edition}</div>
+          <div class="flex flex-wrap gap-1 mt-2">${id("D", a.discogs)}${id("MB", a.mb)}</div>
+        </div>
+      </div>
+      <div class="flex gap-2 mt-5">
+        <button class="btn btn-primary btn-sm flex-1" onclick="toast('Running fixes on ${a.title}…')" ${a.status === "needs" ? "disabled" : ""}>Run fixes</button>
+        <button class="btn btn-sm flex-1" ${a.status !== "fixed" ? "disabled" : ""} onclick="toast('Moved to ingest')">Move to ingest</button>
+      </div>
+      ${a.status === "needs" ? `<div role="alert" class="alert alert-warning alert-soft mt-4 text-[13px]">${svg(ico.warn)}<span>Add a Discogs or MusicBrainz release ID before running fixes.</span><button class="btn btn-xs">Search</button></div>` : ""}
+
+      <div class="mt-6">
+        ${row("Tracks", a.tracks)}${row("Dynamic range", a.dr ? `<span class="badge badge-success badge-soft badge-sm">DR${a.dr}</span>` : "—")}
+        ${row("Lyrics", a.lyrics ? `${a.lyrics} synced · 0 plain` : "—")}
+        ${a.newTitle ? `<div class="py-2 border-b border-base-200 text-[13px]"><div class="text-base-content/50 mb-1">New folder</div><code class="text-xs break-all">${a.newTitle}</code></div>` : ""}
+      </div>
+
+      <h4 class="text-xs font-medium uppercase tracking-wider text-base-content/50 mt-6 mb-2">Pipeline</h4>
+      <ul class="steps steps-vertical text-[13px] -my-2 [&_.step]:min-h-11">${STEPS.map(step).join("")}</ul>
+
+      <div class="collapse collapse-arrow bg-base-200 mt-4">
+        <input type="checkbox" ${a.done ? "checked" : ""}>
+        <div class="collapse-title text-[13px] font-medium">Log</div>
+        <div class="collapse-content">
+          <div class="mockup-code text-[11px] min-w-0 before:hidden pt-3">${a.done ? LOG.map(([t, k, m]) =>
+            `<pre data-prefix="${t.slice(3)}" class="${k === "ok" ? "text-success" : k === "file" ? "opacity-60" : ""}"><code>${m}</code></pre>`).join("")
+            : '<pre data-prefix="—"><code>No runs yet</code></pre>'}</div>
+        </div>
+      </div>
+    </div>`;
+}
+function setFilter(k) { filter = k; renderNav(); renderGrid(); }
+function select(id) { selected = id; renderGrid(); renderInspector(); }
+function toast(msg) {
+  const el = document.createElement("div");
+  el.className = "alert alert-success shadow-lg text-sm";
+  el.innerHTML = svg(ico.check) + `<span>${msg}</span>`;
+  toasts.append(el); setTimeout(() => el.remove(), 2600);
+}
+renderNav(); renderStats(); renderGrid(); renderInspector();
+</script>
+</body>
+</html>

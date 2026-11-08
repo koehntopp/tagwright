@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="fixer">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Album Fixer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="bg-base-200 font-[Inter] text-[14px]">
+<div class="flex h-screen overflow-hidden">
+
+  <aside class="w-60 shrink-0 bg-base-100 border-r border-base-300 flex flex-col">
+    <div class="flex items-center gap-2 px-5 h-16">
+      <div class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      </div>
+      <span class="font-semibold tracking-tight">Album Fixer</span>
+    </div>
+    <ul class="menu w-full px-3 gap-0.5" id="nav"></ul>
+    <div class="mt-auto p-4 flex items-center gap-3 border-t border-base-300">
+      <span class="size-2 rounded-full bg-base-300 shrink-0" id="dot"></span>
+      <div class="text-xs leading-tight min-w-0"><div class="font-medium">Pipeline</div><div class="text-base-content/50 truncate" id="jobline">Idle</div></div>
+      <button class="btn btn-ghost btn-xs btn-square ml-auto shrink-0" id="settings" aria-label="Settings" title="Settings">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <main class="flex-1 overflow-y-auto">
+    <header class="sticky top-0 z-10 bg-base-200/80 backdrop-blur border-b border-base-300">
+      <div class="flex items-center gap-3 px-8 h-16">
+        <h1 class="text-lg font-semibold">Library</h1>
+        <select class="select select-sm w-44 bg-base-100 ml-auto" id="sort" aria-label="Sort albums">
+          <option value="recent">Recently added</option><option value="name">Title</option><option value="artist">Artist</option><option value="status">Status</option>
+        </select>
+        <label class="input input-sm w-72 bg-base-100">
+          <svg class="size-4 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" id="q" placeholder="Search albums, artists, IDs">
+          <kbd class="kbd kbd-xs">⌘K</kbd>
+        </label>
+        <button class="btn btn-sm btn-square btn-ghost" id="rescan" aria-label="Rescan" title="Rescan folder">
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
+        <button class="btn btn-sm btn-primary" id="runall">
+          <svg class="size-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Run all ready</button>
+      </div>
+    </header>
+
+    <div class="px-8 py-6 space-y-6">
+      <div class="grid gap-5 grid-cols-[repeat(auto-fill,minmax(250px,1fr))]" id="grid"></div>
+    </div>
+  </main>
+
+  <aside id="inspector" class="w-[480px] shrink-0 bg-base-100 border-l border-base-300 overflow-y-auto"></aside>
+</div>
+
+<dialog id="sdlg" class="modal">
+  <div class="modal-box w-11/12 max-w-[48rem] overflow-x-hidden">
+    <h3 class="font-semibold text-lg">Settings</h3>
+    <div class="mt-3 space-y-1">
+      <fieldset class="fieldset"><legend class="fieldset-legend">Input folder</legend>
+        <input id="s_in" type="text" class="input input-sm w-full font-mono" autocomplete="off">
+        <p class="label whitespace-normal">Albums to fix are read from here.</p></fieldset>
+      <fieldset class="fieldset"><legend class="fieldset-legend">Input folder on this computer</legend>
+        <input id="s_local" type="text" class="input input-sm w-full font-mono" autocomplete="off" placeholder="/path/to/staging">
+        <p class="label whitespace-normal">Where the input folder is mounted here. Used for the Tag Editor link; saved in this browser only.</p></fieldset>
+      <fieldset class="fieldset"><legend class="fieldset-legend">Tag editor link</legend>
+        <input id="s_editor" type="text" class="input input-sm w-full font-mono" autocomplete="off" placeholder="yate://load{path}">
+        <p class="label whitespace-normal">URL opened by Tag Editor; {path} is replaced by the album's path on this computer. Saved in this browser only.</p></fieldset>
+      <fieldset class="fieldset"><legend class="fieldset-legend">Output folder</legend>
+        <input id="s_out" type="text" class="input input-sm w-full font-mono" autocomplete="off">
+        <p class="label whitespace-normal">Fixed albums are moved here.</p></fieldset>
+      <fieldset class="fieldset"><legend class="fieldset-legend">Discogs API key</legend>
+        <input id="s_d" type="password" class="input input-sm w-full font-mono" autocomplete="off">
+        <p class="label whitespace-normal">Leave blank to keep the stored key.</p></fieldset>
+      <fieldset class="fieldset"><legend class="fieldset-legend">lrclib.net API key</legend>
+        <input id="s_l" type="password" class="input input-sm w-full font-mono" autocomplete="off">
+        <p class="label whitespace-normal">Optional. Stored and passed to the scripts as lrclib_api_key.</p></fieldset>
+    </div>
+    <p class="text-error text-sm mt-2" id="serr"></p>
+    <div class="modal-action">
+      <button class="btn btn-sm" id="sclose">Cancel</button>
+      <button class="btn btn-sm btn-primary" id="ssave">Save</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<div class="toast toast-end z-50" id="toasts"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const api = async (u, o) => { const r = await fetch(u, o); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText); return r.json(); };
+const post = (u, b) => api(u, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(b)});
+
+let albums = [], base = '', filter = 'all', query = '', selected = null, selAlbum = null;
+let job = {state: 'idle', path: null, queue: []}, since = 0, ticks = 0, poll = null;
+let serverRoot = '', localRoot = localStorage.getItem('localRoot') || '';
+let editorTpl = localStorage.getItem('editorTpl') || 'yate://load{path}';
+let logLines = [], logOpen = false, tracksOpen = true, stepSel = null, sortKey = 'recent';
+const ORDER = {needs: 0, ready: 1, fixed: 2};
+
+const STATUS = {needs: 'Needs IDs', ready: 'Ready', fixed: 'Fixed'};
+const badgeCls = {needs: 'badge-error', ready: 'badge-info', fixed: 'badge-success'};
+const ico = {
+  lib: '<path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l4 1-3 14-4-1z"/>',
+  warn: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  dir: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+};
+const svg = (p, c = 'size-4') => `<svg class="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const title = a => a.album || a.name;
+const count = s => albums.filter(a => s === 'all' || a.status === s).length;
+const hue = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+const initials = a => (a.artist || a.name || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+const isRunning = a => job.state === 'running' && job.path === a.path;
+
+function cover(a, cls) {
+  const h = hue(a.artist || a.name);
+  return `<div class="${cls} relative overflow-hidden" style="background:linear-gradient(135deg,hsl(${h} 70% 62%),hsl(${(h + 40) % 360} 60% 30%))">
+    <span class="absolute inset-0 grid place-items-center text-white/80 font-bold text-3xl">${esc(initials(a))}</span>
+    <img src="/api/cover?path=${encodeURIComponent(a.path)}" loading="lazy" alt="" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()"></div>`;
+}
+
+function renderNav() {
+  const items = [['all', 'All albums', ico.lib], ['needs', 'Needs IDs', ico.warn], ['ready', 'Ready', ico.clock], ['fixed', 'Fixed', ico.check]];
+  $('nav').innerHTML = items.map(([k, l, i]) => `<li><a class="${filter === k ? 'menu-active' : ''}" data-f="${k}">${svg(i)}${l}
+    <span class="badge badge-sm ${filter === k ? '' : 'badge-ghost'} ml-auto">${count(k)}</span></a></li>`).join('');
+  document.querySelectorAll('[data-f]').forEach(el => el.onclick = () => { filter = el.dataset.f; renderNav(); renderGrid(); });
+}
+const SORTS = {
+  recent: (a, b) => b.mtime - a.mtime,
+  name: (a, b) => title(a).localeCompare(title(b)),
+  artist: (a, b) => (a.artist || '').localeCompare(b.artist || '') || title(a).localeCompare(title(b)),
+  status: (a, b) => ORDER[a.status] - ORDER[b.status] || title(a).localeCompare(title(b)),
+};
+const fav = (href, src, l, t) => `<a href="${href}" target="_blank" rel="noopener" title="${esc(t)}" class="shrink-0" onclick="event.stopPropagation()"><img src="${src}" alt="${l}" class="size-4 rounded-sm" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'badge badge-ghost badge-xs',textContent:'${l}'}))"></a>`;
+function cardMeta(a) {
+  const ly = a.lyrics || {};
+  return [
+    a.discogs ? fav('https://www.discogs.com/release/' + encodeURIComponent(a.discogs), '/static/discogs.png', 'D', 'Discogs release ' + a.discogs) : '',
+    a.mbid ? fav('https://musicbrainz.org/release/' + encodeURIComponent(a.mbid), '/static/musicbrainz.ico', 'MB', 'MusicBrainz release ' + a.mbid) : '',
+    a.dr ? `<span class="badge badge-success badge-soft badge-xs">DR${esc(a.dr)}</span>` : '',
+    ly.synced ? `<span class="badge badge-success badge-xs">LRC ${ly.synced}</span>` : '',
+    ly.plain ? `<span class="badge badge-warning badge-xs">TXT ${ly.plain}</span>` : '',
+  ].join('');
+}
+function visible() {
+  const q = query.trim().toLowerCase();
+  return albums.filter(a => (filter === 'all' || a.status === filter)
+    && (!q || [a.name, a.album, a.artist, a.discogs, a.mbid].some(v => (v || '').toLowerCase().includes(q)))).sort(SORTS[sortKey]);
+}
+function renderGrid() {
+  const list = visible();
+  $('grid').innerHTML = list.length ? list.map(a => `
+    <div class="card bg-base-100 border ${a.path === selected ? 'border-primary ring-2 ring-primary/20' : 'border-base-300'} shadow-sm hover:shadow-md transition cursor-pointer" data-p="${esc(a.path)}">
+      <figure class="relative aspect-square">${cover(a, 'w-full h-full')}
+        <span class="badge badge-sm ${badgeCls[a.status]} absolute top-3 left-3 shadow">${STATUS[a.status]}</span></figure>
+      <div class="card-body p-4 gap-1">
+        <h3 class="font-semibold leading-snug truncate">${esc(title(a))}</h3>
+        <p class="text-base-content/60 text-[13px] truncate">${esc(a.artist || 'Unknown artist')}${a.year ? ' · ' + esc(a.year) : ''}</p>
+        <p class="text-base-content/40 text-xs truncate">${esc(a.edition) || '&nbsp;'}</p>
+        <div class="flex items-center gap-1.5 flex-nowrap overflow-hidden mt-1 min-h-5">${cardMeta(a)}</div>
+        <div class="flex items-center gap-2 mt-2">
+          <progress class="progress ${a.steps_done === 6 ? 'progress-success' : 'progress-primary'} h-1.5" value="${a.steps_done}" max="6"></progress>
+          <span class="text-xs text-base-content/50 tabular-nums">${a.steps_done}/6</span></div>
+      </div></div>`).join('')
+    : '<div class="col-span-full text-center text-base-content/50 py-16">No albums match.</div>';
+  document.querySelectorAll('#grid [data-p]').forEach(el => el.onclick = () => select(el.dataset.p));
+}
+
+function logRow(e) {
+  const c = e.k === 'ok' ? 'text-success' : e.k === 'file' ? 'opacity-60' : '';
+  return `<pre data-prefix="${esc(e.t)}" class="${c}"><code>${esc(e.m)}</code></pre>`;
+}
+function renderLog() {
+  const box = $('logbox'); if (!box) return;
+  box.innerHTML = logLines.length ? logLines.slice(-300).map(logRow).join('') : '<pre data-prefix="—"><code>No runs yet</code></pre>';
+  if (job.state === 'running') box.scrollTop = box.scrollHeight;
+}
+function addLog(lines) {
+  for (const raw of lines) {
+    let t = new Date().toTimeString().slice(0, 8), m = raw;
+    try { const j = JSON.parse(raw); if (j && j.event) { m = j.event; if (j.timestamp) t = String(j.timestamp).slice(11, 19) || t; } } catch (_) {}
+    const k = /^renamed /.test(m) ? 'file' : /(finished|done|success)/i.test(m) ? 'ok' : '';
+    logLines.push({t, k, m});
+  }
+  renderLog();
+}
+
+function renderInspector() {
+  const a = selAlbum;
+  if (!a) { $('inspector').innerHTML = '<div class="p-6 text-base-content/50">Select an album.</div>'; return; }
+  const running = isRunning(a), needs = a.status === 'needs';
+  const firstOpen = a.steps.findIndex(s => !s.done);
+  const step = (s, i) => `<li class="step cursor-pointer ${s.done ? (s.partial ? 'step-warning' : 'step-success') : ''}" data-s="${i}" ${s.done ? 'data-content="✓"' : ''}>${running && i === firstOpen ? '<span class="loading loading-spinner loading-xs mr-2"></span>' : ''}<span class="px-2 py-0.5 rounded ${stepSel === i ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-base-200'}">${esc(s.name.replace(' and ', ' & '))}</span></li>`;
+  const idIcon = l => `<img src="${l === 'D' ? '/static/discogs.png' : '/static/musicbrainz.ico'}" alt="${l}" class="size-3.5 rounded-sm">`;
+  const idUrl = (l, v) => (l === 'D' ? 'https://www.discogs.com/release/' : 'https://musicbrainz.org/release/') + encodeURIComponent(v);
+  const id = (l, v) => v ? `<a href="${idUrl(l, v)}" target="_blank" rel="noopener" class="badge badge-ghost badge-sm font-mono gap-1 hover:badge-primary hover:badge-soft" title="${l === 'D' ? 'Discogs' : 'MusicBrainz'} release ${esc(v)}">${idIcon(l)}${esc(v.length > 13 ? v.slice(0, 8) : v)}</a>` : `<span class="badge badge-error badge-soft badge-sm gap-1">${idIcon(l)}missing</span>`;
+  const lyBadge = {lrc: '<span class="badge badge-success badge-xs">LRC</span>', txt: '<span class="badge badge-warning badge-xs">TXT</span>',
+    instr: '<span class="badge badge-info badge-soft badge-xs">Instr.</span>', none: '<span class="badge badge-error badge-soft badge-xs">No lyrics</span>'};
+  const trackRow = f => `<li class="flex items-center gap-2 py-1.5 border-b border-base-300/60 last:border-0 text-[13px]">
+      <span class="w-6 text-base-content/40 tabular-nums shrink-0">${esc(String(f.track).split('/')[0].padStart(2, '0'))}</span>
+      <span class="truncate flex-1" title="${esc(f.name)}">${esc(f.title)}</span>
+      ${stepSel !== null ? (f.checks[stepSel] ? (f.lyrics === 'txt' && a.steps[stepSel].name === 'Lyrics' ? '<span class="text-warning font-semibold" title="plain text lyrics">✓</span>' : '<span class="text-success font-semibold" title="done">✓</span>') : '<span class="text-error font-semibold" title="missing">✗</span>') : ''}
+      ${f.dr ? `<span class="badge badge-success badge-soft badge-xs">DR${esc(f.dr)}</span>` : '<span class="badge badge-ghost badge-xs">DR —</span>'}
+      ${lyBadge[f.lyrics]}</li>`;
+  const drBadge = a.dr ? `<span class="badge badge-success badge-soft badge-sm" title="Album dynamic range">DR${esc(a.dr)}</span>` : '';
+  $('inspector').innerHTML = `
+    <div class="p-6">
+      <div class="flex gap-4">
+        ${cover(a, 'size-24 rounded-box overflow-hidden shrink-0 shadow')}
+        <div class="min-w-0">
+          <div class="text-xs text-base-content/50 truncate" title="${a.artist_is_albumartist ? '' : 'from ARTIST tag'}">${esc(a.artist || 'Unknown artist')}</div>
+          <h2 class="text-xl font-semibold leading-tight">${esc(title(a))}</h2>
+          <div class="text-xs text-base-content/50 mt-0.5">${esc([a.edition, a.year].filter(Boolean).join(' · '))}</div>
+          <div class="flex flex-wrap gap-1 mt-2">${id('D', a.discogs)}${id('MB', a.mbid)}${drBadge}</div>
+        </div>
+      </div>
+      <div class="flex gap-2 mt-5">
+        <a class="btn btn-sm flex-1" id="editor" href="${esc(editorUrl(a.path))}" title="${esc(localPath(a.path))}">Tag Editor</a>
+        <button class="btn btn-primary btn-sm flex-1" id="run" ${needs || job.state === 'running' ? 'disabled' : ''}>Run fixes</button>
+        <button class="btn btn-sm flex-1" id="move" ${a.status !== 'fixed' || job.state === 'running' ? 'disabled' : ''}>Move to ingest</button>
+      </div>
+      ${needs ? `<div role="alert" class="alert alert-warning alert-soft mt-4 text-[13px]">${svg(ico.warn)}<span>Add a Discogs release ID before running fixes.</span><button class="btn btn-xs" id="search">Search</button></div>` : ''}
+      <div class="mt-6">
+        <div class="py-2 border-b border-base-200 text-[13px]"><div class="text-base-content/50 mb-1">New folder</div><code class="text-xs break-all">${esc(a.new_title)}</code></div>
+      </div>
+      <h4 class="text-xs font-medium uppercase tracking-wider text-base-content/50 mt-6 mb-2">Pipeline</h4>
+      <ul class="steps w-full text-[11px] leading-tight [&_.step]:min-w-0 [&_.step]:px-0">${a.steps.map(step).join('')}</ul>
+      <div class="collapse collapse-arrow bg-base-200 mt-4">
+        <input type="checkbox" id="trackstoggle" ${tracksOpen ? 'checked' : ''}>
+        <div class="collapse-title text-[13px] font-medium">Tracks <span class="badge badge-ghost badge-xs ml-1">${a.tracks}</span>${stepSel !== null ? `<span class="text-xs text-primary ml-2">${esc(a.steps[stepSel].name.replace(' and ', ' & '))}</span>` : ''}</div>
+        <div class="collapse-content"><ul class="max-h-80 overflow-y-auto">${a.files.map(trackRow).join('')}</ul></div>
+      </div>
+      <div class="collapse collapse-arrow bg-base-200 mt-4">
+        <input type="checkbox" id="logtoggle" ${logOpen ? 'checked' : ''}>
+        <div class="collapse-title text-[13px] font-medium">Log</div>
+        <div class="collapse-content">
+          <div class="mockup-code text-[11px] min-w-0 before:hidden pt-3 max-h-72 overflow-y-auto" id="logbox"></div>
+        </div>
+      </div>
+    </div>`;
+  renderLog();
+  $('logtoggle').onchange = e => { logOpen = e.target.checked; };
+  $('trackstoggle').onchange = e => { tracksOpen = e.target.checked; };
+  document.querySelectorAll('#inspector [data-s]').forEach(li => li.onclick = () => {
+    const i = +li.dataset.s; stepSel = stepSel === i ? null : i; tracksOpen = true;
+    const y = $('inspector').scrollTop; renderInspector(); $('inspector').scrollTop = y;
+  });
+  $('run').onclick = () => runFixes([a.path], title(a));
+  $('move').onclick = move;
+  const sb = $('search');
+  if (sb) sb.onclick = () => window.open('https://www.discogs.com/search/?type=release&q=' + encodeURIComponent([a.artist, a.album].filter(Boolean).join(' ')), '_blank', 'noopener');
+}
+
+function renderJob() {
+  const running = job.state === 'running';
+  const cur = albums.find(a => a.path === job.path);
+  $('dot').className = 'size-2 rounded-full shrink-0 ' + (running ? 'bg-info animate-pulse' : job.state === 'failed' ? 'bg-error' : 'bg-success');
+  $('jobline').textContent = running ? `Running: ${cur ? title(cur) : '…'}${job.queue.length ? ' (+' + job.queue.length + ' queued)' : ''}` : job.state === 'failed' ? 'Last run failed' : 'Idle';
+  $('runall').disabled = running;
+}
+function renderAll() { renderNav(); renderGrid(); renderInspector(); renderJob(); }
+
+function toast(msg, cls = 'alert-success') {
+  const el = document.createElement('div');
+  el.className = `alert ${cls} shadow-lg text-sm`;
+  el.innerHTML = svg(ico.check) + `<span>${esc(msg)}</span>`;
+  $('toasts').append(el); setTimeout(() => el.remove(), 2600);
+}
+
+async function load(path = base) {
+  const r = await api('/api/albums?path=' + encodeURIComponent(path));
+  base = r.base; albums = r.albums;
+  if (selected) { selAlbum = albums.find(a => a.path === selected) || null; if (!selAlbum) selected = null; }
+  renderAll();
+}
+// Server path -> path on this machine (mount point differs); {path} in the editor template is that path, URL-encoded.
+function localPath(p) {
+  return localRoot && serverRoot && p.startsWith(serverRoot) ? localRoot.replace(/\/+$/, '') + p.slice(serverRoot.length) : p;
+}
+function editorUrl(p) {
+  return editorTpl.replace('{path}', localPath(p).split('/').map(encodeURIComponent).join('/'));
+}
+function select(p) { stepSel = null; selected = p; selAlbum = albums.find(a => a.path === p); renderGrid(); renderInspector(); }
+
+async function runFixes(paths, label) {
+  try {
+    await post('/api/run', {paths});
+    logOpen = true;
+    toast(paths.length > 1 ? `Queued fixes for ${paths.length} albums` : `Running fixes on ${label}…`);
+    job = {...job, state: 'running', path: paths[0], queue: paths.slice(1)};
+    renderAll(); tick();
+  } catch (e) { toast(e.message, 'alert-error'); }
+}
+async function refreshOne(path) {
+  try {
+    const s = await api('/api/album?path=' + encodeURIComponent(path));
+    const i = albums.findIndex(a => a.path === path);
+    if (i >= 0) { albums[i] = s; if (selected === path) selAlbum = s; renderNav(); renderGrid(); renderInspector(); }
+  } catch (_) {}
+}
+async function tick() {
+  clearTimeout(poll);
+  const prev = job.path;
+  const j = await api('/api/job?since=' + since);
+  since = j.next; job = {state: j.state, path: j.path, queue: j.queue || []};
+  addLog(j.lines);
+  if (prev && prev !== job.path) await refreshOne(prev);
+  if (job.state === 'running') {
+    if (++ticks % 3 === 0 && job.path) await refreshOne(job.path);
+    renderJob(); poll = setTimeout(tick, 1000);
+  } else {
+    await load();
+    toast(job.state === 'failed' ? 'Run finished with errors' : 'Run finished', job.state === 'failed' ? 'alert-error' : 'alert-success');
+  }
+}
+async function move() {
+  const a = selAlbum;
+  if (!a || !confirm(`Move "${title(a)}" to the ingest folder?`)) return;
+  try { const r = await post('/api/move', {path: a.path}); addLog(['moved to ' + r.moved_to]); toast('Moved to ingest'); await load(); }
+  catch (e) { toast(e.message, 'alert-error'); }
+}
+
+$('rescan').onclick = async () => { await load(); toast(`Rescanned · ${albums.length} albums found`); };
+$('runall').onclick = () => {
+  const ready = albums.filter(a => a.status === 'ready').map(a => a.path);
+  if (!ready.length) return toast('No ready albums', 'alert-warning');
+  runFixes(ready);
+};
+$('sort').onchange = e => { sortKey = e.target.value; renderGrid(); };
+$('q').oninput = e => { query = e.target.value; renderGrid(); };
+document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); $('q').focus(); } });
+
+async function openSettings() {
+  try {
+    const s = await api('/api/settings');
+    serverRoot = s.input; $('s_in').value = s.input; $('s_out').value = s.output; $('s_local').value = localRoot; $('s_editor').value = editorTpl;
+    $('s_d').value = ''; $('s_l').value = '';
+    $('s_d').placeholder = s.discogs_api_key_hint || 'Not set';
+    $('s_l').placeholder = s.lrclib_api_key_hint || 'Not set';
+    $('serr').textContent = '';
+    $('sdlg').showModal();
+  } catch (e) { toast(e.message, 'alert-error'); }
+}
+$('settings').onclick = openSettings;
+$('sclose').onclick = () => $('sdlg').close();
+$('ssave').onclick = async () => {
+  try {
+    serverRoot = (await post('/api/settings', {input: $('s_in').value.trim(), output: $('s_out').value.trim(), discogs_api_key: $('s_d').value, lrclib_api_key: $('s_l').value})).input;
+    localRoot = $('s_local').value.trim(); localStorage.setItem('localRoot', localRoot);
+    editorTpl = $('s_editor').value.trim() || 'yate://load{path}'; localStorage.setItem('editorTpl', editorTpl);
+    $('sdlg').close(); toast('Settings saved');
+    selected = null; selAlbum = null; await load('');
+  } catch (e) { $('serr').textContent = e.message; }
+};
+
+(async () => {
+  api('/api/settings').then(s => { serverRoot = s.input; if (selAlbum) renderInspector(); }).catch(() => {});
+  await load('');
+  const j = await api('/api/job?since=0');
+  since = j.next; job = {state: j.state, path: j.path, queue: j.queue || []};
+  addLog(j.lines); renderJob();
+  if (job.state === 'running') { logOpen = true; tick(); }
+})();
+</script>
+</body>
+</html>
