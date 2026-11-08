@@ -46,6 +46,20 @@ A track is "missing" only when it is `none`. Any non-empty lyrics, synced, plain
 - `fixed`: all six steps done.
 - `ready`: everything else.
 
+### Issue lines
+
+`summarize` also returns `issues`: the clearly identifiable problems of the album, **one line each**, recomputed from the tags on every refresh (so a line disappears as soon as an edit fixes it). Each has a level (`warn` blocks the album, `info` is a notice) and an action (which button the UI offers):
+
+| Issue | Level | Action |
+|-------|-------|--------|
+| no `DISCOGS_RELEASE_ID` on the first file | warn | Search (Discogs assignment) |
+| no catalog number (all tracks: "Add a catalog number (enter none ...)"; some: "N of M tracks have no catalog number") | warn | Tag Editor, Album tab |
+| tracks without disc number, track number, title or artist (one line per tag, with counts) | warn | Tag Editor, Tracks tab |
+| the same disc/track number on more than one file | warn | Tag Editor, Tracks tab |
+| cover smaller than 1400x1400, or none | info | Upload |
+
+Adding a rule here means adding it to `album_issues()` and this table. A check that the pipeline enforces by itself and that Tagwright cannot fix in the editor (for example the Discogs-derived `ALBUM` or dates) is not an issue line.
+
 ### Displayed values
 
 Album DR is `ALBUM_DR`, falling back to the rounded mean of the track `DYNAMIC_RANGE` values. Artist is `ALBUMARTIST`, else `ARTIST`. "New folder" shows the bliss library path `<album artist>/<album [version]>` for information only; Tagwright does not rename album folders ([0010](0010-bliss-file-naming.md)).

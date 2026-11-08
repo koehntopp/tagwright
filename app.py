@@ -265,8 +265,39 @@ def summarize(album: Path) -> dict:
 		tags_ok=req,
 		steps_done=sum(1 for _, ok in steps if ok),
 	)
+	out['issues'] = album_issues(out, tags, small_cover)
 	out['status'] = status(out)
 	return out
+
+
+def count_text(n: int, total: int, what: str) -> str:
+	if n == total:
+		return f'No track has {what}.' if total > 1 else f'The track has no {what.split(" ", 1)[-1]}.'
+	return f'{n} of {total} tracks {"has" if n == 1 else "have"} no {what.split(" ", 1)[-1]}.'
+
+
+def album_issues(out: dict, tags: list, small_cover: bool) -> list[dict]:
+	"""Clearly identifiable problems, one line each: {text, action, level}; recomputed from the tags on every refresh.
+
+	level 'warn' blocks the album, 'info' is a notice. action tells the UI which button to offer.
+	"""
+	n, issues = len(tags), []
+	if not out['discogs']:
+		issues.append({'text': 'Add a Discogs release ID before running fixes.', 'action': 'search', 'level': 'warn'})
+	missing = lambda *keys: sum(1 for t in tags if not tag(t, *keys))  # noqa: E731
+	if m := missing(*CATALOG_KEYS):
+		text = 'Add a catalog number (enter none if the release has none).' if m == n else f'{m} of {n} tracks have no catalog number.'
+		issues.append({'text': text, 'action': 'album', 'level': 'warn'})
+	for key, what in (('DISCNUMBER', 'a disc number'), ('TRACKNUMBER', 'a track number'), ('TITLE', 'a title'), ('ARTIST', 'an artist')):
+		if m := missing(key):
+			issues.append({'text': count_text(m, n, what), 'action': 'tracks', 'level': 'warn'})
+	numbers = [(tag(t, 'DISCNUMBER').split('/')[0], tag(t, 'TRACKNUMBER').split('/')[0]) for t in tags if tag(t, 'DISCNUMBER') and tag(t, 'TRACKNUMBER')]
+	if dup := sum(1 for v in {x: numbers.count(x) for x in numbers}.values() if v > 1):
+		issues.append({'text': f'{dup} disc/track number{" is" if dup == 1 else "s are"} used by more than one file.', 'action': 'tracks', 'level': 'warn'})
+	if small_cover:
+		cov = out['cover']
+		issues.append({'text': COVER_NOTE.format(c=f"{cov['w']}x{cov['h']}") if cov else 'The album has no cover.', 'action': 'cover', 'level': 'info'})
+	return issues
 
 
 def status(s: dict) -> str:

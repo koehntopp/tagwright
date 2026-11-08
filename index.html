@@ -309,7 +309,7 @@ function renderInspector() {
         <button class="btn btn-primary btn-sm flex-1" id="run" ${needs || job.state === 'running' ? 'disabled' : ''}>Run fixes</button>
         <button class="btn btn-sm flex-1" id="move" ${a.status !== 'fixed' || job.state === 'running' ? 'disabled' : ''}>Move to ingest</button>
       </div>
-      ${needs ? `<div role="alert" class="alert alert-warning alert-soft mt-4 text-[13px]">${svg(ico.warn)}<span>Add a Discogs release ID before running fixes.</span><button class="btn btn-xs" id="search">Search</button></div>` : ''}
+      <div class="mt-4 space-y-2">${(a.issues || []).map(i => `<div role="alert" class="alert ${i.level === 'info' ? 'alert-info' : 'alert-warning'} alert-soft text-[13px]">${svg(ico.warn)}<span>${esc(i.text)}</span>${i.action ? `<button class="btn btn-xs" data-issue="${i.action}">${{search: 'Search', album: 'Tag Editor', tracks: 'Tag Editor', cover: 'Upload'}[i.action]}</button>` : ''}</div>`).join('')}</div>
       <div class="mt-6">
         <div class="py-2 border-b border-base-200 text-[13px]"><div class="text-base-content/50 mb-1">New folder</div>${a.new_title ? `<code class="text-xs break-all">${esc(a.new_title)}</code>` : '<span class="text-xs text-base-content/40">Not ready: artist or album is empty</span>'}</div>
       </div>
@@ -350,8 +350,9 @@ function renderInspector() {
   };
   document.querySelectorAll('#inspector [data-play]').forEach(b => b.onclick = () => togglePlay(a.path, b.dataset.play));
   document.querySelectorAll('#inspector [data-edit]').forEach(b => b.onclick = () => openEdit(a.path, b.dataset.edit));
-  const sb = $('search');
-  if (sb) sb.onclick = openTed;
+  document.querySelectorAll('#inspector [data-issue]').forEach(b => b.onclick = () => ({
+    search: openTed, album: () => openTagEditor('album'), tracks: () => openTagEditor('tracks'), cover: () => $('coverfile').click(),
+  })[b.dataset.issue]());
 }
 
 function renderJob() {
