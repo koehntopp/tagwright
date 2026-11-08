@@ -17,8 +17,8 @@ Written to every file of the album; an emptied field removes the tag.
 
 | Tag | Meaning |
 |-----|---------|
-| `ALBUM_ARTIST_OVERRIDE` | also written to `ALBUMARTIST` immediately |
-| `ALBUM_TITLE_OVERRIDE` | also written to `ALBUM` immediately |
+| `ALBUM_ARTIST_OVERRIDE` | also written to `ALBUMARTIST` immediately; clearing restores the Discogs artist (see below) |
+| `ALBUM_TITLE_OVERRIDE` | also written to `ALBUM` immediately; clearing restores the Discogs master title (see below) |
 | `ALBUM_FORMAT` | for example CD, SACD (empty: CD) |
 | `ALBUM_EDITION` | part of the version string |
 | `SUBTITLE` | format fallback |
@@ -28,6 +28,9 @@ Written to every file of the album; an emptied field removes the tag.
 Also shown: the Discogs release ID as a link, with "Change release…" ([0013](0013-discogs-track-assignment.md)). The ID itself is changed only through that dialog.
 
 The pencils next to the album artist and the album title in the inspector header open a small dialog for the two override fields; both write the same tags through the same code.
+
+### Clearing an override restores the Discogs value
+`ALBUMARTIST` was originally set (by the tagger, from the Discogs data) to the Discogs release artist, and `fixtags.py` touches it only while `ALBUM_ARTIST_OVERRIDE` is set (it never fills it from Discogs). So after an override is cleared the file would keep the override value forever. Therefore, when an override tag that exists is cleared, Tagwright looks the release up on Discogs (the album's `DISCOGS_RELEASE_ID`) and writes the value `fixtags.py` would compute: `ALBUMARTIST` = the release artists (names without the `(n)` suffix, join words kept), `ALBUM` = the master title, or the release title when there is no master (the rule in discogs ADR 0002 §3). The lookup happens before any file is changed; if Discogs cannot be reached or the album has no Discogs ID, an artist/title override is not cleared and the error is shown. Clearing an override that is not set changes nothing, so saving the dialog never overwrites a hand-set `ALBUMARTIST`.
 
 ### Tracks tab
 One row per file: disc, track, title, artist, disc subtitle, and a pen button that opens the lyrics editor ([0015](0015-track-playback-and-track-edit.md)). Only changed rows are sent. Writes `TITLE` (required), `ARTIST`, `DISCNUMBER`, `TRACKNUMBER`, `SET SUBTITLE` and `DISCSUBTITLE` (kept equal so it shows before the next fix). Files are renamed afterwards ([0010](0010-bliss-file-naming.md)).

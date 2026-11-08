@@ -743,8 +743,30 @@ def get_tags(path: str):
 	}
 
 
+def discogs_defaults(rid: str) -> dict[str, str]:
+	"""What fixtags would derive from Discogs for ALBUMARTIST and ALBUM: release artists, master title (else release title)."""
+	r = discogs(f'/releases/{rid}')
+	title = r.get('title', '').strip()
+	if r.get('master_id'):
+		try:
+			title = discogs(f'/masters/{r["master_id"]}').get('title', title).strip()
+		except HTTPException:
+			pass  # fixtags falls back to the release title as well
+	return {'ALBUMARTIST': artist_names(r.get('artists', [])), 'ALBUM': title}
+
+
 def write_album_fields(album: Path, fields: dict) -> None:
-	for f in flacs(album):
+	"""Write album-level fields to every file; blank removes. Clearing an override that is set restores the Discogs value."""
+	files = flacs(album)
+	first = FLAC(files[0]).tags or {}
+	clearing = [k for k in OVERRIDES if k in fields and not str(fields[k]).strip() and tag(first, k)]
+	restore = {}
+	if clearing:
+		rid = tag(first, 'DISCOGS_RELEASE_ID')
+		if not rid:
+			raise HTTPException(400, 'cannot restore the Discogs value: the album has no Discogs release ID')
+		restore = discogs_defaults(rid)  # before touching any file: a failed lookup changes nothing
+	for f in files:
 		a = FLAC(f)
 		if a.tags is None:
 			a.add_tags()
@@ -754,8 +776,13 @@ def write_album_fields(album: Path, fields: dict) -> None:
 				a[key] = [value]
 				if key in OVERRIDES:
 					a[OVERRIDES[key]] = [value]
+			elif key in OVERRIDES:
+				if key in a.tags:
+					del a.tags[key]
+					if restore.get(OVERRIDES[key]):
+						a[OVERRIDES[key]] = [restore[OVERRIDES[key]]]
 			else:
-				for k in (key, *ALBUM_FIELDS[key]) if key not in OVERRIDES else (key,):
+				for k in (key, *ALBUM_FIELDS[key]):
 					if k in a.tags:
 						del a.tags[k]
 		a.save()

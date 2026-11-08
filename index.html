@@ -78,10 +78,10 @@
     <h3 class="font-semibold text-lg">Edit album</h3>
     <fieldset class="fieldset mt-3"><legend class="fieldset-legend">Album artist</legend>
       <input id="a_artist" type="text" class="input input-sm w-full" autocomplete="off">
-      <p class="label whitespace-normal">Saved as ALBUM_ARTIST_OVERRIDE and used instead of the Discogs artist. Empty removes the override.</p></fieldset>
+      <p class="label whitespace-normal">Saved as ALBUM_ARTIST_OVERRIDE and used instead of the Discogs artist. Empty removes the override and restores the Discogs artist.</p></fieldset>
     <fieldset class="fieldset"><legend class="fieldset-legend">Album title</legend>
       <input id="a_title" type="text" class="input input-sm w-full" autocomplete="off">
-      <p class="label whitespace-normal">Saved as ALBUM_TITLE_OVERRIDE and used instead of the Discogs title. Empty removes the override.</p></fieldset>
+      <p class="label whitespace-normal">Saved as ALBUM_TITLE_OVERRIDE and used instead of the Discogs title. Empty removes the override and restores the Discogs master title.</p></fieldset>
     <p class="text-error text-sm mt-2" id="aerr"></p>
     <div class="modal-action">
       <button class="btn btn-sm" id="aclose">Cancel</button>
@@ -449,8 +449,8 @@ player.onended = () => { playing = null; updatePlayIcons(); };
 
 // ---- tag editor: fields fixtags never overwrites are editable, what Discogs writes is shown read-only ----
 const KFIELDS = [
-  ['ALBUM_ARTIST_OVERRIDE', 'Album artist', 'Written to ALBUMARTIST on every fix and used in the folder name. Empty: use the ARTIST tag.'],
-  ['ALBUM_TITLE_OVERRIDE', 'Album title', 'Replaces the Discogs title. Empty: use the Discogs master title.'],
+  ['ALBUM_ARTIST_OVERRIDE', 'Album artist', 'Written to ALBUMARTIST on every fix and used in the folder name. Empty: remove the override and restore the Discogs artist.'],
+  ['ALBUM_TITLE_OVERRIDE', 'Album title', 'Replaces the Discogs title. Empty: remove the override and restore the Discogs master title.'],
   ['ALBUM_FORMAT', 'Format', 'For example CD, SACD, Vinyl. Empty: CD.'],
   ['ALBUM_EDITION', 'Edition', 'For example Remastered or Gold Disc. Part of the version string.'],
   ['SUBTITLE', 'Subtitle', 'Used as the format when Format is empty.'],
