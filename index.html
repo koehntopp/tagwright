@@ -550,7 +550,7 @@ let edt = null;
 async function openEdit(path, file) {
   try {
     const t = await api('/api/track?path=' + encodeURIComponent(path) + '&file=' + encodeURIComponent(file));
-    edt = {path, file, length: t.length}; $('e_file').textContent = file + (t.length ? '  ·  ' + mmss(t.length) : ''); $('e_title').value = t.title; $('e_artist').value = t.artist; $('e_res').classList.add('hidden'); $('e_lyrics').value = t.lyrics; kind(); $('eerr').textContent = '';
+    edt = {path, file, length: t.length}; $('e_file').innerHTML = esc(file) + (t.length ? ` <span class="badge badge-ghost badge-xs w-10 justify-center align-middle">${mmss(t.length)}</span>` : ''); $('e_title').value = t.title; $('e_artist').value = t.artist; $('e_res').classList.add('hidden'); $('e_lyrics').value = t.lyrics; kind(); $('eerr').textContent = '';
     $('edlg').showModal();
   } catch (e) { toast(e.message, 'alert-error'); }
 }
@@ -574,11 +574,11 @@ $('e_search').onclick = async () => {
     if (edt.length) r = r.sort((a, b) => near(a) - near(b));
     box.innerHTML = r.length ? `<div class="sticky top-0 z-10 px-2 py-1 bg-base-200 text-base-content/60 font-medium">${r.length} result${r.length > 1 ? 's' : ''} on lrclib.net</div>` + r.map((x, i) => `<div class="p-2 hover:bg-base-200/60">
       <div class="flex items-center gap-2">
-        <span class="badge badge-xs w-10 justify-center shrink-0 ${edt.length && near(x) <= 3 ? 'badge-success' : 'badge-ghost'}" title="${edt.length ? 'this file is ' + mmss(edt.length) : ''}">${mmss(x.duration)}</span>
+        <span class="badge badge-xs w-10 justify-center shrink-0 badge-ghost" title="${edt.length ? 'this file is ' + mmss(edt.length) : ''}">${mmss(x.duration)}</span>
         <div class="min-w-0 flex-1"><div class="truncate font-medium">${esc(x.artist)} - ${esc(x.title)}</div><div class="truncate text-base-content/50">${esc(x.album)}</div></div></div>
       <div class="flex justify-end gap-1 mt-1">
-        ${x.synced ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="synced">LRC</button>` : ''}
-        ${x.plain ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="plain">TXT</button>` : ''}
+        ${x.synced ? `<button type="button" class="btn btn-xs btn-success" data-use="${i}" data-k="synced">LRC</button>` : ''}
+        ${x.plain ? `<button type="button" class="btn btn-xs btn-warning" data-use="${i}" data-k="plain">TXT</button>` : ''}
         ${x.instrumental ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="instr">Instrumental</button>` : ''}</div></div>`).join('') : '<div class="p-3 text-base-content/60">No results.</div>';
     box.querySelectorAll('[data-use]').forEach(b => b.onclick = () => {
       const x = r[+b.dataset.use], k = b.dataset.k;
