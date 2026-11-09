@@ -31,6 +31,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0025](0025-fingerprint-length-in-discogs-repository.md) | Fingerprints read the first 120 seconds (discogs repository change) | Accepted |
 | [0026](0026-ready-filter-returns.md) | The Ready filter returns to the top bar | Accepted |
 | [0027](0027-legacy-dynamic-range-tags-removed.md) | Legacy spaced dynamic-range tags removed from the discogs scripts | Accepted |
+| [0028](0028-replaygain-skip-needs-album-gain.md) | rsgain skips an album only when it already has album gain | Accepted |
 
 ## Which ADR covers what
 
@@ -54,6 +55,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | cover delete | 0024 |
 | fingerprint length | 0025 |
 | dynamic-range tag names | 0005, 0027 |
+| ReplayGain skip | 0028 |
 | top bar navigation entries | 0022, 0026 |
 | layout, colours, widths, dialogs, `index.html` styling | 0017, 0022 (top bar replaces the sidebar) |
 | how to test | 0018 |
