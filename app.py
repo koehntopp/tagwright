@@ -301,7 +301,7 @@ MISSING_TEXT = {
 def album_issues(out: dict, tags: list, small_cover: bool) -> list[dict]:
 	"""Clearly identifiable problems, one line each: {text, action, level}; recomputed from the tags on every refresh.
 
-	level 'warn' blocks the album (status needs), 'info' is a notice. action tells the UI which button to offer.
+	level 'warn' blocks the album (status needs), 'ingest' blocks only the move to ingest, 'info' is a notice. action tells the UI which button to offer.
 	"""
 	n, issues = len(tags), []
 	missing = lambda *keys: sum(1 for t in tags if not tag(t, *keys))  # noqa: E731
@@ -324,7 +324,7 @@ def album_issues(out: dict, tags: list, small_cover: bool) -> list[dict]:
 	if dup := sum(1 for v in {x: numbers.count(x) for x in numbers}.values() if v > 1):
 		issues.append({'text': f'{dup} disc/track number{" is" if dup == 1 else "s are"} used by more than one file.', 'action': 'tracks', 'level': 'warn'})
 	if small_cover:
-		issues.append({'text': cover_note(out['cover']), 'action': 'cover', 'level': 'warn'})
+		issues.append({'text': cover_note(out['cover']), 'action': 'cover', 'level': 'ingest'})
 	return issues
 
 
@@ -586,6 +586,8 @@ def move(body: dict):
 	s = get_summary(path)
 	if s['status'] != 'fixed':
 		raise HTTPException(409, 'album is not fully fixed')
+	if any(i['level'] == 'ingest' for i in s['issues']):
+		raise HTTPException(409, 'cover is below the minimum size; replace it or lower the minimum in settings')
 	dest = INGEST / path.name
 	if dest.exists():
 		raise HTTPException(409, f'{dest} already exists')

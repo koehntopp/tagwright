@@ -145,7 +145,7 @@
         <p class="label whitespace-normal">Fixed albums are moved here.</p></fieldset>
       <fieldset class="fieldset"><legend class="fieldset-legend">Minimum cover size (pixels)</legend>
         <input id="s_min" type="number" min="0" max="20000" step="50" class="input input-sm w-40 font-mono">
-        <p class="label whitespace-normal">An album whose cover is smaller than this on either side, or has none, is blocked (Needs input). 0 turns the check off.</p></fieldset>
+        <p class="label whitespace-normal">An album whose cover is smaller than this on either side, or has none, cannot be moved to ingest. 0 turns the check off.</p></fieldset>
       <fieldset class="fieldset"><legend class="fieldset-legend">Discogs API key</legend>
         <input id="s_d" type="password" class="input input-sm w-full font-mono" autocomplete="off">
         <p class="label whitespace-normal">Leave blank to keep the stored key.</p></fieldset>
@@ -312,7 +312,7 @@ function renderInspector() {
       <div class="flex gap-2 mt-5">
         <button class="btn btn-sm btn-neutral flex-1" id="editor">Tag Editor</button>
         <button class="btn btn-primary btn-sm flex-1" id="run" ${needs || job.state === 'running' ? 'disabled' : ''}>Run fixes</button>
-        <button class="btn btn-sm flex-1" id="move" ${a.status !== 'fixed' || job.state === 'running' ? 'disabled' : ''}>Move to ingest</button>
+        <button class="btn btn-sm flex-1" id="move" ${a.status !== 'fixed' || (a.issues || []).some(i => i.level === 'ingest') || job.state === 'running' ? 'disabled' : ''}>Move to ingest</button>
       </div>
       <div class="mt-4 space-y-2">${(a.issues || []).map(i => `<div role="alert" class="alert ${i.level === 'info' ? 'alert-info' : 'alert-warning'} alert-soft text-[13px]">${svg(ico.warn)}<span>${esc(i.text)}</span>${i.action ? `<button class="btn btn-xs" data-issue="${i.action}">${{search: 'Search', album: 'Tag Editor', tracks: 'Tag Editor', cover: 'Upload'}[i.action]}</button>` : ''}</div>`).join('')}</div>
       <div class="mt-6">

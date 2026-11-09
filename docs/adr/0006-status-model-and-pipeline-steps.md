@@ -30,7 +30,7 @@ An album is a folder that contains FLAC files. Folders named `Disc N` or `CD N` 
 
 A step may be **done but partial** (shown yellow, still counts as done):
 - Lyrics: at least one track has plain-text (not synced) lyrics.
-- Tags and cover: the cover is smaller than the minimum cover size or missing ([0016](0016-cover-art.md)); such an album is also `needs` (blocking issue).
+- Tags and cover: the cover is smaller than the minimum cover size or missing ([0016](0016-cover-art.md)); the issue line has level `ingest`: the album keeps its status (Run fixes works, the pipeline needs no large cover) but cannot be moved to ingest.
 
 Lyrics kinds per track, checked in this order (the same rule as the discogs `lrc_count.py`, which this mirrors):
 1. Empty `LYRICS`: `instr` if `LYRICS_LANGUAGE` is `zxx`, else `none`.
@@ -60,7 +60,7 @@ A track is "missing" only when it is `none`. Any non-empty lyrics, synced, plain
 | the files **disagree** on an album-level tag that `fixtags.py` and `bliss.py` read from the **first file only**: Discogs release ID, album artist, catalog number, album format (different values), and edition, MusicBrainz ID and the two overrides (different values, or set on only some tracks) | warn | Search for the release ID, else Tag Editor, Album tab (one save writes every file) |
 | tracks without disc number, track number, title or artist (one line per tag, with counts) | warn | Tag Editor, Tracks tab |
 | the same disc/track number on more than one file | warn | Tag Editor, Tracks tab |
-| cover smaller than the minimum cover size (setting, default 1400 px, either side), or none | warn | Upload |
+| cover smaller than the minimum cover size (setting, default 1400 px, either side), or none | ingest (blocks only the move to ingest) | Upload |
 
 Adding a rule here means adding it to `album_issues()` and this table. A check that the pipeline enforces by itself and that Tagwright cannot fix in the editor (for example the Discogs-derived `ALBUM` or dates) is not an issue line.
 
