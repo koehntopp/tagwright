@@ -113,7 +113,7 @@
       </div>
     </div>
     <div class="flex gap-3 items-stretch">
-      <textarea id="e_lyrics" class="textarea flex-1 min-w-0 h-[60vh] min-h-72 font-mono text-xs leading-relaxed" spellcheck="false" placeholder="Plain text or synced [mm:ss.xx] lines. Empty removes the lyrics."></textarea>
+      <textarea id="e_lyrics" class="textarea flex-1 min-w-0 h-[60vh] min-h-72 font-mono text-xs leading-relaxed" spellcheck="false" placeholder="Plain text (TXT) or synced [mm:ss.xx] lines (LRC). Empty removes the lyrics."></textarea>
       <div id="e_res" class="hidden w-[26rem] shrink-0 h-[60vh] min-h-72 overflow-y-auto rounded-lg border border-base-300 divide-y divide-base-300 text-xs"></div>
     </div>
     <p class="text-xs text-base-content/50 mt-2">Title and artist are only used for the search and are not saved (change them in the Tag Editor).</p>
@@ -558,7 +558,7 @@ $('eclose').onclick = () => $('edlg').close();
 function kind() {
   const v = $('e_lyrics').value, k = $('e_kind');
   const synced = /^\s*\[\d+:\d+(\.\d+)?\]/m.test(v), n = v.trim() ? v.replace(/\n+$/, '').split('\n').length : 0;
-  k.textContent = !n ? 'Empty' : synced ? 'Synced' : 'Plain';
+  k.textContent = !n ? 'Empty' : synced ? 'LRC' : 'TXT';
   k.className = 'badge badge-sm w-16 justify-center ' + (!n ? 'badge-ghost' : synced ? 'badge-success' : 'badge-warning');
   $('e_count').textContent = n ? n + ' line' + (n > 1 ? 's' : '') : '';
 }
@@ -577,8 +577,8 @@ $('e_search').onclick = async () => {
         <span class="badge badge-xs w-10 justify-center shrink-0 ${edt.length && near(x) <= 3 ? 'badge-success' : 'badge-ghost'}" title="${edt.length ? 'this file is ' + mmss(edt.length) : ''}">${mmss(x.duration)}</span>
         <div class="min-w-0 flex-1"><div class="truncate font-medium">${esc(x.artist)} - ${esc(x.title)}</div><div class="truncate text-base-content/50">${esc(x.album)}</div></div></div>
       <div class="flex justify-end gap-1 mt-1">
-        ${x.synced ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="synced">Synced</button>` : ''}
-        ${x.plain ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="plain">Plain</button>` : ''}
+        ${x.synced ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="synced">LRC</button>` : ''}
+        ${x.plain ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="plain">TXT</button>` : ''}
         ${x.instrumental ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="instr">Instrumental</button>` : ''}</div></div>`).join('') : '<div class="p-3 text-base-content/60">No results.</div>';
     box.querySelectorAll('[data-use]').forEach(b => b.onclick = () => {
       const x = r[+b.dataset.use], k = b.dataset.k;

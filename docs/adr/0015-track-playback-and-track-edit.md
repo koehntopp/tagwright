@@ -16,7 +16,7 @@ UC-8. Checking a track by ear and fixing its lyrics should not need another appl
   - **Instrumental** replaces the whole field with `[00:00.00] [Instrumental]`.
   - **Spoken Intro** replaces the whole field with `[00:00.00](Spoken Intro)`.
   Both clear the existing lyrics first and only change the text field; nothing is stored until Save (Cancel keeps the old lyrics). `update_lyrics.py` normalises the instrumental marker into its canonical block on its next run; the spoken-intro line is an ordinary synced line.
-- Layout: a shaded search bar (Title and Artist inputs and the **Search lrclib.net** button, [0021](0021-lrclib-lyrics-search.md)) above the lyrics. The lyrics header shows a fixed-width format badge (Synced green, Plain yellow, Empty grey) and a line count, updated as the text changes; the marker buttons are ghost buttons. The results box has a sticky count header, and the result last used is tinted.
+- Layout: a shaded search bar (Title and Artist inputs and the **Search lrclib.net** button, [0021](0021-lrclib-lyrics-search.md)) above the lyrics. The lyrics header shows a fixed-width format badge (LRC green, TXT yellow, Empty grey, the same names as the track list) and a line count, updated as the text changes; the marker buttons are ghost buttons. The results box has a sticky count header, and the result last used is tinted.
 - Lyrics are written as a single `LYRICS` value, the tag `update_lyrics.py` and the status model use ([0006](0006-status-model-and-pipeline-steps.md)). Editing lyrics does not set or clear `LYRICS_LANGUAGE`.
 
 ## Consequences
