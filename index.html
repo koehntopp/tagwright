@@ -572,7 +572,7 @@ $('e_search').onclick = async () => {
     let r = await api('/api/lrclib/search?' + q);
     const near = x => Math.abs(x.duration - edt.length);
     if (edt.length) r = r.sort((a, b) => near(a) - near(b));
-    box.innerHTML = r.length ? `<div class="sticky top-0 z-10 px-2 py-1 bg-base-200 text-base-content/60 font-medium">${r.length} result${r.length > 1 ? 's' : ''} on lrclib.net</div>` + r.map((x, i) => `<div class="p-2 hover:bg-base-200/60">
+    box.innerHTML = r.length ? `<div class="sticky top-0 z-10 px-2 py-1 bg-base-200 text-base-content/60 font-medium">${r.length} result${r.length > 1 ? 's' : ''} on lrclib.net</div>` + r.map((x, i) => `<div class="p-2 ${edt.length && near(x) <= 3 ? 'bg-success/15' : 'hover:bg-base-200/60'}" ${edt.length && near(x) <= 3 ? 'title="length matches this file"' : ''}>
       <div class="flex items-center gap-2">
         <span class="badge badge-xs w-10 justify-center shrink-0 badge-ghost" title="${edt.length ? 'this file is ' + mmss(edt.length) : ''}">${mmss(x.duration)}</span>
         <div class="min-w-0 flex-1"><div class="truncate font-medium">${esc(x.artist)} - ${esc(x.title)}</div><div class="truncate text-base-content/50">${esc(x.album)}</div></div></div>
@@ -583,8 +583,8 @@ $('e_search').onclick = async () => {
     box.querySelectorAll('[data-use]').forEach(b => b.onclick = () => {
       const x = r[+b.dataset.use], k = b.dataset.k;
       $('e_lyrics').value = k === 'instr' ? '[00:00.00] [Instrumental]' : x[k]; kind();
-      box.querySelectorAll('[data-use]').forEach(o => o.closest('.p-2').classList.remove('bg-primary/10'));
-      b.closest('.p-2').classList.add('bg-primary/10');
+      box.querySelectorAll('[data-use]').forEach(o => o.closest('.p-2').classList.remove('ring-2', 'ring-inset', 'ring-primary/50'));
+      b.closest('.p-2').classList.add('ring-2', 'ring-inset', 'ring-primary/50');
     });
   } catch (e) { box.innerHTML = `<div class="p-3 text-error">${esc(e.message)}</div>`; }
   btn.disabled = false;
