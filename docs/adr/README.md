@@ -24,6 +24,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0018](0018-verification.md) | Verification without touching real data | Accepted |
 | [0019](0019-version-control-and-releases.md) | Version control and releases | Superseded by 0020 |
 | [0020](0020-work-directly-on-main.md) | Work directly on main; no feature branches | Accepted |
+| [0021](0021-lrclib-lyrics-search.md) | Lyrics search on lrclib.net in the track editor | Accepted |
 
 ## Which ADR covers what
 
@@ -41,7 +42,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | Move to ingest | 0011 |
 | Discogs search, track assignment | 0013 |
 | tag editor, override pencils, which tags are editable | 0014 |
-| play button, track edit dialog, lyrics editing | 0015 |
+| play button, track edit dialog, lyrics editing | 0015, 0021 (artist field, lrclib search) |
 | cover display, size warning, cover upload | 0016 |
 | layout, colours, widths, dialogs, `index.html` styling | 0017 |
 | how to test | 0018 |

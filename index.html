@@ -98,13 +98,19 @@
   <div class="modal-box w-11/12 max-w-[48rem] overflow-x-hidden">
     <h3 class="font-semibold text-lg">Edit track</h3>
     <div class="text-xs text-base-content/50 font-mono mt-1 truncate" id="e_file"></div>
-    <fieldset class="fieldset mt-3"><legend class="fieldset-legend">Title</legend>
-      <input id="e_title" type="text" class="input input-sm w-full" autocomplete="off"></fieldset>
+    <div class="grid grid-cols-2 gap-3 mt-3">
+      <fieldset class="fieldset"><legend class="fieldset-legend">Title</legend>
+        <input id="e_title" type="text" class="input input-sm w-full" autocomplete="off"></fieldset>
+      <fieldset class="fieldset"><legend class="fieldset-legend">Artist</legend>
+        <input id="e_artist" type="text" class="input input-sm w-full" autocomplete="off"></fieldset>
+    </div>
     <fieldset class="fieldset"><legend class="fieldset-legend">Lyrics</legend>
-      <div class="flex gap-2 mb-1">
+      <div class="flex flex-wrap gap-2 mb-1">
         <button type="button" class="btn btn-xs" id="e_instr" title="Replace the lyrics with an instrumental marker">Instrumental</button>
         <button type="button" class="btn btn-xs" id="e_intro" title="Replace the lyrics with a spoken-intro marker">Spoken Intro</button>
+        <button type="button" class="btn btn-xs ml-auto" id="e_search" title="Search lrclib.net with the title and artist above"><img src="/static/lrclib.ico" alt="" class="size-3.5">Search lrclib.net</button>
       </div>
+      <div id="e_res" class="hidden mb-2 max-h-60 overflow-y-auto rounded-lg border border-base-300 divide-y divide-base-300 text-xs"></div>
       <textarea id="e_lyrics" class="textarea w-full h-72 font-mono text-xs leading-relaxed" spellcheck="false"></textarea>
       <p class="label whitespace-normal">Plain text or synced ([mm:ss.xx] lines). Empty removes the lyrics. The file is renamed to match the title.</p></fieldset>
     <p class="text-error text-sm mt-2" id="eerr"></p>
@@ -286,7 +292,7 @@ function renderInspector() {
       ${stepSel !== null ? (f.checks[stepSel] ? (f.lyrics === 'txt' && a.steps[stepSel].name === 'Lyrics' ? '<span class="text-warning font-semibold" title="plain text lyrics">✓</span>' : '<span class="text-success font-semibold" title="done">✓</span>') : '<span class="text-error font-semibold" title="missing">✗</span>') : ''}
       ${f.dr ? `<span class="badge w-12 justify-center shrink-0 badge-success badge-soft badge-xs">DR${esc(f.dr)}</span>` : '<span class="badge w-12 justify-center shrink-0 badge-ghost badge-xs">DR —</span>'}
       ${lyBadge[f.lyrics]}
-      <button class="btn btn-ghost btn-circle btn-xs shrink-0" data-edit="${esc(f.file)}" title="Edit title and lyrics">${svg(ico.pen, 'size-3')}</button></li>`;
+      <button class="btn btn-ghost btn-circle btn-xs shrink-0" data-edit="${esc(f.file)}" title="Edit title, artist and lyrics">${svg(ico.pen, 'size-3')}</button></li>`;
   const drBadge = a.dr ? `<span class="badge badge-success badge-soft badge-sm" title="Album dynamic range">DR${esc(a.dr)}</span>` : '';
   $('inspector').innerHTML = `
     <div class="p-6">
@@ -540,16 +546,37 @@ let edt = null;
 async function openEdit(path, file) {
   try {
     const t = await api('/api/track?path=' + encodeURIComponent(path) + '&file=' + encodeURIComponent(file));
-    edt = {path, file}; $('e_file').textContent = file; $('e_title').value = t.title; $('e_lyrics').value = t.lyrics; $('eerr').textContent = '';
+    edt = {path, file, length: t.length}; $('e_file').textContent = file; $('e_title').value = t.title; $('e_artist').value = t.artist; $('e_res').classList.add('hidden'); $('e_lyrics').value = t.lyrics; $('eerr').textContent = '';
     $('edlg').showModal();
   } catch (e) { toast(e.message, 'alert-error'); }
 }
 $('eclose').onclick = () => $('edlg').close();
 $('e_instr').onclick = () => { $('e_lyrics').value = '[00:00.00] [Instrumental]'; };
+$('e_search').onclick = async () => {
+  const box = $('e_res'), btn = $('e_search');
+  box.classList.remove('hidden'); box.innerHTML = '<div class="p-3 text-base-content/60">Searching lrclib.net...</div>'; btn.disabled = true;
+  try {
+    const q = new URLSearchParams({title: $('e_title').value, artist: $('e_artist').value});
+    let r = await api('/api/lrclib/search?' + q);
+    const near = x => Math.abs(x.duration - edt.length);
+    if (edt.length) r = r.sort((a, b) => near(a) - near(b));
+    box.innerHTML = r.length ? r.map((x, i) => `<div class="flex items-center gap-2 p-2">
+      <span class="badge badge-xs w-10 justify-center shrink-0 ${edt.length && near(x) <= 3 ? 'badge-success' : 'badge-ghost'}" title="${edt.length ? 'this file is ' + mmss(edt.length) : ''}">${mmss(x.duration)}</span>
+      <div class="min-w-0 flex-1"><div class="truncate font-medium">${esc(x.artist)} - ${esc(x.title)}</div><div class="truncate text-base-content/50">${esc(x.album)}</div></div>
+      ${x.synced ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="synced">Synced</button>` : ''}
+      ${x.plain ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="plain">Plain</button>` : ''}
+      ${x.instrumental ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="instr">Instrumental</button>` : ''}</div>`).join('') : '<div class="p-3 text-base-content/60">No results.</div>';
+    box.querySelectorAll('[data-use]').forEach(b => b.onclick = () => {
+      const x = r[+b.dataset.use], k = b.dataset.k;
+      $('e_lyrics').value = k === 'instr' ? '[00:00.00] [Instrumental]' : x[k];
+    });
+  } catch (e) { box.innerHTML = `<div class="p-3 text-error">${esc(e.message)}</div>`; }
+  btn.disabled = false;
+};
 $('e_intro').onclick = () => { $('e_lyrics').value = '[00:00.00](Spoken Intro)'; };
 $('esave').onclick = async () => {
   try {
-    const d = await post('/api/track', {...edt, title: $('e_title').value, lyrics: $('e_lyrics').value});
+    const d = await post('/api/track', {path: edt.path, file: edt.file, title: $('e_title').value, artist: $('e_artist').value, lyrics: $('e_lyrics').value});
     $('edlg').close(); addLog(d.log); toast('Track saved'); await refreshOne(edt.path);
   } catch (e) { $('eerr').textContent = e.message; }
 };

@@ -999,13 +999,15 @@ def audio(path: str, file: str):
 
 @app.get('/api/track')
 def get_track(path: str, file: str):
-	t = FLAC(track_path(path, file)).tags or {}
-	return {'title': tag(t, 'TITLE'), 'lyrics': tag(t, 'LYRICS')}
+	f = FLAC(track_path(path, file))
+	t = f.tags or {}
+	return {'title': tag(t, 'TITLE'), 'artist': tag(t, 'ARTIST'), 'album': tag(t, 'ALBUM'), 'lyrics': tag(t, 'LYRICS'),
+		'length': round(f.info.length) if f.info else 0}
 
 
 @app.post('/api/track')
 def set_track(body: dict):
-	"""Edit title and lyrics of one file; the file is renamed to match the new title."""
+	"""Edit title, artist and lyrics of one file; the file is renamed to match the new title."""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	album = safe(body.get('path', ''))
@@ -1016,12 +1018,37 @@ def set_track(body: dict):
 	if not title:
 		raise HTTPException(400, 'title must not be empty')
 	a['TITLE'] = [title]
+	if 'artist' in body:
+		artist = str(body['artist']).strip()
+		if not artist:
+			raise HTTPException(400, 'artist must not be empty')
+		a['ARTIST'] = [artist]
 	if lyrics.strip():
 		a['LYRICS'] = [lyrics.strip('\n')]
 	elif 'LYRICS' in a.tags:
 		del a.tags['LYRICS']
 	a.save()
 	return {'log': [f'edited {body["file"]}', *rename_files(album)], 'album': get_summary(album)}
+
+
+@app.get('/api/lrclib/search')
+def lrclib_search(title: str, artist: str = ''):
+	"""Search lrclib.net for lyrics (read-only; nothing is written). Returns up to 20 results with their lyrics."""
+	if not title.strip():
+		raise HTTPException(400, 'enter a title to search for')
+	q = {'track_name': title.strip(), **({'artist_name': artist.strip()} if artist.strip() else {})}
+	req = urllib.request.Request('https://lrclib.net/api/search?' + urlencode(q),
+		headers={'User-Agent': 'Tagwright/0.2 (+https://github.com/koehntopp/tagwright)'})
+	try:
+		with urllib.request.urlopen(req, timeout=15) as r:  # noqa: S310
+			found = json.load(r)
+	except urllib.error.HTTPError as e:
+		raise HTTPException(502, f'lrclib.net answered HTTP {e.code}') from e
+	except (urllib.error.URLError, TimeoutError, ValueError) as e:
+		raise HTTPException(502, f'lrclib.net could not be reached: {e}') from e
+	return [{'artist': x.get('artistName') or '', 'title': x.get('trackName') or '', 'album': x.get('albumName') or '',
+		'duration': round(x.get('duration') or 0), 'instrumental': bool(x.get('instrumental')),
+		'synced': x.get('syncedLyrics') or '', 'plain': x.get('plainLyrics') or ''} for x in found[:20]]
 
 
 # Album tags that fixtags reads as user input (it never overwrites them) and may therefore be edited here.
