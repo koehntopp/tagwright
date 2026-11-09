@@ -10,13 +10,13 @@ The 240 px sidebar held a logo, four navigation entries and the pipeline status.
 
 ## Decision
 
-- **Layout**: a full-width **top bar** (56 px) above two full-height columns: the card grid (scrolls itself) and the inspector (600 px, scrolls itself). No page scroll.
-- **Top bar, left to right**: app icon and name; the four navigation entries (**All albums**, **Needs input**, **Ready**, **Fixed**, each with its count badge, the active one dark `btn-neutral`); then right-aligned the pipeline status (dot, "Pipeline" and the job line, the red outlined **Stop** button only while a job runs) and the settings gear.
-- **Library toolbar**: a sticky 56 px row at the top of the card column, above the album list, holds the sort select, the search with the ⌘K hint, rescan and **Run all ready** (right-aligned). These act on the album list, so they sit with it, not in the top bar. The dot colours are unchanged ([0017](0017-ui-layout-and-design-system.md)).
+- **Layout**: a full-width **top bar** (56 px) above two full-height columns: the card grid (scrolls itself) and the inspector (600 px, scrolls itself). No page scroll. The top bar has the same two zones: the left zone is as wide as the card column, the right zone as wide as the inspector (600 px, with a left border).
+- **Left zone** (above the album list, left to right): app icon (the name "Tagwright" shows from 1500 px up), the four navigation entries (**All albums**, **Needs input**, **Ready**, **Fixed**, text and count badge, the active one dark `btn-neutral`), then right-aligned the sort select, the search (the flexible element, 6 rem minimum; the ⌘K hint shows from 1600 px up, the shortcut always works), rescan and **Run all ready**. At 1440 px the zone is 840 px wide and these are tight; adding a control needs something else to give.
+- **Right zone** (above the inspector): the pipeline status (dot, "Pipeline" and the job line, the red outlined **Stop** button only while a job runs) and the settings gear on the right. The dot colours are unchanged ([0017](0017-ui-layout-and-design-system.md)).
 - The navigation stays the only filter: no second navigation, stats bar or filter tabs are added.
-- The "Library" page title is dropped; the active navigation entry says where you are.
+- The "Library" page title and the icons in the navigation entries are dropped; the active navigation entry says where you are.
 - Designed for 1440 px and wider; there is no narrow-screen layout.
 
 ## Consequences
 
-- The grid gets the full width left of the inspector. The top bar has room to spare; list controls go in the library toolbar.
+- The grid gets the full width left of the inspector. The search field is small at 1440 px (about 57 px of typing room) and grows on wider windows; if that is too tight, the sort select or the inspector width are the things to change.
