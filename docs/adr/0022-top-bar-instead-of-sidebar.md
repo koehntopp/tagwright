@@ -11,11 +11,12 @@ The 240 px sidebar held a logo, four navigation entries and the pipeline status.
 ## Decision
 
 - **Layout**: a full-width **top bar** (56 px) above two full-height columns: the card grid (scrolls itself) and the inspector (600 px, scrolls itself). No page scroll.
-- **Top bar, left to right**: app icon and name; the four navigation entries (**All albums**, **Needs input**, **Ready**, **Fixed**, each with its count badge, the active one dark `btn-neutral`); then right-aligned the sort select, the search with the ⌘K hint, rescan, **Run all ready**, and the pipeline status (dot, "Pipeline" and the job line, the red outlined **Stop** button only while a job runs, the settings gear). The dot colours are unchanged ([0017](0017-ui-layout-and-design-system.md)).
+- **Top bar, left to right**: app icon and name; the four navigation entries (**All albums**, **Needs input**, **Ready**, **Fixed**, each with its count badge, the active one dark `btn-neutral`); then right-aligned the pipeline status (dot, "Pipeline" and the job line, the red outlined **Stop** button only while a job runs) and the settings gear.
+- **Library toolbar**: a sticky 56 px row at the top of the card column, above the album list, holds the sort select, the search with the ⌘K hint, rescan and **Run all ready** (right-aligned). These act on the album list, so they sit with it, not in the top bar. The dot colours are unchanged ([0017](0017-ui-layout-and-design-system.md)).
 - The navigation stays the only filter: no second navigation, stats bar or filter tabs are added.
 - The "Library" page title is dropped; the active navigation entry says where you are.
 - Designed for 1440 px and wider; there is no narrow-screen layout.
 
 ## Consequences
 
-- The grid gets the full width left of the inspector. The top bar is full at 1440 px; adding another control to it needs something else to shrink (the search field is the flexible one).
+- The grid gets the full width left of the inspector. The top bar has room to spare; list controls go in the library toolbar.
