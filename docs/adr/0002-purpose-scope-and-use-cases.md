@@ -23,7 +23,7 @@ Tagwright is a single-user, self-hosted web app that lets one person work throug
 | UC-6 | Give an album the right Discogs release: search Discogs, assign the album's files to the release's tracks (the album often holds only a subset), renumber, and fill the tags the pipeline expects a tagger to have imported (artist, album artist, album title, catalog number, cover) when they are missing. | [0013](0013-discogs-track-assignment.md) |
 | UC-7 | Edit tags the pipeline never overwrites (album artist/title overrides, format, edition, catalog number, MusicBrainz ID, per-track title/artist/disc/track/disc subtitle) and see, read-only, what Discogs writes. | [0014](0014-internal-tag-editor.md) |
 | UC-8 | Play a track; edit a track's lyrics, optionally searching lrclib.net under another title or artist. | [0015](0015-track-playback-and-track-edit.md), [0021](0021-lrclib-lyrics-search.md) |
-| UC-9 | See the cover's pixel size, be warned when it is small, replace it by uploading an image. | [0016](0016-cover-art.md) |
+| UC-9 | See the cover's pixel size, be warned when it is small, replace it by uploading or dropping an image, delete the embedded cover, open cover searches on external sites. | [0016](0016-cover-art.md) |
 | UC-10 | Rename files to the bliss pattern automatically after fixes and after edits. | [0010](0010-bliss-file-naming.md) |
 
 ### Out of scope

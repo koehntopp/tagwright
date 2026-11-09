@@ -426,6 +426,22 @@ async def set_cover(path: str, request: Request):
 	return fresh_summary(album)
 
 
+@app.delete('/api/cover')
+def delete_cover(path: str):
+	"""Remove the front and untyped covers from every file (other picture types stay). Folder images are not touched."""
+	if job['state'] == 'running':
+		raise HTTPException(409, 'a job is running')
+	album = safe(path)
+	for f in flacs(album):
+		a = FLAC(f)
+		keep = [p for p in a.pictures if p.type not in (0, 3)]
+		if len(keep) != len(a.pictures):
+			a.clear_pictures()
+			for p in keep:
+				a.add_picture(p)
+			a.save()
+	return fresh_summary(album)
+
 @app.get('/api/cover')
 def cover(path: str):
 	album = safe(path)
