@@ -1007,28 +1007,20 @@ def get_track(path: str, file: str):
 
 @app.post('/api/track')
 def set_track(body: dict):
-	"""Edit title, artist and lyrics of one file; the file is renamed to match the new title."""
+	"""Edit the lyrics of one file (empty removes the tag). Title and artist are edited in the tag editor's Tracks tab."""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	album = safe(body.get('path', ''))
 	a = FLAC(track_path(body.get('path', ''), body.get('file', '')))
 	if a.tags is None:
 		a.add_tags()
-	title, lyrics = str(body.get('title', '')).strip(), str(body.get('lyrics', ''))
-	if not title:
-		raise HTTPException(400, 'title must not be empty')
-	a['TITLE'] = [title]
-	if 'artist' in body:
-		artist = str(body['artist']).strip()
-		if not artist:
-			raise HTTPException(400, 'artist must not be empty')
-		a['ARTIST'] = [artist]
+	lyrics = str(body.get('lyrics', ''))
 	if lyrics.strip():
 		a['LYRICS'] = [lyrics.strip('\n')]
 	elif 'LYRICS' in a.tags:
 		del a.tags['LYRICS']
 	a.save()
-	return {'log': [f'edited {body["file"]}', *rename_files(album)], 'album': get_summary(album)}
+	return {'log': [f'edited lyrics of {body["file"]}'], 'album': get_summary(album)}
 
 
 @app.get('/api/lrclib/search')

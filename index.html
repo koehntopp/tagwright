@@ -99,9 +99,9 @@
     <h3 class="font-semibold text-lg">Edit track</h3>
     <div class="text-xs text-base-content/50 font-mono mt-1 truncate" id="e_file"></div>
     <div class="grid grid-cols-2 gap-3 mt-3">
-      <fieldset class="fieldset"><legend class="fieldset-legend">Title</legend>
+      <fieldset class="fieldset"><legend class="fieldset-legend">Title to search for</legend>
         <input id="e_title" type="text" class="input input-sm w-full" autocomplete="off"></fieldset>
-      <fieldset class="fieldset"><legend class="fieldset-legend">Artist</legend>
+      <fieldset class="fieldset"><legend class="fieldset-legend">Artist to search for</legend>
         <input id="e_artist" type="text" class="input input-sm w-full" autocomplete="off"></fieldset>
     </div>
     <fieldset class="fieldset"><legend class="fieldset-legend">Lyrics</legend>
@@ -112,7 +112,7 @@
       </div>
       <div id="e_res" class="hidden mb-2 max-h-60 overflow-y-auto rounded-lg border border-base-300 divide-y divide-base-300 text-xs"></div>
       <textarea id="e_lyrics" class="textarea w-full h-72 font-mono text-xs leading-relaxed" spellcheck="false"></textarea>
-      <p class="label whitespace-normal">Plain text or synced ([mm:ss.xx] lines). Empty removes the lyrics. The file is renamed to match the title.</p></fieldset>
+      <p class="label whitespace-normal">Plain text or synced ([mm:ss.xx] lines). Empty removes the lyrics. The title and artist above are only used for the lrclib.net search; they are not saved (change them in the Tag Editor).</p></fieldset>
     <p class="text-error text-sm mt-2" id="eerr"></p>
     <div class="modal-action">
       <button class="btn btn-sm" id="eclose">Cancel</button>
@@ -292,7 +292,7 @@ function renderInspector() {
       ${stepSel !== null ? (f.checks[stepSel] ? (f.lyrics === 'txt' && a.steps[stepSel].name === 'Lyrics' ? '<span class="text-warning font-semibold" title="plain text lyrics">✓</span>' : '<span class="text-success font-semibold" title="done">✓</span>') : '<span class="text-error font-semibold" title="missing">✗</span>') : ''}
       ${f.dr ? `<span class="badge w-12 justify-center shrink-0 badge-success badge-soft badge-xs">DR${esc(f.dr)}</span>` : '<span class="badge w-12 justify-center shrink-0 badge-ghost badge-xs">DR —</span>'}
       ${lyBadge[f.lyrics]}
-      <button class="btn btn-ghost btn-circle btn-xs shrink-0" data-edit="${esc(f.file)}" title="Edit title, artist and lyrics">${svg(ico.pen, 'size-3')}</button></li>`;
+      <button class="btn btn-ghost btn-circle btn-xs shrink-0" data-edit="${esc(f.file)}" title="Edit lyrics">${svg(ico.pen, 'size-3')}</button></li>`;
   const drBadge = a.dr ? `<span class="badge badge-success badge-soft badge-sm" title="Album dynamic range">DR${esc(a.dr)}</span>` : '';
   $('inspector').innerHTML = `
     <div class="p-6">
@@ -576,7 +576,7 @@ $('e_search').onclick = async () => {
 $('e_intro').onclick = () => { $('e_lyrics').value = '[00:00.00](Spoken Intro)'; };
 $('esave').onclick = async () => {
   try {
-    const d = await post('/api/track', {path: edt.path, file: edt.file, title: $('e_title').value, artist: $('e_artist').value, lyrics: $('e_lyrics').value});
+    const d = await post('/api/track', {path: edt.path, file: edt.file, lyrics: $('e_lyrics').value});
     $('edlg').close(); addLog(d.log); toast('Track saved'); await refreshOne(edt.path);
   } catch (e) { $('eerr').textContent = e.message; }
 };
