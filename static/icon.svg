@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<rect width="64" height="64" rx="14" fill="#5b4fd6"/>
+<rect width="64" height="64" rx="14" fill="#fd4401"/>
 <g transform="rotate(-20 32 32)">
-<path fill="#fff" fill-rule="evenodd" d="M6 32 20 17h34a4 4 0 0 1 4 4v22a4 4 0 0 1-4 4H20Zm14.5-3.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/>
-<path stroke="#5b4fd6" stroke-width="3.2" stroke-linecap="round" d="M31 29v6M36.500 26v12M42 23v18M47.500 26v12M53 29v6"/>
+<path fill="#f6f1e7" fill-rule="evenodd" d="M6 32 20 17h34a4 4 0 0 1 4 4v22a4 4 0 0 1-4 4H20Zm14.5-3.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/>
+<path stroke="#fd4401" stroke-width="3.2" stroke-linecap="round" d="M31 29v6M36.500 26v12M42 23v18M47.500 26v12M53 29v6"/>
 </g>
 </svg>
