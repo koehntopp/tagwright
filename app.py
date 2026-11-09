@@ -802,12 +802,18 @@ def release_tracks(rid: str) -> dict:
 		return releases[rid]
 	r = discogs(f'/releases/{rid}')
 	album_artist = artist_names(r.get('artists', []))
-	tracks, seq = [], 0
+	tracks, seq, head = [], 0, 0
 	for t in r.get('tracklist', []):
+		if t.get('type_') == 'heading':
+			if h := re.match(r'^(?:CD|DVD|Disc|Disk)\s*(\d+)\b', t.get('title', ''), re.I):
+				head = int(h[1])  # plain positions 1, 2, ... restart under each 'Disc N' heading
+			continue
 		if t.get('type_') != 'track':
 			continue
 		pos = t.get('position', '')
 		m = re.match(r'^(?:CD|DVD)?(\d+)[-.](\d+)$', pos, re.I)
+		if not m and head and pos.isdigit():
+			m = (None, head, pos)
 		seq += 1
 		tracks.append({
 			'i': len(tracks), 'position': pos, 'disc': int(m[1]) if m else 1, 'track': int(m[2]) if m else seq,

@@ -22,7 +22,7 @@ Same rules as the discogs repository (`fixtags.discogs_fetch`, `find_audiophile_
 - Consequence: the track counts of 20 search results take about 25 s to fill in. Parsed releases are cached, so each release is fetched once per server start.
 
 ### Tracklist
-Entries of type `track` only (headings and index entries are skipped). Position `D-T` or `CDD-T` gives disc and track; any other position (vinyl `A1`, plain numbers, empty) is numbered sequentially on disc 1. Track artists come from the release's per-track artists, else the release artists; the Discogs `(n)` disambiguation suffix is removed.
+Entries of type `track` only (index entries are skipped). Position `D-T` or `CDD-T` gives disc and track. A plain-number position under a heading `Disc N` / `CD N` / `DVD N` (Discogs often lists multi-disc releases this way, numbering each disc from 1) is track T of disc N. Any other position (vinyl `A1`, plain numbers, empty) is numbered sequentially on disc 1. Track artists come from the release's per-track artists, else the release artists; the Discogs `(n)` disambiguation suffix is removed.
 
 ### Proposed assignment
 `POST /api/tracks/propose` scores every file against every release track: title similarity x 0.6, duration closeness (within 8 s, x 0.25, only if Discogs has a duration), same disc and track number x 0.15. Pairs are taken greedily from the highest score; scores below 0.35 stay unassigned. Titles dominate because Discogs durations are often several seconds off.
