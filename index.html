@@ -93,7 +93,7 @@
 </dialog>
 
 <dialog id="edlg" class="modal">
-  <div class="modal-box w-11/12 max-w-[48rem] overflow-x-hidden">
+  <div class="modal-box w-11/12 max-w-[72rem] overflow-x-hidden">
     <h3 class="font-semibold text-lg">Edit track</h3>
     <div class="text-xs text-base-content/50 font-mono mt-1 truncate" id="e_file"></div>
     <div class="grid grid-cols-2 gap-3 mt-3">
@@ -108,8 +108,10 @@
         <button type="button" class="btn btn-xs" id="e_intro" title="Replace the lyrics with a spoken-intro marker">Spoken Intro</button>
         <button type="button" class="btn btn-xs ml-auto" id="e_search" title="Search lrclib.net with the title and artist above"><img src="/static/lrclib.ico" alt="" class="size-3.5">Search lrclib.net</button>
       </div>
-      <div id="e_res" class="hidden mb-2 max-h-60 overflow-y-auto rounded-lg border border-base-300 divide-y divide-base-300 text-xs"></div>
-      <textarea id="e_lyrics" class="textarea w-full h-72 font-mono text-xs leading-relaxed" spellcheck="false"></textarea>
+      <div class="flex gap-3 items-stretch">
+        <textarea id="e_lyrics" class="textarea flex-1 min-w-0 h-96 font-mono text-xs leading-relaxed" spellcheck="false"></textarea>
+        <div id="e_res" class="hidden w-[26rem] shrink-0 h-96 overflow-y-auto rounded-lg border border-base-300 divide-y divide-base-300 text-xs"></div>
+      </div>
       <p class="label whitespace-normal">Plain text or synced ([mm:ss.xx] lines). Empty removes the lyrics. The title and artist above are only used for the lrclib.net search; they are not saved (change them in the Tag Editor).</p></fieldset>
     <p class="text-error text-sm mt-2" id="eerr"></p>
     <div class="modal-action">
@@ -558,12 +560,14 @@ $('e_search').onclick = async () => {
     let r = await api('/api/lrclib/search?' + q);
     const near = x => Math.abs(x.duration - edt.length);
     if (edt.length) r = r.sort((a, b) => near(a) - near(b));
-    box.innerHTML = r.length ? r.map((x, i) => `<div class="flex items-center gap-2 p-2">
-      <span class="badge badge-xs w-10 justify-center shrink-0 ${edt.length && near(x) <= 3 ? 'badge-success' : 'badge-ghost'}" title="${edt.length ? 'this file is ' + mmss(edt.length) : ''}">${mmss(x.duration)}</span>
-      <div class="min-w-0 flex-1"><div class="truncate font-medium">${esc(x.artist)} - ${esc(x.title)}</div><div class="truncate text-base-content/50">${esc(x.album)}</div></div>
-      ${x.synced ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="synced">Synced</button>` : ''}
-      ${x.plain ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="plain">Plain</button>` : ''}
-      ${x.instrumental ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="instr">Instrumental</button>` : ''}</div>`).join('') : '<div class="p-3 text-base-content/60">No results.</div>';
+    box.innerHTML = r.length ? r.map((x, i) => `<div class="p-2">
+      <div class="flex items-center gap-2">
+        <span class="badge badge-xs w-10 justify-center shrink-0 ${edt.length && near(x) <= 3 ? 'badge-success' : 'badge-ghost'}" title="${edt.length ? 'this file is ' + mmss(edt.length) : ''}">${mmss(x.duration)}</span>
+        <div class="min-w-0 flex-1"><div class="truncate font-medium">${esc(x.artist)} - ${esc(x.title)}</div><div class="truncate text-base-content/50">${esc(x.album)}</div></div></div>
+      <div class="flex justify-end gap-1 mt-1">
+        ${x.synced ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="synced">Synced</button>` : ''}
+        ${x.plain ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="plain">Plain</button>` : ''}
+        ${x.instrumental ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="instr">Instrumental</button>` : ''}</div></div>`).join('') : '<div class="p-3 text-base-content/60">No results.</div>';
     box.querySelectorAll('[data-use]').forEach(b => b.onclick = () => {
       const x = r[+b.dataset.use], k = b.dataset.k;
       $('e_lyrics').value = k === 'instr' ? '[00:00.00] [Instrumental]' : x[k];
