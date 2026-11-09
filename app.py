@@ -614,8 +614,12 @@ def move(body: dict):
 	dest = INGEST / path.name
 	if dest.exists():
 		raise HTTPException(409, f'{dest} already exists')
-	INGEST.mkdir(parents=True, exist_ok=True)
-	shutil.move(str(path), str(dest))
+	files = flacs(path)
+	if len({f.name for f in files}) != len(files):
+		raise HTTPException(409, 'two files have the same name; they cannot be moved flat')
+	dest.mkdir(parents=True)
+	for f in files:
+		shutil.move(str(f), str(dest / f.name))
 	return {'moved_to': str(dest)}
 
 
