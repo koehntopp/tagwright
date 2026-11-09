@@ -13,6 +13,8 @@
 
   <header class="shrink-0 bg-base-100 border-b border-base-300 flex h-14">
     <div class="flex-1 min-w-0 flex items-center gap-2 min-[1600px]:gap-3 px-8">
+      <img src="/static/icon.svg" alt="" class="size-8 shrink-0">
+      <span class="font-semibold tracking-tight mr-2 hidden min-[1500px]:inline">Tagwright</span>
       <div class="flex items-center gap-1 shrink-0" id="nav"></div>
       <label class="input input-sm text-[14px] flex-1 min-w-20 bg-base-100">
         <svg class="size-4 opacity-50 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -292,6 +294,7 @@ function renderInspector() {
   const idIcon = l => `<img src="${l === 'D' ? '/static/discogs.png' : '/static/musicbrainz.ico'}" alt="${l}" class="size-3.5 rounded-sm">`;
   const idUrl = (l, v) => (l === 'D' ? 'https://www.discogs.com/release/' : 'https://musicbrainz.org/release/') + encodeURIComponent(v);
   const id = (l, v) => v ? `<a href="${idUrl(l, v)}" target="_blank" rel="noopener" class="badge badge-ghost badge-sm font-mono gap-1 hover:badge-primary hover:badge-soft" title="${l === 'D' ? 'Discogs' : 'MusicBrainz'} release ${esc(v)}">${idIcon(l)}${esc(v.length > 13 ? v.slice(0, 8) : v)}</a>` : `<span class="badge badge-error badge-soft badge-sm gap-1">${idIcon(l)}missing</span>`;
+  const idPen = l => `<button class="btn btn-ghost btn-circle btn-xs mr-1" data-id-edit="${l}" title="${l === 'D' ? 'Change the Discogs release' : 'Edit the MusicBrainz release ID'}">${svg(ico.pen, 'size-3')}</button>`;
   const lyBadge = {lrc: '<span class="badge w-24 justify-center shrink-0 badge-success badge-xs">LRC</span>', txt: '<span class="badge w-24 justify-center shrink-0 badge-warning badge-xs">TXT</span>',
     instr: '<span class="badge w-24 justify-center shrink-0 badge-info badge-soft badge-xs">Instrumental</span>', none: '<span class="badge w-24 justify-center shrink-0 badge-error badge-soft badge-xs">No lyrics</span>'};
   const trackRow = f => `<li class="flex items-center gap-2 py-1.5 border-b border-base-300/60 last:border-0 text-[13px]">
@@ -325,7 +328,7 @@ function renderInspector() {
           </div>
           <h2 class="text-xl font-semibold leading-tight">${esc(title(a))}<button class="btn btn-ghost btn-circle btn-xs ml-1 align-middle" data-album-edit title="Edit album artist and title">${svg(ico.pen, 'size-3')}</button></h2>
           <div class="text-xs text-base-content/50 mt-0.5">${esc([a.edition, a.year].filter(Boolean).join(' · '))}</div>
-          <div class="flex flex-wrap gap-1 mt-2">${id('D', a.discogs)}${id('MB', a.mbid)}${drBadge}</div>
+          <div class="flex flex-wrap items-center gap-1 mt-2">${id('D', a.discogs)}${idPen('D')}${id('MB', a.mbid)}${idPen('MB')}${drBadge}</div>
         </div>
       </div>
       <div class="flex gap-2 mt-5">
@@ -363,6 +366,10 @@ function renderInspector() {
   $('move').onclick = move;
   $('editor').onclick = () => openTagEditor('album');
   document.querySelectorAll('#inspector [data-album-edit]').forEach(b => b.onclick = openAlbumEdit);
+  document.querySelectorAll('#inspector [data-id-edit]').forEach(b => b.onclick = async () => {
+    if (b.dataset.idEdit === 'D') return openTed();
+    await openTagEditor('album'); const i = document.querySelector('#kbody input[data-f="MUSICBRAINZ_ALBUMID"]'); if (i) { i.focus(); i.select(); }
+  });
   $('coveredit').onclick = () => $('coverfile').click();
   async function putCover(file) {
     try {
