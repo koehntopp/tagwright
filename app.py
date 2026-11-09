@@ -1181,7 +1181,18 @@ def set_overrides(body: dict):
 	return get_summary(album)
 
 
-app.mount('/static', StaticFiles(directory=Path(__file__).parent / 'static'), name='static')
+
+
+class Static(StaticFiles):
+	"""Static files revalidated on every load, so a rebuilt app.css is never served stale from the browser cache."""
+
+	async def get_response(self, path, scope):
+		r = await super().get_response(path, scope)
+		r.headers['Cache-Control'] = 'no-cache'
+		return r
+
+
+app.mount('/static', Static(directory=Path(__file__).parent / 'static'), name='static')
 
 
 @app.get('/')
