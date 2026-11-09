@@ -233,7 +233,7 @@ function cover(a, cls) {
   const h = hue(a.artist || a.name);
   return `<div class="${cls} relative overflow-hidden" style="background:linear-gradient(135deg,hsl(${h} 70% 62%),hsl(${(h + 40) % 360} 60% 30%))">
     <span class="absolute inset-0 grid place-items-center text-white/80 font-bold text-3xl">${esc(initials(a))}</span>
-    <img src="/api/cover?path=${encodeURIComponent(a.path)}&v=${a.mtime}" loading="lazy" alt="" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()"></div>`;
+    ${a.cover ? `<img src="/api/cover?path=${encodeURIComponent(a.path)}&v=${a.mtime}" loading="lazy" alt="" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()">` : ''}</div>`;
 }
 
 function renderNav() {
