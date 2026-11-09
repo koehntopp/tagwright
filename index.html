@@ -624,6 +624,7 @@ function kind() {
 }
 $('e_lyrics').oninput = kind;
 $('e_instr').onclick = () => { $('e_lyrics').value = '[00:00.00] [Instrumental]'; kind(); };
+for (const k of ['e_title', 'e_artist']) $(k).onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('e_search').click(); } };
 $('e_search').onclick = async () => {
   const box = $('e_res'), btn = $('e_search');
   box.classList.remove('hidden'); box.innerHTML = '<div class="p-3 text-base-content/60">Searching lrclib.net...</div>'; btn.disabled = true;
