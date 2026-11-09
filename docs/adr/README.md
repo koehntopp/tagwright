@@ -5,7 +5,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | ADR | Title | Status |
 |-----|-------|--------|
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
-| [0002](0002-purpose-scope-and-use-cases.md) | Purpose, scope and use cases (UC-1 to UC-10) | Accepted |
+| [0002](0002-purpose-scope-and-use-cases.md) | Purpose, scope and use cases (UC-1 to UC-11) | Accepted |
 | [0003](0003-deployment-web-app-in-docker.md) | Deployment: a web app in Docker on a Linux server | Accepted |
 | [0004](0004-pipeline-engine-reuses-discogs-scripts.md) | The pipeline engine is the unchanged discogs scripts | Accepted |
 | [0005](0005-technology-stack-and-conventions.md) | Technology stack and code conventions | Accepted |
@@ -26,6 +26,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0020](0020-work-directly-on-main.md) | Work directly on main; no feature branches | Accepted |
 | [0021](0021-lrclib-lyrics-search.md) | Lyrics search on lrclib.net in the track editor | Accepted |
 | [0022](0022-top-bar-instead-of-sidebar.md) | Top bar instead of a sidebar | Accepted |
+| [0023](0023-musicbrainz-release-search.md) | MusicBrainz release search and tags | Accepted |
 
 ## Which ADR covers what
 
@@ -42,6 +43,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | file names, `rename_files`, `clean()` | 0010 |
 | Move to ingest | 0011 |
 | Discogs search, track assignment | 0013 |
+| MusicBrainz search, MusicBrainz tags | 0023 |
 | tag editor, override pencils, which tags are editable | 0014 |
 | play button, track edit dialog, lyrics editing | 0015, 0021 (artist field, lrclib search) |
 | cover display, size warning, cover upload | 0016 |

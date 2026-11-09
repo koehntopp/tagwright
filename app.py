@@ -1046,6 +1046,179 @@ def set_track(body: dict):
 	return {'log': [f'edited lyrics of {body["file"]}'], 'album': fresh_summary(album)}
 
 
+# ---- MusicBrainz release search and tags (ADR 0023) ----
+# MusicBrainz allows one request a second and wants a User-Agent naming the application; it answers 503 when the
+# limit is exceeded. Requests go through one lock, at least 1.1 s apart; a 503 is retried 3 times after 5 s.
+MB_UA = 'Tagwright/0.2 (+https://github.com/koehntopp/tagwright)'
+MB_INTERVAL, MB_RETRIES, MB_BACKOFF = 1.1, 3, 5.0
+mb_lock = threading.Lock()
+mb_last = 0.0  # guarded by mb_lock
+mb_releases: dict[str, dict] = {}  # parsed releases, for the life of the process
+UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
+# Written by "Apply" for a chosen release; replaced on every apply. MUSICBRAINZ_ARTISTID and MUSICBRAINZ_ARTIST_URL are
+# per file and only touched when the file's title matches exactly one track of the release (see mb_apply).
+# The names follow what the tagger (Yate) wrote into the library (MUSICBRAINZ_RELEASE_GROUPID, MUSICBRAINZ_ALBUM_URL, ...); the
+# Picard spelling MUSICBRAINZ_RELEASEGROUPID is removed as an alternative so the file has one value, not two.
+MB_ALBUM_KEYS = ('MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID', 'MUSICBRAINZ_RELEASE_GROUPID', 'MUSICBRAINZ_RELEASEGROUPID',
+	'MUSICBRAINZ_ALBUMARTISTID', 'MUSICBRAINZ_ALBUM_URL', 'MUSICBRAINZ_RELEASE_GROUP_URL', 'MUSICBRAINZ_ALBUMARTIST_URL')
+MB_TRACK_KEYS = ('MUSICBRAINZ_ARTISTID', 'MUSICBRAINZ_ARTIST_URL')
+
+
+def musicbrainz(path: str, **params) -> dict:
+	global mb_last
+	url = 'https://musicbrainz.org/ws/2' + path + '?' + urlencode({**params, 'fmt': 'json'})
+	req = urllib.request.Request(url, headers={'User-Agent': MB_UA, 'Accept': 'application/json'})
+	with mb_lock:
+		for attempt in range(MB_RETRIES + 1):
+			time.sleep(max(0.0, MB_INTERVAL - (time.time() - mb_last)))
+			try:
+				with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
+					data = json.load(r)
+				mb_last = time.time()
+				return data
+			except urllib.error.HTTPError as e:
+				mb_last = time.time()
+				if e.code == 404:
+					raise HTTPException(404, 'MusicBrainz: not found') from e
+				if e.code not in (429, 503):
+					raise HTTPException(502, f'MusicBrainz: HTTP {e.code}') from e
+				err = HTTPException(429, 'MusicBrainz rate limit reached; try again in a minute')
+			except json.JSONDecodeError:
+				mb_last = time.time()
+				err = HTTPException(502, 'MusicBrainz sent an unreadable response; try again in a minute')
+			except OSError as e:
+				mb_last = time.time()
+				raise HTTPException(502, f'MusicBrainz: {e}') from e
+			if attempt < MB_RETRIES:
+				time.sleep(MB_BACKOFF)
+			else:
+				raise err
+
+
+def mb_names(credit: list[dict] | None) -> str:
+	return ''.join(c.get('name', '') + c.get('joinphrase', '') for c in credit or [])
+
+
+def mb_unique(items) -> str:
+	return ', '.join(dict.fromkeys(x for x in items if x))
+
+
+def mb_brief(r: dict) -> dict:
+	"""Search hits and lookups share these fields (a lookup has no top-level track-count)."""
+	media, infos = r.get('media') or [], r.get('label-info') or []
+	return {
+		'id': r['id'], 'title': f'{mb_names(r.get("artist-credit"))} - {r.get("title", "")}', 'year': (r.get('date') or '')[:4],
+		'country': r.get('country') or '', 'format': mb_unique(m.get('format') for m in media),
+		'label': mb_unique((i.get('label') or {}).get('name') for i in infos), 'catno': mb_unique(i.get('catalog-number') for i in infos),
+		'barcode': r.get('barcode') or '', 'tracks': r.get('track-count') or sum(m.get('track-count', 0) for m in media),
+		'thumb': f'https://coverartarchive.org/release/{r["id"]}/front-250', 'match': '',
+	}
+
+
+def lucene(s: str) -> str:
+	return re.sub(r'([+\-&|!(){}\[\]^"~*?:\\/])', r'\\\1', s)
+
+
+def mb_hits(query: str, limit: int, match: str, hits: dict) -> None:
+	for r in musicbrainz('/release', query=query, limit=limit).get('releases', []):
+		hits.setdefault(r['id'], {**mb_brief(r), 'match': match})
+
+
+@app.get('/api/musicbrainz/search')
+def musicbrainz_search(q: str, path: str = ''):
+	"""Release search. With a Discogs ID on the album, releases with the same barcode or catalogue number come first."""
+	q = q.strip()
+	if UUID_RE.match(q):
+		return [mb_brief(musicbrainz(f'/release/{q}', inc='artist-credits+labels+media'))]
+	hits: dict[str, dict] = {}
+	did = get_summary(safe(path))['discogs'] if path else ''
+	if did:
+		try:
+			release_tracks(did)
+			d = raw_releases[did]
+			barcodes = [re.sub(r'\D', '', i.get('value', '')) for i in d.get('identifiers', []) if i.get('type') == 'Barcode']
+			catnos = [lb['catno'] for lb in d.get('labels', []) if lb.get('catno') and lb['catno'].lower() != 'none']
+			for code in [b for b in barcodes if b][:1]:
+				mb_hits(f'barcode:{code}', 10, 'barcode', hits)
+			for catno in catnos[:2] if not hits else []:  # a barcode hit is exact; the slower catalogue-number search is the fallback
+				mb_hits(f'catno:"{lucene(catno)}"', 10, 'catalog number', hits)
+		except HTTPException:
+			pass  # no Discogs key or Discogs unreachable: the plain search below still works
+	words = [w for w in re.split(r'\s+', q) if w]
+	if words:
+		mb_hits(' AND '.join(f'(release:{lucene(w)} OR artist:{lucene(w)})' for w in words), 20, '', hits)
+	return list(hits.values())[:20]
+
+
+def mb_release(mbid: str) -> dict:
+	if mbid in mb_releases:
+		return mb_releases[mbid]
+	if not UUID_RE.match(mbid):
+		raise HTTPException(400, 'not a MusicBrainz release ID')
+	r = musicbrainz(f'/release/{mbid}', inc='artists+artist-credits+labels+recordings+release-groups+media')
+	people = lambda credit: [{'id': c['artist']['id'], 'name': c['artist']['name']} for c in credit or [] if c.get('artist')]  # noqa: E731
+	rg = r.get('release-group') or {}
+	tracks = [
+		{'disc': m.get('position', 1), 'position': t.get('number', ''), 'title': t.get('title', ''),
+		 'duration': round(t['length'] / 1000) if t.get('length') else 0, 'artist': mb_names(t.get('artist-credit')), 'artists': people(t.get('artist-credit'))}
+		for m in r.get('media', []) for t in m.get('tracks', [])
+	]
+	out = {**mb_brief(r), 'artist': mb_names(r.get('artist-credit')), 'name': r.get('title', ''), 'artists': people(r.get('artist-credit')),
+		'group': {'id': rg.get('id', ''), 'title': rg.get('title', ''), 'type': rg.get('primary-type') or '', 'first': rg.get('first-release-date') or ''},
+		'tracks': tracks}
+	mb_releases[mbid] = out
+	return out
+
+
+@app.get('/api/musicbrainz/release')
+def musicbrainz_release(id: str, path: str = ''):
+	"""The parsed release; with a path also how many files the album has."""
+	return {**mb_release(id), 'files': len(flacs(safe(path))) if path else 0}
+
+
+@app.post('/api/musicbrainz/apply')
+def musicbrainz_apply(body: dict):
+	"""Write the release ID and its MusicBrainz links (release group, album artists) to every file of the album.
+
+	Per file the artist ID and link are written only when the file's TITLE equals exactly one release track.
+	"""
+	if job['state'] == 'running':
+		raise HTTPException(409, 'a job is running')
+	album = safe(body.get('path', ''))
+	rel = mb_release(str(body.get('id', '')).strip().lower())
+	group, mb = rel['group'], 'https://musicbrainz.org'
+	by_title: dict[str, list[dict]] = {}
+	for t in rel['tracks']:
+		by_title.setdefault(norm_title(t['title']), []).append(t)
+	values = {
+		'MUSICBRAINZ_ALBUMID': [rel['id']], 'MUSICBRAINZ_ALBUM_URL': [f'{mb}/release/{rel["id"]}'],
+		'MUSICBRAINZ_RELEASE_GROUPID': [group['id']] if group['id'] else [],
+		'MUSICBRAINZ_RELEASE_GROUP_URL': [f'{mb}/release-group/{group["id"]}'] if group['id'] else [],
+		'MUSICBRAINZ_ALBUMARTISTID': [a['id'] for a in rel['artists']],
+		'MUSICBRAINZ_ALBUMARTIST_URL': [f'{mb}/artist/{a["id"]}' for a in rel['artists']],
+	}
+	log, per_file = [], 0
+	for f in flacs(album):
+		a = FLAC(f)
+		if a.tags is None:
+			a.add_tags()
+		for k in [k for k in a.tags.keys() if k.upper() in MB_ALBUM_KEYS]:
+			del a.tags[k]
+		for k, v in values.items():
+			if v:
+				a[k] = v
+		match = by_title.get(norm_title(tag(a.tags, 'TITLE')), [])
+		if len(match) == 1 and match[0]['artists']:
+			for k in [k for k in a.tags.keys() if k.upper() in MB_TRACK_KEYS]:
+				del a.tags[k]
+			a['MUSICBRAINZ_ARTISTID'] = [x['id'] for x in match[0]['artists']]
+			a['MUSICBRAINZ_ARTIST_URL'] = [f'{mb}/artist/{x["id"]}' for x in match[0]['artists']]
+			per_file += 1
+		a.save()
+	log.append(f'MusicBrainz release {rel["id"]} ({rel["artist"]} - {rel["name"]}) written; release group, album artist links on every file, artist links on {per_file} files')
+	return {'log': log, 'album': fresh_summary(album)}
+
+
 @app.get('/api/lrclib/search')
 def lrclib_search(title: str, artist: str = ''):
 	"""Search lrclib.net for lyrics (read-only; nothing is written). Returns up to 20 results with their lyrics."""

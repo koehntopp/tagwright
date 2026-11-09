@@ -24,7 +24,7 @@ Written to every file of the album; an emptied field removes the tag.
 | `CATALOGNUMBER` | part of the version string; **must not be empty** (enter `none` if the release has none, as Discogs does); alternative spellings are removed when it is changed |
 | `MUSICBRAINZ_ALBUMID` | anchors language tags |
 
-Also shown: the Discogs release ID as a link, with "Change release…" ([0013](0013-discogs-track-assignment.md)). The ID itself is changed only through that dialog. The `SUBTITLE` tag (a format fallback in `fixtags.py`) is deliberately not editable here; existing values stay untouched and still apply.
+Also shown: the Discogs release ID as a link, with "Change release…" ([0013](0013-discogs-track-assignment.md)), and below it the MusicBrainz release ID with "Change release…" / "Choose release…" ([0023](0023-musicbrainz-release-search.md)). The ID itself is changed only through that dialog. The `SUBTITLE` tag (a format fallback in `fixtags.py`) is deliberately not editable here; existing values stay untouched and still apply.
 
 The pencils next to the album artist and the album title in the inspector header open a small dialog for the two override fields; both write the same tags through the same code.
 

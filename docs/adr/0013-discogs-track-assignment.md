@@ -62,7 +62,7 @@ Entries of type `track` only (headings and index entries are skipped). Position 
 
   *Discogs-owned tags*, **replaced on every assignment** (all existing `DISCOGS_*` keys except `DISCOGS_RELEASE_ID` are deleted first, so a changed release leaves no stale links): `DISCOGS_RELEASE_URL`, `DISCOGS_MASTER_ID` (`m<id>`), `DISCOGS_MASTER_URL`, `DISCOGS_ARTIST_URL`, `DISCOGS_ALBUMARTIST_URL`, `DISCOGS_ARTIST_LIST`, `DISCOGS_LABEL_URL` (multi), `DISCOGS_ARTWORK_URL`, `DISCOGS_CATALOG_NUMBER` (`Label: catno`, multi), `DISCOGS_ALBUM_RELEASECOUNTRY`, `DISCOGS_RELEASE_NOTES`, `DISCOGS_VIDEO_URL` (multi, `Title: url`; the old import put the title into the key name, which is not a valid Vorbis key in general), one `DISCOGS_<ROLE>` per company role (`DISCOGS_PRESSED_BY`, `DISCOGS_RECORDED_AT`, `DISCOGS_MIXED_AT`, ...; names joined with `, `; copyright roles are in `COPYRIGHT`), and per track `DISCOGS_RELEASE_ORDINAL_POSITION` (0-based index in the release tracklist) and `TRACK_NUMBER_TEXT` (the Discogs position, for example `1-3` or `A2`). Nothing reads these tags in the discogs scripts; they are kept in the files for players and later use. They overlap with the `ALBUM_*` tags `fixtags.py` writes, which stay as they are.
 
-  Not imported, with no Discogs source or not Discogs data: `ARTISTSORT`, `ALBUMARTISTSORT`, `COMMENT` (a ripper note), `DISCOGS_IMPORT_SETTINGS` (the old importer's own state), and the MusicBrainz tags (a separate import; `MUSICBRAINZ_ALBUMID` is user-set).
+  Not imported, with no Discogs source or not Discogs data: `ARTISTSORT`, `ALBUMARTISTSORT`, `COMMENT` (a ripper note), `DISCOGS_IMPORT_SETTINGS` (the old importer's own state), and the MusicBrainz tags (a separate import, now [0023](0023-musicbrainz-release-search.md); `MUSICBRAINZ_ALBUMID` is user-set).
 
   The result is logged as `filled from Discogs: ...`. A cover that cannot be fetched is logged (`cover not fetched: ...`) and does not fail the assignment. Everything else Discogs-derived (dates, labels, genres, credits, ...) is written by `fixtags.py` on the next Run fixes ([0014](0014-internal-tag-editor.md) "From Discogs"). Not filled, because they are the owner's own tags with no Discogs source: `ALBUM_FORMAT`, `ALBUM_EDITION`, `SET SUBTITLE`, `MUSICBRAINZ_ALBUMID`.
 - Discogs release positions are not stored in a tag, because `fixtags` removes tag families it manages.
@@ -72,5 +72,5 @@ Entries of type `track` only (headings and index entries are skipped). Position 
 
 ## Consequences
 
-- MusicBrainz tracklists are not supported.
+- MusicBrainz tracklists are not supported; MusicBrainz release search is [0023](0023-musicbrainz-release-search.md).
 - Requires a Discogs key ([0009](0009-settings-and-api-keys.md)).

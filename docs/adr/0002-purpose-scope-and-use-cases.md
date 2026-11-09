@@ -25,13 +25,14 @@ Tagwright is a single-user, self-hosted web app that lets one person work throug
 | UC-8 | Play a track; edit a track's lyrics, optionally searching lrclib.net under another title or artist. | [0015](0015-track-playback-and-track-edit.md), [0021](0021-lrclib-lyrics-search.md) |
 | UC-9 | See the cover's pixel size, be warned when it is small, replace it by uploading or dropping an image, delete the embedded cover, open cover searches on external sites. | [0016](0016-cover-art.md) |
 | UC-10 | Rename files to the bliss pattern automatically after fixes and after edits. | [0010](0010-bliss-file-naming.md) |
+| UC-11 | Choose the MusicBrainz release of an album (search, using the album's Discogs release to find the same release) and write its ID and links (release group, album artist, artist). | [0023](0023-musicbrainz-release-search.md) |
 
 ### Out of scope
 
 - Multi-user access, authentication, per-user settings ([0007](0007-trust-boundary-and-secrets.md)).
 - A native macOS app (rejected, [0003](0003-deployment-web-app-in-docker.md)).
 - The `lrc_fix` flow and the discogs repo's own `webui.py`; Tagwright does not replace or call them.
-- MusicBrainz release search and tracklist assignment (only Discogs; MusicBrainz ID is a user-set tag).
+- MusicBrainz tracklist assignment (release search was added by [0023](0023-musicbrainz-release-search.md); only Discogs assigns tracks).
 - Editing audio, or any tag not listed in [0014](0014-internal-tag-editor.md).
 
 ## Consequences

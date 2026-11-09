@@ -149,6 +149,23 @@
   <form method="dialog" class="modal-backdrop"><button>close</button></form>
 </dialog>
 
+<dialog id="mdlg" class="modal">
+  <div class="modal-box w-11/12 max-w-[64rem] overflow-x-hidden">
+    <h3 class="font-semibold text-lg">Choose a MusicBrainz release</h3>
+    <form class="flex gap-2 mt-3" id="mform">
+      <input id="mq" type="text" class="input input-sm flex-1" placeholder="Artist and album, or a MusicBrainz release ID" autocomplete="off">
+      <button class="btn btn-sm btn-primary" id="msearch">Search MusicBrainz</button>
+    </form>
+    <div id="mbody" class="mt-4 max-h-[60vh] overflow-y-auto"></div>
+    <p class="text-error text-sm mt-2" id="merr"></p>
+    <div class="modal-action">
+      <button class="btn btn-sm" id="mclose">Cancel</button>
+      <button class="btn btn-sm btn-primary" id="mapply" disabled>Apply</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
 <dialog id="sdlg" class="modal">
   <div class="modal-box w-11/12 max-w-[48rem] overflow-x-hidden">
     <h3 class="font-semibold text-lg">Settings</h3>
@@ -294,7 +311,7 @@ function renderInspector() {
   const idIcon = l => `<img src="${l === 'D' ? '/static/discogs.png' : '/static/musicbrainz.ico'}" alt="${l}" class="size-3.5 rounded-sm">`;
   const idUrl = (l, v) => (l === 'D' ? 'https://www.discogs.com/release/' : 'https://musicbrainz.org/release/') + encodeURIComponent(v);
   const id = (l, v) => v ? `<a href="${idUrl(l, v)}" target="_blank" rel="noopener" class="badge badge-ghost badge-sm font-mono gap-1 hover:badge-primary hover:badge-soft" title="${l === 'D' ? 'Discogs' : 'MusicBrainz'} release ${esc(v)}">${idIcon(l)}${esc(v.length > 13 ? v.slice(0, 8) : v)}</a>` : `<span class="badge badge-error badge-soft badge-sm gap-1">${idIcon(l)}missing</span>`;
-  const idPen = l => `<button class="btn btn-ghost btn-circle btn-xs mr-1" data-id-edit="${l}" title="${l === 'D' ? 'Change the Discogs release' : 'Edit the MusicBrainz release ID'}">${svg(ico.pen, 'size-3')}</button>`;
+  const idPen = l => `<button class="btn btn-ghost btn-circle btn-xs mr-1" data-id-edit="${l}" title="${l === 'D' ? 'Change the Discogs release' : 'Choose the MusicBrainz release'}">${svg(ico.pen, 'size-3')}</button>`;
   const lyBadge = {lrc: '<span class="badge w-24 justify-center shrink-0 badge-success badge-xs">LRC</span>', txt: '<span class="badge w-24 justify-center shrink-0 badge-warning badge-xs">TXT</span>',
     instr: '<span class="badge w-24 justify-center shrink-0 badge-info badge-soft badge-xs">Instrumental</span>', none: '<span class="badge w-24 justify-center shrink-0 badge-error badge-soft badge-xs">No lyrics</span>'};
   const trackRow = f => `<li class="flex items-center gap-2 py-1.5 border-b border-base-300/60 last:border-0 text-[13px]">
@@ -368,7 +385,7 @@ function renderInspector() {
   document.querySelectorAll('#inspector [data-album-edit]').forEach(b => b.onclick = openAlbumEdit);
   document.querySelectorAll('#inspector [data-id-edit]').forEach(b => b.onclick = async () => {
     if (b.dataset.idEdit === 'D') return openTed();
-    await openTagEditor('album'); const i = document.querySelector('#kbody input[data-f="MUSICBRAINZ_ALBUMID"]'); if (i) { i.focus(); i.select(); }
+    openMbd();
   });
   $('coveredit').onclick = () => $('coverfile').click();
   async function putCover(file) {
@@ -525,9 +542,14 @@ function renderKd() {
       <div class="flex items-center gap-3 mt-4 p-3 rounded-box bg-base-200 text-[13px]">
         <span class="text-base-content/50">Discogs release</span>
         ${kd.d.discogs_id ? `<a class="link link-primary font-mono" href="https://www.discogs.com/release/${esc(kd.d.discogs_id)}" target="_blank" rel="noopener">${esc(kd.d.discogs_id)}</a>` : '<span class="text-error">missing</span>'}
-        <button class="btn btn-xs ml-auto" id="kchange">${kd.d.discogs_id ? 'Change release…' : 'Choose release…'}</button></div>`;
+        <button class="btn btn-xs ml-auto" id="kchange">${kd.d.discogs_id ? 'Change release…' : 'Choose release…'}</button></div>
+      <div class="flex items-center gap-3 mt-2 p-3 rounded-box bg-base-200 text-[13px]">
+        <span class="text-base-content/50">MusicBrainz release</span>
+        ${kd.fields.MUSICBRAINZ_ALBUMID ? `<a class="link link-primary font-mono" href="https://musicbrainz.org/release/${esc(kd.fields.MUSICBRAINZ_ALBUMID)}" target="_blank" rel="noopener">${esc(kd.fields.MUSICBRAINZ_ALBUMID)}</a>` : '<span class="text-base-content/50">none</span>'}
+        <button class="btn btn-xs ml-auto" id="kmb">${kd.fields.MUSICBRAINZ_ALBUMID ? 'Change release…' : 'Choose release…'}</button></div>`;
     body.querySelectorAll('input[data-f]').forEach(i => i.oninput = () => { kd.fields[i.dataset.f] = i.value; });
     $('kchange').onclick = openTed;
+    $('kmb').onclick = openMbd;
   } else if (kd.tab === 'tracks') {
     body.innerHTML = `<table class="table table-sm"><thead><tr>${KTRACK.map(c => `<th>${c[1]}</th>`).join('')}<th></th></tr></thead><tbody>
       ${kd.tracks.map((t, i) => `<tr>${KTRACK.map(([k, , w]) => `<td><input type="text" class="input input-xs ${w}" data-i="${i}" data-k="${k}" value="${esc(t[k])}" autocomplete="off"></td>`).join('')}
@@ -648,7 +670,8 @@ async function tedSearch(e) {
     ted.release = null; $('tapply').disabled = true; tedBusy(false);
     $('tbody').innerHTML = rs.length ? `<table class="table table-sm"><tbody>${rs.map(r => `<tr class="hover cursor-pointer" data-id="${r.id}">
       <td class="w-12"><img src="${esc(r.thumb)}" class="size-10 rounded object-cover bg-base-200" onerror="this.remove()"></td>
-      <td><div class="font-medium">${esc(r.title)}</div><div class="text-xs text-base-content/50">${esc([r.year, r.country, r.format, r.label, r.catno].filter(Boolean).join(' · '))}</div></td>
+      <td><div class="font-medium">${esc(r.title)}</div><div class="text-xs text-base-content/50">${esc([r.year, r.country, r.format, r.label].filter(Boolean).join(' · '))}</div></td>
+      <td class="w-36 font-mono text-xs break-words" title="Catalogue number">${esc(r.catno)}</td>
       <td class="w-24 text-xs text-base-content/50 whitespace-nowrap" data-count="${r.id}"><span class="loading loading-dots loading-xs"></span></td>
       <td class="text-right"><button class="btn btn-xs">Select</button></td></tr>`).join('')}</tbody></table>`
       : '<p class="text-base-content/50 text-sm">No releases found.</p>';
@@ -724,6 +747,68 @@ async function tedApply() {
 $('tform').onsubmit = tedSearch;
 $('tclose').onclick = () => $('tdlg').close();
 $('tapply').onclick = tedApply;
+
+// ---- MusicBrainz release search: same dialog shape as the Discogs one; Apply writes the release ID and its links ----
+let mbd = null;  // {path, id, release}
+const mbdBusy = (on, msg = '') => { $('mbody').classList.toggle('opacity-50', on); $('mbody').classList.toggle('pointer-events-none', on); $('merr').textContent = msg; };
+function openMbd() {
+  const a = selAlbum; if (!a) return;
+  mbd = {path: a.path, id: '', release: null};
+  $('mq').value = a.mbid || [a.artist, a.album].filter(Boolean).join(' ');
+  $('mbody').innerHTML = ''; $('merr').textContent = ''; $('mapply').disabled = true; $('mapply').textContent = 'Apply';
+  $('mdlg').showModal();
+  if (a.mbid) mbdPick(a.mbid); else $('mq').focus();
+}
+async function mbdSearch(e) {
+  e.preventDefault();
+  const q = $('mq').value.trim(); if (!q) return;
+  mbdBusy(true);
+  try {
+    const rs = await api('/api/musicbrainz/search?q=' + encodeURIComponent(q) + '&path=' + encodeURIComponent(mbd.path));
+    mbd.release = null; $('mapply').disabled = true; mbdBusy(false);
+    $('mbody').innerHTML = rs.length ? `<table class="table table-sm"><tbody>${rs.map(r => `<tr class="hover cursor-pointer" data-id="${r.id}">
+      <td class="w-12"><img src="${esc(r.thumb)}" loading="lazy" class="size-10 rounded object-cover bg-base-200" onerror="this.remove()"></td>
+      <td><div class="font-medium">${esc(r.title)}${r.match ? ` <span class="badge badge-success badge-soft badge-xs ml-1" title="Same as the Discogs release of this album">${esc(r.match)} match</span>` : ''}</div>
+        <div class="text-xs text-base-content/50">${esc([r.year, r.country, r.format, r.label, r.barcode].filter(Boolean).join(' · '))}</div></td>
+      <td class="w-36 font-mono text-xs break-words" title="Catalogue number">${esc(r.catno)}</td>
+      <td class="w-24 text-xs text-base-content/50 whitespace-nowrap">${r.tracks ? r.tracks + ' tracks' : ''}</td>
+      <td class="text-right"><button class="btn btn-xs">Select</button></td></tr>`).join('')}</tbody></table>`
+      : '<p class="text-base-content/50 text-sm">No releases found.</p>';
+    $('mbody').querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => mbdPick(tr.dataset.id));
+  } catch (err) { mbdBusy(false, err.message); }
+}
+async function mbdPick(id) {
+  mbdBusy(true);
+  try {
+    const r = await api('/api/musicbrainz/release?id=' + encodeURIComponent(id) + '&path=' + encodeURIComponent(mbd.path));
+    mbd.id = r.id; mbd.release = r; mbdBusy(false); renderMbd();
+  } catch (err) { mbdBusy(false, err.message); }
+}
+function renderMbd() {
+  const r = mbd.release, mb = 'https://musicbrainz.org/';
+  const link = (kind, id, text) => `<a class="link link-primary" href="${mb}${kind}/${esc(id)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+  $('mbody').innerHTML = `
+    <div class="text-sm mb-3"><span class="font-medium">${esc(r.artist)} - ${esc(r.name)}</span> <span class="text-base-content/50">${esc([r.year, r.country, r.format, r.label, r.catno].filter(Boolean).join(' · '))} · ${r.tracks.length} tracks on release · ${r.files} files</span></div>
+    <table class="table table-sm mb-3"><tbody>
+      <tr><td class="w-40 text-base-content/50">Release</td><td class="font-mono text-xs">${link('release', r.id, r.id)}</td></tr>
+      <tr><td class="text-base-content/50">Release group (master)</td><td>${r.group.id ? `${link('release-group', r.group.id, r.group.title || r.group.id)} <span class="text-xs text-base-content/50">${esc([r.group.type, r.group.first].filter(Boolean).join(' · '))}</span>` : '<span class="text-base-content/50">none</span>'}</td></tr>
+      <tr><td class="text-base-content/50">Album artist</td><td>${r.artists.map(a => link('artist', a.id, a.name)).join(', ') || '<span class="text-base-content/50">none</span>'}</td></tr>
+    </tbody></table>
+    <table class="table table-sm"><thead><tr><th class="w-16">Disc</th><th class="w-16">Track</th><th>Title</th><th>Artist</th><th class="w-16 text-right">Length</th></tr></thead><tbody>
+      ${r.tracks.map(t => `<tr><td>${t.disc}</td><td>${esc(t.position)}</td><td>${esc(t.title)}</td><td class="text-base-content/70">${t.artists.map(a => link('artist', a.id, a.name)).join(', ')}</td><td class="text-right text-base-content/50">${mmss(t.duration)}</td></tr>`).join('')}</tbody></table>
+    <div class="text-xs text-base-content/50 mt-3">Apply writes the release ID, the release group and album artist IDs and links to every file, and the artist ID and link to each file whose title matches a release track. Titles, track numbers and everything else stay as they are.</div>`;
+  $('mapply').disabled = false;
+}
+async function mbdApply() {
+  mbdBusy(true);
+  try {
+    const d = await post('/api/musicbrainz/apply', {path: mbd.path, id: mbd.id});
+    $('mdlg').close(); addLog(d.log); toast('MusicBrainz release applied'); await refreshOne(mbd.path); if ($('kdlg').open) await openTagEditor();
+  } catch (err) { mbdBusy(false, err.message); }
+}
+$('mform').onsubmit = mbdSearch;
+$('mclose').onclick = () => $('mdlg').close();
+$('mapply').onclick = mbdApply;
 
 async function openSettings() {
   try {
