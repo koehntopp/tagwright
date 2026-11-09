@@ -220,6 +220,7 @@ function cover(a, cls) {
 }
 
 function renderNav() {
+  renderRunAll();
   const items = [['all', 'All albums', ico.lib], ['needs', 'Needs input', ico.warn], ['ready', 'Ready', ico.clock], ['fixed', 'Fixed', ico.check]];
   $('nav').innerHTML = items.map(([k, l, i]) => `<button class="btn btn-sm text-[14px] px-2 ${filter === k ? 'btn-neutral' : 'btn-ghost'}" data-f="${k}">${l}
     <span class="badge badge-sm ${filter === k ? '' : 'badge-ghost'}">${count(k)}</span></button>`).join('');
@@ -398,12 +399,17 @@ function renderInspector() {
   })[b.dataset.issue]());
 }
 
+function renderRunAll() {
+  const n = count('ready'), running = job.state === 'running';
+  $('runall').disabled = running || !n;
+  $('runall').title = running ? 'A job is running' : n ? `Run the pipeline on the ${n} ready album${n > 1 ? 's' : ''}` : 'No ready albums: albums that need input cannot be run, fixed ones are done';
+}
 function renderJob() {
   const running = job.state === 'running';
   const cur = albums.find(a => a.path === job.path);
   $('dot').className = 'size-2 rounded-full shrink-0 ' + (running ? 'bg-info animate-pulse' : job.state === 'failed' ? 'bg-error' : job.state === 'stopped' ? 'bg-warning' : 'bg-success');
   $('jobline').textContent = running ? `Running: ${cur ? title(cur) : '…'}${job.queue.length ? ' (+' + job.queue.length + ' queued)' : ''}` : job.state === 'failed' ? 'Last run failed' : job.state === 'stopped' ? 'Last run stopped' : 'Idle';
-  $('runall').disabled = running;
+  renderRunAll();
   $('stopjob').classList.toggle('hidden', !running);
 }
 function renderAll() { renderNav(); renderGrid(); renderInspector(); renderJob(); }
