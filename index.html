@@ -546,7 +546,7 @@ let edt = null;
 async function openEdit(path, file) {
   try {
     const t = await api('/api/track?path=' + encodeURIComponent(path) + '&file=' + encodeURIComponent(file));
-    edt = {path, file, length: t.length}; $('e_file').textContent = file; $('e_title').value = t.title; $('e_artist').value = t.artist; $('e_res').classList.add('hidden'); $('e_lyrics').value = t.lyrics; $('eerr').textContent = '';
+    edt = {path, file, length: t.length}; $('e_file').textContent = file + (t.length ? '  ·  ' + mmss(t.length) : ''); $('e_title').value = t.title; $('e_artist').value = t.artist; $('e_res').classList.add('hidden'); $('e_lyrics').value = t.lyrics; $('eerr').textContent = '';
     $('edlg').showModal();
   } catch (e) { toast(e.message, 'alert-error'); }
 }
