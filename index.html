@@ -16,12 +16,12 @@
       <img src="/static/icon.svg" alt="" class="size-8 shrink-0">
       <span class="font-semibold tracking-tight mr-2 hidden min-[1500px]:inline">Tagwright</span>
       <div class="flex items-center gap-1 shrink-0" id="nav"></div>
-      <label class="input input-sm text-[14px] flex-1 min-w-20 bg-base-100">
+      <label class="input input-sm text-[14px] flex-1 min-w-20 max-w-80 bg-base-100">
         <svg class="size-4 opacity-50 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input type="search" id="q" placeholder="Search" class="min-w-0" title="Search albums, artists, IDs (⌘K)">
         <kbd class="kbd kbd-xs hidden min-[1600px]:inline-flex">⌘K</kbd>
       </label>
-      <select class="select select-sm text-[14px] w-28 shrink-0 bg-base-100" id="sort" aria-label="Sort albums">
+      <select class="select select-sm text-[14px] w-28 shrink-0 bg-base-100 ml-auto" id="sort" aria-label="Sort albums">
         <option value="recent">Newest</option><option value="name">Title</option><option value="artist">Artist</option><option value="status">Status</option>
       </select>
       <button class="btn btn-sm btn-square btn-ghost shrink-0" id="rescan" aria-label="Rescan" title="Rescan folder">
@@ -220,7 +220,7 @@ function cover(a, cls) {
 }
 
 function renderNav() {
-  const items = [['all', 'All albums', ico.lib], ['needs', 'Needs input', ico.warn], ['ready', 'Ready', ico.clock], ['fixed', 'Fixed', ico.check]];
+  const items = [['all', 'All albums', ico.lib], ['needs', 'Needs input', ico.warn], ['fixed', 'Fixed', ico.check]];
   $('nav').innerHTML = items.map(([k, l, i]) => `<button class="btn btn-sm text-[14px] px-2 ${filter === k ? 'btn-neutral' : 'btn-ghost'}" data-f="${k}">${l}
     <span class="badge badge-sm ${filter === k ? '' : 'badge-ghost'}">${count(k)}</span></button>`).join('');
   document.querySelectorAll('#nav [data-f]').forEach(el => el.onclick = () => { filter = el.dataset.f; renderNav(); renderGrid(); });
