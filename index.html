@@ -12,20 +12,20 @@
 <div class="flex flex-col h-screen overflow-hidden">
 
   <header class="shrink-0 bg-base-100 border-b border-base-300 flex h-14">
-    <div class="flex-1 min-w-0 flex items-center gap-2 px-4">
-      <div class="flex items-center gap-0.5 shrink-0" id="nav"></div>
-      <select class="select select-sm w-28 shrink-0 bg-base-100 ml-auto" id="sort" aria-label="Sort albums">
-        <option value="recent">Recently added</option><option value="name">Title</option><option value="artist">Artist</option><option value="status">Status</option>
-      </select>
-      <label class="input input-sm flex-1 min-w-24 max-w-72 bg-base-100">
+    <div class="flex-1 min-w-0 flex items-center gap-2 min-[1600px]:gap-3 px-8">
+      <div class="flex items-center gap-1 shrink-0" id="nav"></div>
+      <label class="input input-sm text-[14px] flex-1 min-w-20 bg-base-100">
         <svg class="size-4 opacity-50 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input type="search" id="q" placeholder="Search" class="min-w-0" title="Search albums, artists, IDs (⌘K)">
         <kbd class="kbd kbd-xs hidden min-[1600px]:inline-flex">⌘K</kbd>
       </label>
+      <select class="select select-sm text-[14px] w-28 shrink-0 bg-base-100" id="sort" aria-label="Sort albums">
+        <option value="recent">Newest</option><option value="name">Title</option><option value="artist">Artist</option><option value="status">Status</option>
+      </select>
       <button class="btn btn-sm btn-square btn-ghost shrink-0" id="rescan" aria-label="Rescan" title="Rescan folder">
         <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
-      <button class="btn btn-sm btn-primary shrink-0" id="runall">
-        <svg class="size-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Run all ready</button>
+      <button class="btn btn-sm text-[14px] btn-primary shrink-0" id="runall" title="Run the pipeline on all ready albums">
+        <svg class="size-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Run all<span class="hidden min-[1600px]:inline"> ready</span></button>
     </div>
     <div class="w-[600px] shrink-0 border-l border-base-300 flex items-center gap-2 px-6">
       <span class="size-2 rounded-full bg-base-300 shrink-0" id="dot"></span>
@@ -221,7 +221,7 @@ function cover(a, cls) {
 
 function renderNav() {
   const items = [['all', 'All albums', ico.lib], ['needs', 'Needs input', ico.warn], ['ready', 'Ready', ico.clock], ['fixed', 'Fixed', ico.check]];
-  $('nav').innerHTML = items.map(([k, l, i]) => `<button class="btn btn-sm px-2 ${filter === k ? 'btn-neutral' : 'btn-ghost'}" data-f="${k}">${l}
+  $('nav').innerHTML = items.map(([k, l, i]) => `<button class="btn btn-sm text-[14px] px-2 ${filter === k ? 'btn-neutral' : 'btn-ghost'}" data-f="${k}">${l}
     <span class="badge badge-sm ${filter === k ? '' : 'badge-ghost'}">${count(k)}</span></button>`).join('');
   document.querySelectorAll('#nav [data-f]').forEach(el => el.onclick = () => { filter = el.dataset.f; renderNav(); renderGrid(); });
 }
