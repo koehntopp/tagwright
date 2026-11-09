@@ -70,7 +70,7 @@ Album DR is `ALBUM_DR`, falling back to the rounded mean of the track `DYNAMIC_R
 
 ### Scan cache
 
-Per album, `summarize` results are cached in memory keyed by the signature `(file name, mtime_ns, size)` of all its files; any change by Tagwright or an external tagger changes the signature and invalidates the entry. Albums are scanned with 8 worker threads. The cache is cleared when the input folder changes.
+Per album, `summarize` results are cached in memory keyed by the signature `(file name, mtime_ns, size)` of all its files; any change by Tagwright or an external tagger changes the signature and invalidates the entry. Albums are scanned with 8 worker threads. Every Tagwright write endpoint additionally drops the album's entry before it returns the new summary (`fresh_summary`), because a write that keeps the file size (it fits the FLAC padding) on a network volume with coarse or cached timestamps could otherwise match the old signature. The cache is cleared when the input folder changes.
 
 ## Consequences
 

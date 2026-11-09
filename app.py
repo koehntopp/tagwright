@@ -350,6 +350,13 @@ def get_summary(album: Path) -> dict:
 	return s
 
 
+def fresh_summary(album: Path) -> dict:
+	"""After a write: drop the cached summary first. A write that keeps the size (it fits the FLAC padding) on a network
+	volume with coarse or cached timestamps would otherwise match the old signature and show the old state."""
+	cache.pop(str(album), None)
+	return get_summary(album)
+
+
 @app.get('/api/dirs')
 def dirs(path: str = ''):
 	p = safe(path) if path else ROOT
@@ -416,7 +423,7 @@ async def set_cover(path: str, request: Request):
 		raise HTTPException(409, 'a job is running')
 	album = safe(path)
 	embed_cover(album, make_picture(await request.body()))
-	return get_summary(album)
+	return fresh_summary(album)
 
 
 @app.get('/api/cover')
@@ -982,7 +989,7 @@ def tracks_apply(body: dict):
 	if filled:
 		log.append('filled from Discogs: ' + ', '.join(f'{k} x{v}' if v > 1 else k for k, v in filled.items()))
 	log += rename_files(album)
-	return {'log': log, 'album': get_summary(album)}
+	return {'log': log, 'album': fresh_summary(album)}
 
 
 def track_path(album: str, file: str) -> Path:
@@ -1020,7 +1027,7 @@ def set_track(body: dict):
 	elif 'LYRICS' in a.tags:
 		del a.tags['LYRICS']
 	a.save()
-	return {'log': [f'edited lyrics of {body["file"]}'], 'album': get_summary(album)}
+	return {'log': [f'edited lyrics of {body["file"]}'], 'album': fresh_summary(album)}
 
 
 @app.get('/api/lrclib/search')
@@ -1168,7 +1175,7 @@ def set_tags(body: dict):
 			del a.tags['DISCSUBTITLE']
 		a.save()
 		log.append(f'track: {tr["file"]}')
-	return {'log': [*log, *rename_files(album)], 'album': get_summary(album)}
+	return {'log': [*log, *rename_files(album)], 'album': fresh_summary(album)}
 
 
 @app.post('/api/overrides')
@@ -1178,7 +1185,7 @@ def set_overrides(body: dict):
 		raise HTTPException(409, 'a job is running')
 	album = safe(body.get('path', ''))
 	write_album_fields(album, {'ALBUM_ARTIST_OVERRIDE': body.get('artist', ''), 'ALBUM_TITLE_OVERRIDE': body.get('title', '')})
-	return get_summary(album)
+	return fresh_summary(album)
 
 
 
