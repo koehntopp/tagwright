@@ -673,6 +673,34 @@ function openTed() {
   if (a.discogs) tedPick(a.discogs); else $('tq').focus();
 }
 
+// Result tables of the Discogs and MusicBrainz dialogs: year and track count are sortable (unknown values last).
+const resVal = {year: r => +r.year || 0, tracks: r => +(r.n ?? r.tracks) || 0};
+function showResults(box, st, rowFn, pick) {
+  if (!st.rows.length) { box.innerHTML = '<p class="text-base-content/50 text-sm">No releases found.</p>'; return; }
+  const {key, dir} = st.sort;
+  const rows = key ? [...st.rows].sort((a, b) => { const x = resVal[key](a), y = resVal[key](b); return !x - !y || (x - y) * dir; }) : st.rows;
+  const th = (k, l, cls) => `<th class="${cls}"><button type="button" class="btn btn-ghost btn-xs px-1" data-sort="${k}">${l}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</button></th>`;
+  box.innerHTML = `<table class="table table-sm"><thead class="sticky top-0 bg-base-100 z-10"><tr><th></th><th>Release</th>${th('year', 'Year', 'w-20')}<th class="w-36">Cat. no.</th>${th('tracks', 'Tracks', 'w-24')}<th></th></tr></thead><tbody>${rows.map(rowFn).join('')}</tbody></table>`;
+  box.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => pick(tr.dataset.id));
+  box.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => {
+    const k = b.dataset.sort; st.sort = {key: k, dir: st.sort.key === k ? -st.sort.dir : 1}; showResults(box, st, rowFn, pick);
+  });
+}
+const tedRow = r => `<tr class="hover cursor-pointer" data-id="${r.id}">
+      <td class="w-12"><img src="${esc(r.thumb)}" class="size-10 rounded object-cover bg-base-200" onerror="this.remove()"></td>
+      <td><div class="font-medium">${esc(r.title)}</div><div class="text-xs text-base-content/50">${esc([r.country, r.format, r.label].filter(Boolean).join(' · '))}</div></td>
+      <td class="w-20 text-sm tabular-nums">${esc(r.year)}</td>
+      <td class="w-36 font-mono text-xs break-words" title="Catalogue number">${esc(r.catno)}</td>
+      <td class="w-24 text-xs text-base-content/50 whitespace-nowrap" data-count="${r.id}">${r.n == null ? '<span class="loading loading-dots loading-xs"></span>' : r.n < 0 ? '?' : r.n + ' tracks'}</td>
+      <td class="text-right"><button class="btn btn-xs">Select</button></td></tr>`;
+const mbdRow = r => `<tr class="hover cursor-pointer" data-id="${r.id}">
+      <td class="w-12"><img src="${esc(r.thumb)}" loading="lazy" class="size-10 rounded object-cover bg-base-200" onerror="this.remove()"></td>
+      <td><div class="font-medium">${esc(r.title)}${r.match ? ` <span class="badge badge-success badge-soft badge-xs ml-1" title="Same as the Discogs release of this album">${esc(r.match)} match</span>` : ''}</div>
+        <div class="text-xs text-base-content/50">${esc([r.country, r.format, r.label, r.barcode].filter(Boolean).join(' · '))}</div></td>
+      <td class="w-20 text-sm tabular-nums">${esc(r.year)}</td>
+      <td class="w-36 font-mono text-xs break-words" title="Catalogue number">${esc(r.catno)}</td>
+      <td class="w-24 text-xs text-base-content/50 whitespace-nowrap">${r.tracks ? r.tracks + ' tracks' : ''}</td>
+      <td class="text-right"><button class="btn btn-xs">Select</button></td></tr>`;
 async function tedSearch(e) {
   e.preventDefault();
   const q = $('tq').value.trim(); if (!q) return;
@@ -680,29 +708,23 @@ async function tedSearch(e) {
   try {
     const rs = await api('/api/discogs/search?q=' + encodeURIComponent(q));
     ted.release = null; $('tapply').disabled = true; tedBusy(false);
-    $('tbody').innerHTML = rs.length ? `<table class="table table-sm"><tbody>${rs.map(r => `<tr class="hover cursor-pointer" data-id="${r.id}">
-      <td class="w-12"><img src="${esc(r.thumb)}" class="size-10 rounded object-cover bg-base-200" onerror="this.remove()"></td>
-      <td><div class="font-medium">${esc(r.title)}</div><div class="text-xs text-base-content/50">${esc([r.year, r.country, r.format, r.label].filter(Boolean).join(' · '))}</div></td>
-      <td class="w-36 font-mono text-xs break-words" title="Catalogue number">${esc(r.catno)}</td>
-      <td class="w-24 text-xs text-base-content/50 whitespace-nowrap" data-count="${r.id}"><span class="loading loading-dots loading-xs"></span></td>
-      <td class="text-right"><button class="btn btn-xs">Select</button></td></tr>`).join('')}</tbody></table>`
-      : '<p class="text-base-content/50 text-sm">No releases found.</p>';
-    $('tbody').querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => tedPick(tr.dataset.id));
-    tedCounts(rs.map(r => r.id));
+    ted.rows = rs; ted.sort ||= {key: '', dir: 1};
+    showResults($('tbody'), ted, tedRow, tedPick);
+    tedCounts(rs);
   } catch (err) { tedBusy(false, err.message); }
 }
 
 // Search hits carry no tracklist: fetch the counts one by one (Discogs allows 60 requests a minute); results are cached server-side.
-async function tedCounts(ids) {
-  const queue = [...ids], token = ted.search = {};
+async function tedCounts(rows) {
+  const queue = [...rows], token = ted.search = {};
   const next = async () => {
-    for (let id; (id = queue.shift()) && ted.search === token;) {
-      let txt = '?';
-      try { txt = (await api('/api/discogs/tracks?id=' + id)).count + ' tracks'; } catch (_) {}
-      const td = $('tbody').querySelector(`[data-count="${id}"]`); if (td) td.textContent = txt;
+    for (let r; (r = queue.shift()) && ted.search === token;) {
+      try { r.n = (await api('/api/discogs/tracks?id=' + r.id)).count; } catch (_) { r.n = -1; }
+      const td = $('tbody').querySelector(`[data-count="${r.id}"]`); if (td) td.textContent = r.n < 0 ? '?' : r.n + ' tracks';
     }
   };
   await Promise.all([next(), next(), next()]);
+  if (ted.search === token && ted.sort.key === 'tracks') showResults($('tbody'), ted, tedRow, tedPick);
 }
 
 async function tedPick(rid) {
@@ -778,15 +800,8 @@ async function mbdSearch(e) {
   try {
     const rs = await api('/api/musicbrainz/search?q=' + encodeURIComponent(q) + '&path=' + encodeURIComponent(mbd.path));
     mbd.release = null; $('mapply').disabled = true; mbdBusy(false);
-    $('mbody').innerHTML = rs.length ? `<table class="table table-sm"><tbody>${rs.map(r => `<tr class="hover cursor-pointer" data-id="${r.id}">
-      <td class="w-12"><img src="${esc(r.thumb)}" loading="lazy" class="size-10 rounded object-cover bg-base-200" onerror="this.remove()"></td>
-      <td><div class="font-medium">${esc(r.title)}${r.match ? ` <span class="badge badge-success badge-soft badge-xs ml-1" title="Same as the Discogs release of this album">${esc(r.match)} match</span>` : ''}</div>
-        <div class="text-xs text-base-content/50">${esc([r.year, r.country, r.format, r.label, r.barcode].filter(Boolean).join(' · '))}</div></td>
-      <td class="w-36 font-mono text-xs break-words" title="Catalogue number">${esc(r.catno)}</td>
-      <td class="w-24 text-xs text-base-content/50 whitespace-nowrap">${r.tracks ? r.tracks + ' tracks' : ''}</td>
-      <td class="text-right"><button class="btn btn-xs">Select</button></td></tr>`).join('')}</tbody></table>`
-      : '<p class="text-base-content/50 text-sm">No releases found.</p>';
-    $('mbody').querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => mbdPick(tr.dataset.id));
+    mbd.rows = rs; mbd.sort ||= {key: '', dir: 1};
+    showResults($('mbody'), mbd, mbdRow, mbdPick);
   } catch (err) { mbdBusy(false, err.message); }
 }
 async function mbdPick(id) {

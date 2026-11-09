@@ -10,7 +10,7 @@ UC-6. `fixtags` needs a `DISCOGS_RELEASE_ID` and writes only album-level tags; p
 ## Decision
 
 ### Search
-- `GET /api/discogs/search?q=` searches Discogs releases (`type=release`, 20 results). A numeric query loads that release directly. The dialog shows title, year, country, format, label, catalogue number and thumbnail.
+- `GET /api/discogs/search?q=` searches Discogs releases (`type=release`, 20 results). A numeric query loads that release directly. The dialog shows title, year, country, format, label, catalogue number and thumbnail. The result table has a **Year** column of its own (no longer in the grey line) and clickable **Year** and **Tracks** headers: the first click sorts ascending, the next descending, releases without a value sort last, and the header stays visible while the list scrolls. Sorting is in the browser and keeps the search result. While the track counts are still loading, sorting by tracks is applied when the last one arrives.
 - Search results carry no tracklist, so the track count of each result is fetched separately (`GET /api/discogs/tracks?id=`), three at a time, filling in after the list appears. A failed lookup shows `?`. Parsed releases are cached in memory for the life of the process because Discogs allows 60 requests a minute.
 - If the album already has a Discogs ID, the dialog opens on that release.
 
