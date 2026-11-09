@@ -516,7 +516,7 @@ def worker(paths: list[Path]):
 
 @app.post('/api/run')
 def run(body: dict):
-	"""Body: {path} for one album or {paths: [...]} for a queue (Run all ready)."""
+	"""Body: {path} for one album or {paths: [...]} for a queue (the UI starts one album at a time)."""
 	raw = body.get('paths') or [body.get('path', '')]
 	paths = [safe(p) for p in raw]
 	for path in paths:

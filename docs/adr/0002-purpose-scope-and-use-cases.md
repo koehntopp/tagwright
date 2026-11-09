@@ -17,7 +17,7 @@ Tagwright is a single-user, self-hosted web app that lets one person work throug
 |----|----------|------------------|
 | UC-1 | Choose an input folder and an output (ingest) folder, and enter the Discogs and lrclib API keys. | [0009](0009-settings-and-api-keys.md) |
 | UC-2 | See all album folders of the input folder with cover, artist, album, year, edition, Discogs and MusicBrainz IDs, album DR, lyrics counts and a pipeline progress bar; filter by status, sort, search. | [0006](0006-status-model-and-pipeline-steps.md), [0017](0017-ui-layout-and-design-system.md) |
-| UC-3 | Run the fix pipeline for one album, or for every ready album in sequence ("Run all ready"), and follow a live log. | [0004](0004-pipeline-engine-reuses-discogs-scripts.md), [0008](0008-job-model.md) |
+| UC-3 | Run the fix pipeline for one album and follow a live log. | [0004](0004-pipeline-engine-reuses-discogs-scripts.md), [0008](0008-job-model.md) |
 | UC-4 | See per pipeline step whether it is done, and which tracks are missing it. | [0006](0006-status-model-and-pipeline-steps.md) |
 | UC-5 | Move a fully fixed album to the ingest folder. | [0011](0011-ingestion-move.md) |
 | UC-6 | Give an album the right Discogs release: search Discogs, assign the album's files to the release's tracks (the album often holds only a subset), renumber, and fill the tags the pipeline expects a tagger to have imported (artist, album artist, album title, catalog number, cover) when they are missing. | [0013](0013-discogs-track-assignment.md) |
