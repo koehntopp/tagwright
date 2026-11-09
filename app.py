@@ -172,7 +172,7 @@ def track_files(album: Path, files, tags, lengths, has_discogs: bool) -> list[di
 	out = []
 	for f, t, length in zip(files, tags, lengths):
 		kind = lyric_kind(t)
-		tags_ok = has_discogs and all(tag(t, *k) for k in REQUIRED_TAGS) and bool(tag(t, 'DATE', 'YEAR'))
+		tags_ok = has_discogs and all(tag(t, *k) for k in REQUIRED_TAGS) and bool(tag(t, 'DATE', 'YEAR')) and bool(tag(t, 'VERSION'))
 		out.append({
 			'name': f.name,
 			'length': round(length),
@@ -251,7 +251,7 @@ def summarize(album: Path) -> dict:
 	have = lambda *k: sum(1 for t in tags if tag(t, *k)) == n  # noqa: E731
 	kinds = [lyric_kind(t) for t in tags]
 	syn, pla, ins, mis = (kinds.count(k) for k in ('lrc', 'txt', 'instr', 'none'))
-	req = all(have(*k) for k in REQUIRED_TAGS) and have('DATE', 'YEAR')
+	req = all(have(*k) for k in REQUIRED_TAGS) and have('DATE', 'YEAR') and have('VERSION')
 	cov = out['cover']
 	small_cover = MIN_COVER > 0 and (not cov or cov['w'] < MIN_COVER or cov['h'] < MIN_COVER)
 	steps = [
@@ -1334,10 +1334,16 @@ def write_album_fields(album: Path, fields: dict) -> None:
 		if not rid:
 			raise HTTPException(400, 'cannot restore the Discogs value: the album has no Discogs release ID')
 		restore = discogs_defaults(rid)  # before touching any file: a failed lookup changes nothing
+	# VERSION (year, DR, format, edition, catalogue number) and the folder name derive from these; fixtags rewrites it on
+	# the next run, and a missing VERSION reopens the Tags step (ADR 0006), so a changed value shows up as Ready again
+	stale = bool(tag(first, 'DISCOGS_RELEASE_ID')) and any(
+		k in fields and str(fields[k]).strip() != tag(first, k, *ALBUM_FIELDS[k]) for k in ('ALBUM_EDITION', 'ALBUM_FORMAT', 'CATALOGNUMBER'))
 	for f in files:
 		a = FLAC(f)
 		if a.tags is None:
 			a.add_tags()
+		if stale and 'VERSION' in a.tags:
+			del a.tags['VERSION']
 		for key, value in fields.items():
 			value = str(value).strip()
 			if value:

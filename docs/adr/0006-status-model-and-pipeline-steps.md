@@ -24,9 +24,11 @@ An album is a folder that contains FLAC files. Folders named `Disc N` or `CD N` 
 | Dynamic range | every track has `DYNAMIC_RANGE` |
 | ReplayGain | every track has `REPLAYGAIN_ALBUM_GAIN` |
 | Fingerprints | every track has `ACOUSTID_FINGERPRINT` |
-| Tags and cover | a `DISCOGS_RELEASE_ID` exists and every track has `ARTIST`, `ALBUMARTIST`, `TITLE`, `ALBUM`, `TRACKNUMBER`, `DISCNUMBER`, `ALBUM_FORMAT`, `CATALOGNUMBER` (any of its four spellings; Discogs' own value `none` counts) and `DATE` or `YEAR` |
+| Tags and cover | a `DISCOGS_RELEASE_ID` exists and every track has `ARTIST`, `ALBUMARTIST`, `TITLE`, `ALBUM`, `TRACKNUMBER`, `DISCNUMBER`, `ALBUM_FORMAT`, `CATALOGNUMBER` (any of its four spellings; Discogs' own value `none` counts) and `DATE` or `YEAR`, and `VERSION` (the version string fixtags derives from year, DR, format, edition and catalogue number) |
 | Lyrics | no track is missing lyrics (see below) |
 | Filenames | every file name equals the bliss name of its tags ([0010](0010-bliss-file-naming.md)) |
+
+Editing `ALBUM_EDITION`, `ALBUM_FORMAT` or `CATALOGNUMBER` in the tag editor ([0014](0014-internal-tag-editor.md)) to a different value removes `VERSION` from every file of an album that has a Discogs ID, so the Tags and cover step reopens and the album is Ready until the next Run fixes rewrites `VERSION` (and the folder name derived from it).
 
 A step may be **done but partial** (shown yellow, still counts as done):
 - Lyrics: at least one track has plain-text (not synced) lyrics.
