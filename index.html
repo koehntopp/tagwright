@@ -94,25 +94,29 @@
 
 <dialog id="edlg" class="modal">
   <div class="modal-box w-11/12 max-w-[72rem] overflow-x-hidden">
-    <h3 class="font-semibold text-lg">Edit track</h3>
-    <div class="text-xs text-base-content/50 font-mono mt-1 truncate" id="e_file"></div>
-    <div class="grid grid-cols-2 gap-3 mt-3">
-      <fieldset class="fieldset"><legend class="fieldset-legend">Title to search for</legend>
-        <input id="e_title" type="text" class="input input-sm w-full" autocomplete="off"></fieldset>
-      <fieldset class="fieldset"><legend class="fieldset-legend">Artist to search for</legend>
-        <input id="e_artist" type="text" class="input input-sm w-full" autocomplete="off"></fieldset>
+    <div class="flex items-baseline gap-3">
+      <h3 class="font-semibold text-lg">Edit lyrics</h3>
+      <div class="text-xs text-base-content/50 font-mono truncate min-w-0" id="e_file"></div>
     </div>
-    <fieldset class="fieldset"><legend class="fieldset-legend">Lyrics</legend>
-      <div class="flex flex-wrap gap-2 mb-1">
-        <button type="button" class="btn btn-xs" id="e_instr" title="Replace the lyrics with an instrumental marker">Instrumental</button>
-        <button type="button" class="btn btn-xs" id="e_intro" title="Replace the lyrics with a spoken-intro marker">Spoken Intro</button>
-        <button type="button" class="btn btn-xs ml-auto" id="e_search" title="Search lrclib.net with the title and artist above"><img src="/static/lrclib.ico" alt="" class="size-3.5">Search lrclib.net</button>
+    <div class="flex items-center gap-2 mt-3 p-2 rounded-lg bg-base-200">
+      <label class="input input-sm flex-1 min-w-0"><span class="label">Title</span><input id="e_title" type="text" autocomplete="off" placeholder="title to search for"></label>
+      <label class="input input-sm flex-1 min-w-0"><span class="label">Artist</span><input id="e_artist" type="text" autocomplete="off" placeholder="artist to search for"></label>
+      <button type="button" class="btn btn-sm btn-neutral" id="e_search" title="Search lrclib.net with this title and artist (not saved)"><img src="/static/lrclib.ico" alt="" class="size-3.5">Search lrclib.net</button>
+    </div>
+    <div class="flex items-center gap-2 mt-4 mb-1">
+      <span class="text-sm font-medium">Lyrics</span>
+      <span class="badge badge-sm w-16 justify-center" id="e_kind"></span>
+      <span class="text-xs text-base-content/50" id="e_count"></span>
+      <div class="ml-auto flex gap-2">
+        <button type="button" class="btn btn-xs btn-ghost" id="e_instr" title="Replace the lyrics with an instrumental marker">Instrumental</button>
+        <button type="button" class="btn btn-xs btn-ghost" id="e_intro" title="Replace the lyrics with a spoken-intro marker">Spoken Intro</button>
       </div>
-      <div class="flex gap-3 items-stretch">
-        <textarea id="e_lyrics" class="textarea flex-1 min-w-0 h-[60vh] min-h-72 font-mono text-xs leading-relaxed" spellcheck="false"></textarea>
-        <div id="e_res" class="hidden w-[26rem] shrink-0 h-[60vh] min-h-72 overflow-y-auto rounded-lg border border-base-300 divide-y divide-base-300 text-xs"></div>
-      </div>
-      <p class="label whitespace-normal">Plain text or synced ([mm:ss.xx] lines). Empty removes the lyrics. The title and artist above are only used for the lrclib.net search; they are not saved (change them in the Tag Editor).</p></fieldset>
+    </div>
+    <div class="flex gap-3 items-stretch">
+      <textarea id="e_lyrics" class="textarea flex-1 min-w-0 h-[60vh] min-h-72 font-mono text-xs leading-relaxed" spellcheck="false" placeholder="Plain text or synced [mm:ss.xx] lines. Empty removes the lyrics."></textarea>
+      <div id="e_res" class="hidden w-[26rem] shrink-0 h-[60vh] min-h-72 overflow-y-auto rounded-lg border border-base-300 divide-y divide-base-300 text-xs"></div>
+    </div>
+    <p class="text-xs text-base-content/50 mt-2">Title and artist are only used for the search and are not saved (change them in the Tag Editor).</p>
     <p class="text-error text-sm mt-2" id="eerr"></p>
     <div class="modal-action">
       <button class="btn btn-sm" id="eclose">Cancel</button>
@@ -546,12 +550,20 @@ let edt = null;
 async function openEdit(path, file) {
   try {
     const t = await api('/api/track?path=' + encodeURIComponent(path) + '&file=' + encodeURIComponent(file));
-    edt = {path, file, length: t.length}; $('e_file').textContent = file + (t.length ? '  ·  ' + mmss(t.length) : ''); $('e_title').value = t.title; $('e_artist').value = t.artist; $('e_res').classList.add('hidden'); $('e_lyrics').value = t.lyrics; $('eerr').textContent = '';
+    edt = {path, file, length: t.length}; $('e_file').textContent = file + (t.length ? '  ·  ' + mmss(t.length) : ''); $('e_title').value = t.title; $('e_artist').value = t.artist; $('e_res').classList.add('hidden'); $('e_lyrics').value = t.lyrics; kind(); $('eerr').textContent = '';
     $('edlg').showModal();
   } catch (e) { toast(e.message, 'alert-error'); }
 }
 $('eclose').onclick = () => $('edlg').close();
-$('e_instr').onclick = () => { $('e_lyrics').value = '[00:00.00] [Instrumental]'; };
+function kind() {
+  const v = $('e_lyrics').value, k = $('e_kind');
+  const synced = /^\s*\[\d+:\d+(\.\d+)?\]/m.test(v), n = v.trim() ? v.replace(/\n+$/, '').split('\n').length : 0;
+  k.textContent = !n ? 'Empty' : synced ? 'Synced' : 'Plain';
+  k.className = 'badge badge-sm w-16 justify-center ' + (!n ? 'badge-ghost' : synced ? 'badge-success' : 'badge-warning');
+  $('e_count').textContent = n ? n + ' line' + (n > 1 ? 's' : '') : '';
+}
+$('e_lyrics').oninput = kind;
+$('e_instr').onclick = () => { $('e_lyrics').value = '[00:00.00] [Instrumental]'; kind(); };
 $('e_search').onclick = async () => {
   const box = $('e_res'), btn = $('e_search');
   box.classList.remove('hidden'); box.innerHTML = '<div class="p-3 text-base-content/60">Searching lrclib.net...</div>'; btn.disabled = true;
@@ -560,7 +572,7 @@ $('e_search').onclick = async () => {
     let r = await api('/api/lrclib/search?' + q);
     const near = x => Math.abs(x.duration - edt.length);
     if (edt.length) r = r.sort((a, b) => near(a) - near(b));
-    box.innerHTML = r.length ? r.map((x, i) => `<div class="p-2">
+    box.innerHTML = r.length ? `<div class="sticky top-0 z-10 px-2 py-1 bg-base-200 text-base-content/60 font-medium">${r.length} result${r.length > 1 ? 's' : ''} on lrclib.net</div>` + r.map((x, i) => `<div class="p-2 hover:bg-base-200/60">
       <div class="flex items-center gap-2">
         <span class="badge badge-xs w-10 justify-center shrink-0 ${edt.length && near(x) <= 3 ? 'badge-success' : 'badge-ghost'}" title="${edt.length ? 'this file is ' + mmss(edt.length) : ''}">${mmss(x.duration)}</span>
         <div class="min-w-0 flex-1"><div class="truncate font-medium">${esc(x.artist)} - ${esc(x.title)}</div><div class="truncate text-base-content/50">${esc(x.album)}</div></div></div>
@@ -570,12 +582,14 @@ $('e_search').onclick = async () => {
         ${x.instrumental ? `<button type="button" class="btn btn-xs" data-use="${i}" data-k="instr">Instrumental</button>` : ''}</div></div>`).join('') : '<div class="p-3 text-base-content/60">No results.</div>';
     box.querySelectorAll('[data-use]').forEach(b => b.onclick = () => {
       const x = r[+b.dataset.use], k = b.dataset.k;
-      $('e_lyrics').value = k === 'instr' ? '[00:00.00] [Instrumental]' : x[k];
+      $('e_lyrics').value = k === 'instr' ? '[00:00.00] [Instrumental]' : x[k]; kind();
+      box.querySelectorAll('[data-use]').forEach(o => o.closest('.p-2').classList.remove('bg-primary/10'));
+      b.closest('.p-2').classList.add('bg-primary/10');
     });
   } catch (e) { box.innerHTML = `<div class="p-3 text-error">${esc(e.message)}</div>`; }
   btn.disabled = false;
 };
-$('e_intro').onclick = () => { $('e_lyrics').value = '[00:00.00](Spoken Intro)'; };
+$('e_intro').onclick = () => { $('e_lyrics').value = '[00:00.00](Spoken Intro)'; kind(); };
 $('esave').onclick = async () => {
   try {
     const d = await post('/api/track', {path: edt.path, file: edt.file, lyrics: $('e_lyrics').value});
