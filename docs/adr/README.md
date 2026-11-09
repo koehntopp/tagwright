@@ -27,6 +27,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0021](0021-lrclib-lyrics-search.md) | Lyrics search on lrclib.net in the track editor | Accepted |
 | [0022](0022-top-bar-instead-of-sidebar.md) | Top bar instead of a sidebar | Accepted |
 | [0023](0023-musicbrainz-release-search.md) | MusicBrainz release search and tags | Accepted |
+| [0024](0024-delete-cover-removes-folder-image.md) | Delete cover also removes the folder image | Accepted |
 
 ## Which ADR covers what
 
@@ -47,6 +48,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | tag editor, override pencils, which tags are editable | 0014 |
 | play button, track edit dialog, lyrics editing | 0015, 0021 (artist field, lrclib search) |
 | cover display, size warning, cover upload | 0016 |
+| cover delete | 0024 |
 | layout, colours, widths, dialogs, `index.html` styling | 0017, 0022 (top bar replaces the sidebar) |
 | how to test | 0018 |
 | commits, pushing, tags (no branches) | 0020 |

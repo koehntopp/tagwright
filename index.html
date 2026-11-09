@@ -51,7 +51,7 @@
 <dialog id="cdlg" class="modal">
   <div class="modal-box max-w-[24rem]">
     <h3 class="font-semibold text-lg">Remove cover?</h3>
-    <p class="text-sm mt-2">The embedded cover is removed from every file of this album.</p>
+    <p class="text-sm mt-2">The embedded cover is removed from every file of this album, and a cover.jpg or folder image in the album folder is deleted.</p>
     <p class="text-error text-sm mt-2" id="cerr"></p>
     <div class="modal-action">
       <button class="btn btn-sm" id="cno">Cancel</button>
@@ -333,7 +333,7 @@ function renderInspector() {
             <button class="btn btn-ghost btn-circle size-3.5 min-h-0 p-0" id="coveredit" title="Upload a different cover">${svg(ico.upload, 'size-[18px] shrink-0')}</button>
             <a href="https://covers.musichoarders.xyz/?${new URLSearchParams({artist: a.artist || '', album: title(a)})}" target="_blank" rel="noopener" title="Search covers on covers.musichoarders.xyz" class="shrink-0"><img src="/static/musichoarders.svg" alt="COV" class="size-3.5 rounded-sm bg-neutral p-px"></a>
             <a href="https://albumartexchange.com/covers?${new URLSearchParams({q: [a.artist, title(a)].filter(Boolean).join(' ')})}" target="_blank" rel="noopener" title="Search covers on albumartexchange.com" class="shrink-0"><img src="/static/albumartexchange.ico" alt="AAE" class="size-3.5 rounded-sm"></a>
-            ${a.cover && a.cover.embedded ? `<button class="btn btn-ghost btn-circle size-3.5 min-h-0 p-0 text-error" id="coverdel" title="Remove the embedded cover">${svg(ico.xcircle, 'size-[18px] shrink-0')}</button>` : ''}
+            ${a.cover ? `<button class="btn btn-ghost btn-circle size-3.5 min-h-0 p-0 text-error" id="coverdel" title="Remove the cover">${svg(ico.xcircle, 'size-[18px] shrink-0')}</button>` : ''}
           </div>
           <div class="text-center text-[14px] leading-tight tabular-nums mt-1 text-base-content/50 whitespace-nowrap" title="${a.cover ? (a.cover.embedded ? 'Embedded cover' : 'Folder image, not embedded') + ', ' + fmtBytes(a.cover.bytes) : ''}">${a.cover ? a.cover.w + '×' + a.cover.h : 'no cover'}</div>
           <input type="file" id="coverfile" accept="image/*" class="hidden">

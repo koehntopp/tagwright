@@ -194,6 +194,9 @@ def track_files(album: Path, files, tags, lengths, has_discogs: bool) -> list[di
 	return out
 
 
+COVER_FILES = ('cover.jpg', 'folder.jpg', 'cover.png', 'folder.png')
+
+
 def cover_info(a: FLAC, album: Path) -> dict | None:
 	"""Size of the cover that /api/cover serves (embedded front cover first, else a folder image)."""
 	pics = a.pictures
@@ -207,7 +210,7 @@ def cover_info(a: FLAC, album: Path) -> dict | None:
 			except (OSError, UnidentifiedImageError):
 				pass
 		return {'w': w, 'h': h, 'bytes': len(pic.data), 'embedded': True}
-	for name in ('cover.jpg', 'folder.jpg', 'cover.png', 'folder.png'):
+	for name in COVER_FILES:
 		img = album / name
 		if img.is_file():
 			try:
@@ -428,7 +431,7 @@ async def set_cover(path: str, request: Request):
 
 @app.delete('/api/cover')
 def delete_cover(path: str):
-	"""Remove the front and untyped covers from every file (other picture types stay). Folder images are not touched."""
+	"""Remove the front and untyped covers from every file (other picture types stay) and the folder images (ADR 0024)."""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	album = safe(path)
@@ -440,7 +443,10 @@ def delete_cover(path: str):
 			for p in keep:
 				a.add_picture(p)
 			a.save()
+	for name in COVER_FILES:
+		(album / name).unlink(missing_ok=True)
 	return fresh_summary(album)
+
 
 @app.get('/api/cover')
 def cover(path: str):
@@ -450,7 +456,7 @@ def cover(path: str):
 		pic = next((p for p in pics if p.type == 3), pics[0] if pics else None)
 		if pic:
 			return Response(pic.data, media_type=pic.mime or 'image/jpeg')
-	for name in ('cover.jpg', 'folder.jpg', 'cover.png', 'folder.png'):
+	for name in COVER_FILES:
 		img = album / name
 		if img.is_file():
 			return FileResponse(img)
