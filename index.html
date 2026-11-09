@@ -317,13 +317,13 @@ function renderInspector() {
       <div class="flex gap-4">
         <div class="shrink-0 w-24" id="coverbox">
           <div class="rounded-box transition-shadow" id="coverdrop" title="Drop an image here to replace the cover">${cover(a, 'size-24 rounded-box overflow-hidden shadow')}</div>
-          <div class="flex items-center justify-center gap-0.5 mt-1">
-            <button class="btn btn-ghost btn-circle size-[22px] min-h-0 p-0" id="coveredit" title="Upload a different cover">${svg(ico.upload, 'size-[26px] shrink-0')}</button>
-            <a href="https://covers.musichoarders.xyz/?${new URLSearchParams({artist: a.artist || '', album: title(a)})}" target="_blank" rel="noopener" title="Search covers on covers.musichoarders.xyz" class="shrink-0"><img src="/static/musichoarders.svg" alt="COV" class="size-[22px] rounded bg-neutral p-0.5"></a>
-            <a href="https://albumartexchange.com/covers?${new URLSearchParams({q: [a.artist, title(a)].filter(Boolean).join(' ')})}" target="_blank" rel="noopener" title="Search covers on albumartexchange.com" class="shrink-0"><img src="/static/albumartexchange.ico" alt="AAE" class="size-[22px] rounded"></a>
-            ${a.cover && a.cover.embedded ? `<button class="btn btn-ghost btn-circle size-[22px] min-h-0 p-0 text-error" id="coverdel" title="Remove the embedded cover">${svg(ico.xcircle, 'size-[26px] shrink-0')}</button>` : ''}
+          <div class="flex items-center justify-center gap-2.5 mt-1.5">
+            <button class="btn btn-ghost btn-circle size-3.5 min-h-0 p-0" id="coveredit" title="Upload a different cover">${svg(ico.upload, 'size-[18px] shrink-0')}</button>
+            <a href="https://covers.musichoarders.xyz/?${new URLSearchParams({artist: a.artist || '', album: title(a)})}" target="_blank" rel="noopener" title="Search covers on covers.musichoarders.xyz" class="shrink-0"><img src="/static/musichoarders.svg" alt="COV" class="size-3.5 rounded-sm bg-neutral p-px"></a>
+            <a href="https://albumartexchange.com/covers?${new URLSearchParams({q: [a.artist, title(a)].filter(Boolean).join(' ')})}" target="_blank" rel="noopener" title="Search covers on albumartexchange.com" class="shrink-0"><img src="/static/albumartexchange.ico" alt="AAE" class="size-3.5 rounded-sm"></a>
+            ${a.cover && a.cover.embedded ? `<button class="btn btn-ghost btn-circle size-3.5 min-h-0 p-0 text-error" id="coverdel" title="Remove the embedded cover">${svg(ico.xcircle, 'size-[18px] shrink-0')}</button>` : ''}
           </div>
-          <div class="text-center text-[14px] leading-tight tabular-nums text-base-content/50 whitespace-nowrap" title="${a.cover ? (a.cover.embedded ? 'Embedded cover' : 'Folder image, not embedded') + ', ' + fmtBytes(a.cover.bytes) : ''}">${a.cover ? a.cover.w + '×' + a.cover.h : 'no cover'}</div>
+          <div class="text-center text-[14px] leading-tight tabular-nums mt-1 text-base-content/50 whitespace-nowrap" title="${a.cover ? (a.cover.embedded ? 'Embedded cover' : 'Folder image, not embedded') + ', ' + fmtBytes(a.cover.bytes) : ''}">${a.cover ? a.cover.w + '×' + a.cover.h : 'no cover'}</div>
           <input type="file" id="coverfile" accept="image/*" class="hidden">
         </div>
         <div class="min-w-0">
