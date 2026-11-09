@@ -796,7 +796,7 @@ function renderMbd() {
     </tbody></table>
     <table class="table table-sm"><thead><tr><th class="w-16">Disc</th><th class="w-16">Track</th><th>Title</th><th>Artist</th><th class="w-16 text-right">Length</th></tr></thead><tbody>
       ${r.tracks.map(t => `<tr><td>${t.disc}</td><td>${esc(t.position)}</td><td>${esc(t.title)}</td><td class="text-base-content/70">${t.artists.map(a => link('artist', a.id, a.name)).join(', ')}</td><td class="text-right text-base-content/50">${mmss(t.duration)}</td></tr>`).join('')}</tbody></table>
-    <div class="text-xs text-base-content/50 mt-3">Apply writes the release ID, the release group and album artist IDs and links to every file, and the artist ID and link to each file whose title matches a release track. Titles, track numbers and everything else stay as they are.</div>`;
+    <div class="text-xs text-base-content/50 mt-3">Apply writes the release ID, the release group and album artist IDs and links to every file, and the artist ID and link to each file whose title matches a release track. Barcode, ASIN, release country, status, type and disambiguation are filled only where the file has none yet. Titles, track numbers and everything else stay as they are.</div>`;
   $('mapply').disabled = false;
 }
 async function mbdApply() {

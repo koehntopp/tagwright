@@ -1163,7 +1163,9 @@ def mb_release(mbid: str) -> dict:
 		 'duration': round(t['length'] / 1000) if t.get('length') else 0, 'artist': mb_names(t.get('artist-credit')), 'artists': people(t.get('artist-credit'))}
 		for m in r.get('media', []) for t in m.get('tracks', [])
 	]
+	types = [t for t in [rg.get('primary-type'), *(rg.get('secondary-types') or [])] if t]
 	out = {**mb_brief(r), 'artist': mb_names(r.get('artist-credit')), 'name': r.get('title', ''), 'artists': people(r.get('artist-credit')),
+		'asin': r.get('asin') or '', 'status': r.get('status') or '', 'disambiguation': r.get('disambiguation') or '', 'types': ','.join(types),
 		'group': {'id': rg.get('id', ''), 'title': rg.get('title', ''), 'type': rg.get('primary-type') or '', 'first': rg.get('first-release-date') or ''},
 		'tracks': tracks}
 	mb_releases[mbid] = out
@@ -1181,6 +1183,7 @@ def musicbrainz_apply(body: dict):
 	"""Write the release ID and its MusicBrainz links (release group, album artists) to every file of the album.
 
 	Per file the artist ID and link are written only when the file's TITLE equals exactly one release track.
+	Barcode, ASIN, country, status, type and disambiguation fill only empty tags.
 	"""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
@@ -1197,6 +1200,10 @@ def musicbrainz_apply(body: dict):
 		'MUSICBRAINZ_ALBUMARTISTID': [a['id'] for a in rel['artists']],
 		'MUSICBRAINZ_ALBUMARTIST_URL': [f'{mb}/artist/{a["id"]}' for a in rel['artists']],
 	}
+	# Filled only where the tag is empty (a Discogs assignment or the owner may have set them): player tags and the tagger's descriptive tags.
+	fill = {'BARCODE': rel['barcode'], 'ASIN': rel['asin'], 'MUSICBRAINZ_ALBUM_RELEASECOUNTRY': rel['country'], 'MUSICBRAINZ_ALBUMSTATUS': rel['status'],
+		'MUSICBRAINZ_ALBUMTYPE': rel['types'], 'MUSICBRAINZ_ALBUM_DISAMBIGUATION': rel['disambiguation']}
+	filled: dict[str, int] = {}
 	log, per_file = [], 0
 	for f in flacs(album):
 		a = FLAC(f)
@@ -1207,6 +1214,10 @@ def musicbrainz_apply(body: dict):
 		for k, v in values.items():
 			if v:
 				a[k] = v
+		for k, v in fill.items():
+			if v and not tag(a.tags, k):
+				a[k] = [v]
+				filled[k] = filled.get(k, 0) + 1
 		match = by_title.get(norm_title(tag(a.tags, 'TITLE')), [])
 		if len(match) == 1 and match[0]['artists']:
 			for k in [k for k in a.tags.keys() if k.upper() in MB_TRACK_KEYS]:
@@ -1216,6 +1227,8 @@ def musicbrainz_apply(body: dict):
 			per_file += 1
 		a.save()
 	log.append(f'MusicBrainz release {rel["id"]} ({rel["artist"]} - {rel["name"]}) written; release group, album artist links on every file, artist links on {per_file} files')
+	if filled:
+		log.append('filled from MusicBrainz (only where empty): ' + ', '.join(f'{k} x{v}' for k, v in filled.items()))
 	return {'log': log, 'album': fresh_summary(album)}
 
 

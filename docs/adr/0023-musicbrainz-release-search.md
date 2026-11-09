@@ -34,9 +34,11 @@ Refused (409) while a job runs ([0008](0008-job-model.md)). Written to **every f
 | `MUSICBRAINZ_ALBUMARTISTID` (multi) | the release's artist credit, artist IDs |
 | `MUSICBRAINZ_ALBUMARTIST_URL` (multi) | `https://musicbrainz.org/artist/<id>` for each |
 
-**Per file, only when its `TITLE` (normalised) equals exactly one release track**: `MUSICBRAINZ_ARTISTID` and `MUSICBRAINZ_ARTIST_URL` (multi) from that track's artist credit, replacing existing values. A file without such a match keeps whatever artist tags it has. Titles, track and disc numbers and every other tag are not touched; no file is renamed. The log says how many files got artist links.
+**Per file, only when its `TITLE` (normalised) equals exactly one release track**: `MUSICBRAINZ_ARTISTID` and `MUSICBRAINZ_ARTIST_URL` (multi) from that track's artist credit, replacing existing values. A file without such a match keeps whatever artist tags it has.
 
-**Never written**: `MUSICBRAINZ_RELEASETRACKID` and `MUSICBRAINZ_TRACKID` (`fixtags.py` reads the release track ID to anchor languages per track, and Tagwright does no track assignment), and the descriptive tags the tagger wrote (`ALBUMSTATUS`, `ALBUMTYPE`, `ALBUM_RELEASECOUNTRY`, `LABEL_URL`, `COVERART_URL`, ...); they stay as they are.
+**Filled only where the tag is empty** (an existing value, from the Discogs assignment ([0013](0013-discogs-track-assignment.md)) or the owner, is never replaced): `BARCODE`, `ASIN`, `MUSICBRAINZ_ALBUM_RELEASECOUNTRY` (the MusicBrainz country code), `MUSICBRAINZ_ALBUMSTATUS` (Official, ...), `MUSICBRAINZ_ALBUMTYPE` (release group primary and secondary types, comma-joined, e.g. `Album,Compilation`) and `MUSICBRAINZ_ALBUM_DISAMBIGUATION`. Logged as `filled from MusicBrainz (only where empty): ...`. `COUNTRY` is not filled: Discogs writes a country name there and MusicBrainz a code. Titles, track and disc numbers and every other tag are not touched; no file is renamed. The log says how many files got artist links.
+
+**Never written**: `MUSICBRAINZ_RELEASETRACKID` and `MUSICBRAINZ_TRACKID` (`fixtags.py` reads the release track ID to anchor languages per track, and Tagwright does no track assignment), and the tagger's other descriptive tags (`LABEL_URL`, `COVERART_URL`, `RELATIONSHIP_URL__DISCOGS`, ...); they stay as they are.
 
 ### Not changed
 `fixtags.py` removes only the `ALBUM_COMPANY_`, `ALBUM_CREDIT_` and `ALBUM_IDENT_` families, so the new tags survive pipeline runs. The tag editor's Album tab still lets the owner type `MUSICBRAINZ_ALBUMID` by hand ([0014](0014-internal-tag-editor.md)).
@@ -45,4 +47,4 @@ Refused (409) while a job runs ([0008](0008-job-model.md)). Written to **every f
 
 - No MusicBrainz tracklist assignment ([0002](0002-purpose-scope-and-use-cases.md) out of scope): picking a release never renumbers or retitles files.
 - The thumbnails and the cover images come from coverartarchive.org straight to the browser; a release without art gives a 404 in the browser console that the app cannot avoid.
-- Possible later additions, not built: `MUSICBRAINZ_ALBUMSTATUS`/`ALBUMTYPE`, original release date from the release group, `BARCODE`/`ASIN` when empty, and the track IDs (needs a track assignment).
+- Possible later additions, not built: original release date from the release group, label and catalogue number when empty, and the track IDs (needs a track assignment).
