@@ -248,7 +248,7 @@ function cover(a, cls) {
 }
 
 function renderNav() {
-  const items = [['all', 'All albums', ico.lib], ['needs', 'Needs input', ico.warn], ['fixed', 'Fixed', ico.check]];
+  const items = [['all', 'All albums', ico.lib], ['needs', 'Needs input', ico.warn], ['ready', 'Ready', ico.clock], ['fixed', 'Fixed', ico.check]];
   $('nav').innerHTML = items.map(([k, l, i]) => `<button class="btn btn-sm text-[14px] px-2 ${filter === k ? 'btn-neutral' : 'btn-ghost'}" data-f="${k}">${l}
     <span class="badge badge-sm ${filter === k ? '' : 'badge-ghost'}">${count(k)}</span></button>`).join('');
   document.querySelectorAll('#nav [data-f]').forEach(el => el.onclick = () => { filter = el.dataset.f; renderNav(); renderGrid(); });
