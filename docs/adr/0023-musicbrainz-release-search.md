@@ -40,6 +40,15 @@ Refused (409) while a job runs ([0008](0008-job-model.md)). Written to **every f
 
 **Never written**: `MUSICBRAINZ_RELEASETRACKID` and `MUSICBRAINZ_TRACKID` (`fixtags.py` reads the release track ID to anchor languages per track, and Tagwright does no track assignment), and the tagger's other descriptive tags (`LABEL_URL`, `COVERART_URL`, `RELATIONSHIP_URL__DISCOGS`, ...); they stay as they are.
 
+### Consistency notes (`GET /api/musicbrainz/check?path=`, read-only)
+For the album the inspector shows, when it has **both** a `DISCOGS_RELEASE_ID` and a `MUSICBRAINZ_ALBUMID`, the server compares the two releases and returns `{notes: [...]}`. The notes are **non-consequential**: blue notice lines (level info look, a **MusicBrainz** button that opens the release dialog) in the inspector below the issue lines; they never change the album's status, block a run or a move, and are not part of `album_issues()` or the list. Compared (any difference gives one note; missing data on either side gives none):
+
+- **Discogs link**: the MusicBrainz release carries Discogs relationships (`url-rels`, parsed into `discogs_ids`); when it has any and none equals the album's Discogs release ID: "MusicBrainz links Discogs release X, this album uses Y."
+- **Year**: the Discogs year (`ALBUM_RELEASE_YEAR`, else `YEAR`, else `DATE`, first file) against the MusicBrainz release year: "Year: Discogs A, MusicBrainz B."
+- **Number of files**: the MusicBrainz track count against the album's file count: "The MusicBrainz release has N tracks, this album has M files." (An album may legitimately hold a subset of the tracks, [0013](0013-discogs-track-assignment.md); the note is only a hint.)
+
+It needs one MusicBrainz lookup (cached for the life of the process, rate limited as above), which is why it runs for the selected album only and not for the whole library. A MusicBrainz error simply shows no note.
+
 ### Not changed
 `fixtags.py` removes only the `ALBUM_COMPANY_`, `ALBUM_CREDIT_` and `ALBUM_IDENT_` families, so the new tags survive pipeline runs. Since 2026-11-10 the tag editor no longer has a text field for `MUSICBRAINZ_ALBUMID`: the ID is set through this dialog, which accepts a pasted ID ([0014](0014-internal-tag-editor.md)).
 

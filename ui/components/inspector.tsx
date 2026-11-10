@@ -1,13 +1,13 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, Copy, Pause, Pencil, Play, TriangleAlert, Upload, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Alert } from '@/components/ui/alert'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Album, Job, LogLine, TrackFile, coverUrl, fmtBytes, mmss, title } from '@/lib/api'
+import { Album, Job, LogLine, TrackFile, api, coverUrl, fmtBytes, mmss, title } from '@/lib/api'
 
 export function copy(text: string) {
 	navigator.clipboard.writeText(text).then(() => toast.success('Copied'), () => toast.error('Copy failed'))
@@ -89,6 +89,15 @@ export function Inspector(p: Props) {
 	const [logOpen, setLogOpen] = useState(false)
 	const [drag, setDrag] = useState(false)
 	const fileRef = useRef<HTMLInputElement>(null)
+	// non-consequential notes where MusicBrainz and Discogs disagree (selected album only: one cached MusicBrainz lookup)
+	const [mbNotes, setMbNotes] = useState<string[]>([])
+	useEffect(() => {
+		setMbNotes([])
+		if (!a.discogs || !a.mbid) return
+		let live = true
+		api<{ notes: string[] }>('/api/musicbrainz/check?path=' + encodeURIComponent(a.path)).then(r => live && setMbNotes(r.notes), () => {})
+		return () => { live = false }
+	}, [a.path, a.discogs, a.mbid, a.mtime])
 	const running = job.state === 'running' && job.path === a.path
 	const firstOpen = a.steps.findIndex(s => !s.done)
 
@@ -168,6 +177,18 @@ export function Inspector(p: Props) {
 					</Alert>
 				))}
 			</div>
+
+			{mbNotes.length > 0 && (
+				<div className="space-y-2">
+					{mbNotes.map(n => (
+						<Alert key={n} className="flex items-center gap-2 border-sky-200 bg-sky-50 text-[13px] text-sky-900">
+							<TriangleAlert className="size-4 shrink-0" />
+							<span className="flex-1">{n}</span>
+							<Button size="xs" variant="outline" onClick={p.openMb}>MusicBrainz</Button>
+						</Alert>
+					))}
+				</div>
+			)}
 
 			<div className="border-b border-slate-200 py-2 text-[13px]">
 				<div className="mb-1 text-slate-500">New folder</div>

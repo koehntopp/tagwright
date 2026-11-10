@@ -1182,7 +1182,7 @@ def mb_release(mbid: str) -> dict:
 		return mb_releases[mbid]
 	if not UUID_RE.match(mbid):
 		raise HTTPException(400, 'not a MusicBrainz release ID')
-	r = musicbrainz(f'/release/{mbid}', inc='artists+artist-credits+labels+recordings+release-groups+media')
+	r = musicbrainz(f'/release/{mbid}', inc='artists+artist-credits+labels+recordings+release-groups+media+url-rels')
 	people = lambda credit: [{'id': c['artist']['id'], 'name': c['artist']['name']} for c in credit or [] if c.get('artist')]  # noqa: E731
 	rg = r.get('release-group') or {}
 	tracks = [
@@ -1194,7 +1194,8 @@ def mb_release(mbid: str) -> dict:
 	out = {**mb_brief(r), 'artist': mb_names(r.get('artist-credit')), 'name': r.get('title', ''), 'artists': people(r.get('artist-credit')),
 		'asin': r.get('asin') or '', 'status': r.get('status') or '', 'disambiguation': r.get('disambiguation') or '', 'types': ','.join(types),
 		'group': {'id': rg.get('id', ''), 'title': rg.get('title', ''), 'type': rg.get('primary-type') or '', 'first': rg.get('first-release-date') or ''},
-		'tracks': tracks}
+		'tracks': tracks,
+		'discogs_ids': [m.group(1) for x in r.get('relations') or [] if x.get('type') == 'discogs' and (m := re.search(r'/release/(\d+)', (x.get('url') or {}).get('resource', '')))]}
 	mb_releases[mbid] = out
 	return out
 
@@ -1203,6 +1204,31 @@ def mb_release(mbid: str) -> dict:
 def musicbrainz_release(id: str, path: str = ''):
 	"""The parsed release; with a path also how many files the album has."""
 	return {**mb_release(id), 'files': len(flacs(safe(path))) if path else 0}
+
+
+@app.get('/api/musicbrainz/check')
+def musicbrainz_check(path: str):
+	"""Non-consequential notes where the album's MusicBrainz release disagrees with its Discogs release.
+
+	Read-only and only for the selected album: it needs both IDs and one (cached) MusicBrainz lookup, which is too slow to do for a whole
+	library. Compared: a Discogs link in the MusicBrainz data, the year, and the track count against the album's file count.
+	"""
+	album = safe(path)
+	files = flacs(album)
+	t0 = FLAC(files[0]).tags if files else None
+	rid, mbid = tag(t0 or {}, 'DISCOGS_RELEASE_ID'), tag(t0 or {}, 'MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID')
+	if not (rid and mbid and UUID_RE.match(mbid)):
+		return {'notes': []}
+	mb = mb_release(mbid)
+	notes = []
+	if mb['discogs_ids'] and rid not in mb['discogs_ids']:
+		notes.append(f'MusicBrainz links Discogs release {", ".join(mb["discogs_ids"])}, this album uses {rid}.')
+	year = (tag(t0, 'ALBUM_RELEASE_YEAR', 'YEAR', 'DATE') or '')[:4]
+	if year and mb['year'] and year != mb['year']:
+		notes.append(f'Year: Discogs {year}, MusicBrainz {mb["year"]}.')
+	if mb['tracks'] and len(mb['tracks']) != len(files):
+		notes.append(f'The MusicBrainz release has {len(mb["tracks"])} tracks, this album has {len(files)} files.')
+	return {'notes': notes}
 
 
 @app.post('/api/musicbrainz/apply')
