@@ -1,6 +1,6 @@
 # ADR 0017: UI layout and design system
 
-- **Status**: Accepted (the Layout and No-stats-bar bullets are superseded by [0022](0022-top-bar-instead-of-sidebar.md))
+- **Status**: Superseded by [0030](0030-ui-layout-and-design-system-v2.md)
 - **Date**: 2026-11-08
 
 ## Context

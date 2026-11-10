@@ -1,6 +1,6 @@
 # ADR 0022: Top bar instead of a sidebar
 
-- **Status**: Accepted
+- **Status**: Superseded by [0030](0030-ui-layout-and-design-system-v2.md)
 - **Date**: 2026-11-09
 - **Supersedes**: the **Layout** and **No stats bar, no filter tabs** bullets of [0017](0017-ui-layout-and-design-system.md) (the rest of 0017 stands)
 

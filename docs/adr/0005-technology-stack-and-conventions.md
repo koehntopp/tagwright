@@ -1,6 +1,6 @@
 # ADR 0005: Technology stack and code conventions
 
-- **Status**: Accepted
+- **Status**: Accepted (the Frontend, CSS build and Static assets bullets are superseded by [0029](0029-nextjs-frontend-static-export.md); the backend, FLAC, Discogs, Style and Errors bullets stand)
 - **Date**: 2026-11-08
 
 ## Context

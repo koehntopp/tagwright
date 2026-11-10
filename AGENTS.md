@@ -25,8 +25,8 @@ Tagwright is a self-hosted web app (FastAPI + one-file frontend) around the disc
 - **File names** (0010): `clean()` stays identical to discogs `bliss.clean()`; Tagwright never renames album folders.
 - **Ingest** (0011): move only `fixed` albums; never overwrite or merge into an existing destination.
 - **Status model** (0006, 0016): changing what makes a step done or partial is an ADR change.
-- **Stack** (0005): single-file backend and frontend, tabs, single quotes, PEP 723 deps, no new framework or build step without an ADR. A new Tailwind or daisyUI class means rebuilding and committing `static/app.css` (`cd ui && npm run build`).
-- **UI** (0017): colours keep their meaning; do not add a stats bar, filter tabs or a second navigation; follow the dialog widths and fixed-width badge columns.
+- **Stack** (0005, 0029): single-file backend `app.py` (PEP 723 deps); frontend in `ui/` (Next.js static export, shadcn/ui). Tabs, single quotes. No new framework or build step without an ADR. Any change under `ui/` means `cd ui && npm run build` and committing the resulting `static/ui/`.
+- **UI** (0030): colours keep their meaning; do not add a stats bar or filter tabs; the sidebar navigation is the only filter; follow the dialog widths and fixed-width badge columns.
 
 ## 4. Verification (ADR 0018)
 
@@ -47,6 +47,6 @@ Check each item and say which you checked:
 
 - [ ] The ADRs I named at the start still hold, or the owner approved a superseding ADR.
 - [ ] Changed behaviour, constants or endpoints are reflected in the ADRs and in the README index.
-- [ ] `static/app.css` rebuilt if `index.html` classes changed.
+- [ ] `static/ui/` rebuilt (`cd ui && npm run build`) if anything under `ui/` changed.
 - [ ] Verified on a copy, not on real data; what was not verified is stated.
 - [ ] No secrets in code, logs, commits or output.

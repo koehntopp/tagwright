@@ -1415,7 +1415,7 @@ def set_overrides(body: dict):
 
 
 class Static(StaticFiles):
-	"""Static files revalidated on every load, so a rebuilt app.css is never served stale from the browser cache."""
+	"""Static files revalidated on every load, so a rebuilt frontend is never served stale from the browser cache."""
 
 	async def get_response(self, path, scope):
 		r = await super().get_response(path, scope)
@@ -1428,7 +1428,7 @@ app.mount('/static', Static(directory=Path(__file__).parent / 'static'), name='s
 
 @app.get('/')
 def index():
-	return FileResponse(Path(__file__).parent / 'index.html')
+	return FileResponse(Path(__file__).parent / 'static' / 'ui' / 'index.html')
 
 
 if __name__ == '__main__':

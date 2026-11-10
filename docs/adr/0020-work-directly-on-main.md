@@ -15,7 +15,7 @@ ADR 0019 had agents work on short-lived branches and merge after approval. The o
 - `git checkout vX.Y` and `git revert` are the ways back, not branches.
 - Releases stay annotated tags `vMAJOR.MINOR` on `main` (`v0.1`, `v0.2`), created when the owner asks.
 - Commit messages say what changed and why in one or two lines. Agent-made commits end with the attribution line required by the tool configuration in use.
-- Never commit `data/`, `node_modules/`, `__pycache__/`, API keys, or music files. `static/app.css` is committed ([0005](0005-technology-stack-and-conventions.md)).
+- Never commit `data/`, `node_modules/`, `__pycache__/`, API keys, or music files. `static/ui/` (the built frontend) is committed ([0029](0029-nextjs-frontend-static-export.md)); `ui/node_modules/`, `ui/.next/` and `ui/out/` are not.
 - Never force-push, rewrite published history, or delete tags without the owner's instruction.
 - The discogs repository is separate and has its own workflow; edits there are made only on request, and are described in the ADR that motivated them.
 

@@ -2,3 +2,7 @@ __pycache__/
 node_modules/
 data/
 .DS_Store
+ui/node_modules/
+ui/.next/
+ui/out/
+ui/*.tsbuildinfo
