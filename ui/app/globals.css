@@ -128,3 +128,5 @@
     font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   }
 }
+@keyframes eq { 0%, 100% { height: 3px } 50% { height: 12px } }
+.eq-bar { height: 3px; animation: eq 0.9s ease-in-out infinite; }

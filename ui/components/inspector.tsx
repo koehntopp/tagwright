@@ -9,8 +9,6 @@ import { Alert } from '@/components/ui/alert'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Album, Job, LogLine, TrackFile, coverUrl, fmtBytes, mmss, title } from '@/lib/api'
 
-const player = typeof Audio !== 'undefined' ? new Audio() : (null as unknown as HTMLAudioElement)
-
 export function copy(text: string) {
 	navigator.clipboard.writeText(text).then(() => toast.success('Copied'), () => toast.error('Copy failed'))
 }
@@ -78,6 +76,8 @@ type Props = {
 	openDiscogs: () => void
 	openMb: () => void
 	openLyrics: (file: string) => void
+	playing: string | null
+	play: (f: TrackFile) => void
 	delCover: () => void
 	putCover: (f: File) => void
 }
@@ -85,7 +85,6 @@ type Props = {
 export function Inspector(p: Props) {
 	const { a, job } = p
 	const [stepSel, setStep] = useState<number | null>(null)
-	const [playing, setPlaying] = useState<string | null>(null)
 	const [tracksOpen, setTracksOpen] = useState(true)
 	const [logOpen, setLogOpen] = useState(false)
 	const [drag, setDrag] = useState(false)
@@ -93,16 +92,6 @@ export function Inspector(p: Props) {
 	const running = job.state === 'running' && job.path === a.path
 	const firstOpen = a.steps.findIndex(s => !s.done)
 
-	if (player) {
-		player.onended = () => setPlaying(null)
-	}
-	const toggle = (f: TrackFile) => {
-		const key = a.path + '|' + f.file
-		if (playing === key) { player.pause(); setPlaying(null); return }
-		player.src = `/api/audio?path=${encodeURIComponent(a.path)}&file=${encodeURIComponent(f.file)}`
-		player.play().catch(e => { setPlaying(null); toast.error(e.message) })
-		setPlaying(key)
-	}
 	const cov = a.cover
 	return (
 		<div className="space-y-5 p-6">
@@ -210,9 +199,9 @@ export function Inspector(p: Props) {
 						{a.files.map(f => {
 							const [lt, lc] = LY[f.lyrics] || LY.none
 							return (
-								<li key={f.file} className="flex items-center gap-2 border-b border-slate-200 py-1.5 text-[13px] last:border-0">
-									<button className="shrink-0 rounded-full p-1 hover:bg-white" title="Play" onClick={() => toggle(f)}>
-										{playing === a.path + '|' + f.file ? <Pause className="size-3" /> : <Play className="size-3" />}
+								<li key={f.file} className={`flex items-center gap-2 border-b border-l-4 border-b-slate-200 py-1.5 pl-1 text-[13px] last:border-b-0 ${p.playing === a.path + '|' + f.file ? 'border-l-yellow-400 bg-yellow-50' : 'border-l-transparent'}`}>
+									<button className="shrink-0 rounded-full p-1 hover:bg-white" title="Play" onClick={() => p.play(f)}>
+										{p.playing === a.path + '|' + f.file ? <Pause className="size-3" /> : <Play className="size-3" />}
 									</button>
 									<span className="w-6 shrink-0 tabular-nums text-slate-400">{String(f.track).split('/')[0].padStart(2, '0')}</span>
 									<span className="flex-1 truncate" title={f.name}>{f.title}</span>

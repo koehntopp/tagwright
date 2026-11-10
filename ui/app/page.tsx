@@ -9,7 +9,9 @@ import { Progress } from '@/components/ui/progress'
 import { AlbumEdit, CoverDelete, LyricsEdit, SettingsDialog, Shell, TagEditor } from '@/components/dialogs'
 import { CopyBtn, CoverImg, IdBadge, Inspector } from '@/components/inspector'
 import { DiscogsDialog, MbDialog } from '@/components/releases'
-import { Album, Job, LogLine, STATUS, api, post, title } from '@/lib/api'
+import { Album, Job, LogLine, STATUS, TrackFile, api, post, title } from '@/lib/api'
+
+const player = typeof Audio !== 'undefined' ? new Audio() : (null as unknown as HTMLAudioElement)
 
 const FILTERS = [
 	{ id: 'all', label: 'All albums' },
@@ -42,6 +44,7 @@ export default function Page() {
 	const [tagTab, setTagTab] = useState<string | null>(null)
 	const [cerr, setCerr] = useState('')
 	const [kreload, setKreload] = useState(0)
+	const [playing, setPlaying] = useState<string | null>(null)
 	const since = useRef(0), ticks = useRef(0), poll = useRef<ReturnType<typeof setTimeout>>(undefined), searchRef = useRef<HTMLInputElement>(null)
 
 	const a = albums.find(x => x.path === selected) || null
@@ -87,6 +90,7 @@ export default function Page() {
 			addLog(j.lines)
 			if (j.state === 'running') tick()
 		})()
+		player.onended = () => setPlaying(null)
 		const key = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); searchRef.current?.focus() } }
 		document.addEventListener('keydown', key)
 		return () => document.removeEventListener('keydown', key)
@@ -126,6 +130,14 @@ export default function Page() {
 			if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText)
 			setDlg(null); addLog(['cover removed']); toast.success('Cover removed'); await refreshOne(a.path)
 		} catch (e: any) { setCerr(e.message) }
+	}
+	const play = (f: TrackFile) => {
+		if (!a) return
+		const key = a.path + '|' + f.file
+		if (playing === key) { player.pause(); setPlaying(null); return }
+		player.src = `/api/audio?path=${encodeURIComponent(a.path)}&file=${encodeURIComponent(f.file)}`
+		player.play().catch(e => { setPlaying(null); toast.error(e.message) })
+		setPlaying(key)
 	}
 	const done = async (path: string) => { await refreshOne(path); setKreload(n => n + 1) }
 	const dk = dlg?.kind
@@ -176,6 +188,11 @@ export default function Page() {
 									<div className="relative aspect-square">
 										<CoverImg a={x} className="size-full" />
 										<Pill className={`absolute left-3 top-3 shadow ${BADGE[x.status]}`}>{STATUS[x.status]}</Pill>
+										{playing?.startsWith(x.path + '|') && (
+											<span title="Playing" className="absolute right-3 top-3 flex h-6 items-end gap-0.5 rounded-full bg-yellow-400 px-2 py-1.5 shadow">
+												{[0, 0.25, 0.5, 0.15].map(d => <i key={d} className="eq-bar block w-0.5 rounded-sm bg-slate-900" style={{ animationDelay: `${d}s` }} />)}
+											</span>
+										)}
 									</div>
 									<div className="space-y-1 p-4">
 										<div className="flex min-w-0 items-center gap-1"><h3 className="truncate font-semibold leading-snug">{title(x)}</h3><CopyBtn text={title(x)} /></div>
@@ -205,7 +222,7 @@ export default function Page() {
 				{a ? (
 					<Inspector key={a.path} a={a} job={job} log={log} refresh={() => refreshOne(a.path)} run={run} move={() => { setCerr(''); setDlg({ kind: 'move' }) }}
 						openEditor={tab => setTagTab(tab)} openAlbum={() => setDlg({ kind: 'album' })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })}
-						openLyrics={file => setDlg({ kind: 'lyrics', file, path: a.path })} delCover={() => { setCerr(''); setDlg({ kind: 'cover' }) }} putCover={putCover} />
+						openLyrics={file => setDlg({ kind: 'lyrics', file, path: a.path })} playing={playing} play={play} delCover={() => { setCerr(''); setDlg({ kind: 'cover' }) }} putCover={putCover} />
 				) : <div className="p-6 text-slate-500">Select an album.</div>}
 			</aside>
 			</div>
