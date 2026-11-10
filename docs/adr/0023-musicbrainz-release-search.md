@@ -41,7 +41,7 @@ Refused (409) while a job runs ([0008](0008-job-model.md)). Written to **every f
 **Never written**: `MUSICBRAINZ_RELEASETRACKID` and `MUSICBRAINZ_TRACKID` (`fixtags.py` reads the release track ID to anchor languages per track, and Tagwright does no track assignment), and the tagger's other descriptive tags (`LABEL_URL`, `COVERART_URL`, `RELATIONSHIP_URL__DISCOGS`, ...); they stay as they are.
 
 ### Not changed
-`fixtags.py` removes only the `ALBUM_COMPANY_`, `ALBUM_CREDIT_` and `ALBUM_IDENT_` families, so the new tags survive pipeline runs. The tag editor's Album tab still lets the owner type `MUSICBRAINZ_ALBUMID` by hand ([0014](0014-internal-tag-editor.md)).
+`fixtags.py` removes only the `ALBUM_COMPANY_`, `ALBUM_CREDIT_` and `ALBUM_IDENT_` families, so the new tags survive pipeline runs. Since 2026-11-10 the tag editor no longer has a text field for `MUSICBRAINZ_ALBUMID`: the ID is set through this dialog, which accepts a pasted ID ([0014](0014-internal-tag-editor.md)).
 
 ## Consequences
 

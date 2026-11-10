@@ -35,14 +35,14 @@ const Pill = ({ className = '', ...p }: React.ComponentProps<'span'>) => (
 	<span {...p} className={`inline-flex h-5 items-center justify-center rounded-full px-2 text-[11px] font-medium ${className}`} />
 )
 
-export const IdBadge = ({ l, v }: { l: 'D' | 'MB'; v: string }) => {
+export const IdBadge = ({ l, v, full }: { l: 'D' | 'MB'; v: string; full?: boolean }) => {
 	const icon = l === 'D' ? '/static/discogs.png' : '/static/musicbrainz.ico'
 	const url = (l === 'D' ? 'https://www.discogs.com/release/' : 'https://musicbrainz.org/release/') + encodeURIComponent(v)
 	return v ? (
 		<a href={url} target="_blank" rel="noopener" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] hover:bg-slate-200">
 			{/* eslint-disable-next-line @next/next/no-img-element */}
 			<img src={icon} alt={l} className="size-3.5 rounded-sm" />
-			{v.length > 13 ? v.slice(0, 8) : v}
+			{!full && v.length > 13 ? v.slice(0, 8) : v}
 		</a>
 	) : (
 		<Pill className="gap-1 bg-rose-100 text-rose-700">

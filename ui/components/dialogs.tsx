@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Album, api, mmss, post } from '@/lib/api'
-import { CopyBtn } from '@/components/inspector'
+import { CopyBtn, IdBadge } from '@/components/inspector'
 
 type Shell = { open: boolean; onClose: () => void; title: React.ReactNode; wide?: string; err?: string; save?: () => void; saveLabel?: string; saveDisabled?: boolean; children: React.ReactNode; header?: React.ReactNode }
 export function Shell({ open, onClose, title, wide = 'sm:max-w-[40rem]', err, save, saveLabel = 'Save', saveDisabled, children, header }: Shell) {
@@ -232,18 +232,16 @@ export function TagEditor({ a, tab, reload, onClose, done, openLyrics, openDisco
 							<Field label="Year Master Release" help="From Discogs, read-only."><Input readOnly tabIndex={-1} className="bg-slate-50 text-slate-600" value={dval('ALBUM_MASTER_YEAR')} /></Field>
 						</div>
 						<div className="grid grid-cols-2 gap-x-6">
-							<Field label="Discogs Release ID" help="Changed only through the release dialog, which also assigns the tracks.">
-								<div className="flex items-center gap-2">
-									<Input readOnly tabIndex={-1} className="bg-slate-50 font-mono" value={d.discogs_id || ''} placeholder="missing" />
-									{d.discogs_id && <a className="shrink-0 text-xs text-sky-700 underline" href={`https://www.discogs.com/release/${d.discogs_id}`} target="_blank" rel="noopener">open</a>}
-									<Button size="sm" variant="outline" className="shrink-0" onClick={openDiscogs}>{d.discogs_id ? 'Change release…' : 'Choose release…'}</Button>
+							<Field label="Discogs Release ID" help="Changed only through the release dialog (pen), which also assigns the tracks.">
+								<div className="flex items-center gap-1 py-1">
+									<IdBadge l="D" v={d.discogs_id || ''} full />
+									<button onClick={openDiscogs} title={d.discogs_id ? 'Change the Discogs release' : 'Choose the Discogs release'} className="rounded-full p-1 hover:bg-slate-100"><Pencil className="size-3.5" /></button>
 								</div>
 							</Field>
-							<Field label="Musicbrainz Release ID" help="Anchors the language tags to a MusicBrainz release.">
-								<div className="flex items-center gap-2">
-									<Input className="font-mono" value={mbid ?? ''} onChange={e => setFields({ ...fields, MUSICBRAINZ_ALBUMID: e.target.value })} />
-									{mbid && <a className="shrink-0 text-xs text-sky-700 underline" href={`https://musicbrainz.org/release/${mbid}`} target="_blank" rel="noopener">open</a>}
-									<Button size="sm" variant="outline" className="shrink-0" onClick={openMb}>{mbid ? 'Change release…' : 'Choose release…'}</Button>
+							<Field label="Musicbrainz Release ID" help="Changed only through the release dialog (pen); paste an ID there. Anchors the language tags.">
+								<div className="flex items-center gap-1 py-1">
+									<IdBadge l="MB" v={mbid || ''} full />
+									<button onClick={openMb} title={mbid ? 'Change the MusicBrainz release' : 'Choose the MusicBrainz release'} className="rounded-full p-1 hover:bg-slate-100"><Pencil className="size-3.5" /></button>
 								</div>
 							</Field>
 						</div>

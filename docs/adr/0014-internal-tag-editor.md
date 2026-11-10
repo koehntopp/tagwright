@@ -18,7 +18,7 @@ Written to every file of the album; an emptied field removes the tag. Field labe
 1. **Album Artist Override**, **Album Title Override**. When the album has a Discogs release, small print under each shows what Discogs says: `ALBUM ARTIST: <ALBUMARTIST tag>` (the artist currently written, which is the Discogs artist unless an override is set) and `ALBUM TITLE: <ALBUM_MASTER_TITLE, else ALBUM_RELEASE_TITLE>`.
 2. **Album Format**, **Album Edition**.
 3. **Catalog #** (editable), **Year Release** and **Year Master Release** (read-only, from `ALBUM_RELEASE_YEAR` and `ALBUM_MASTER_YEAR`; Discogs-owned, so never editable).
-4. **Discogs Release ID** (read-only; a **Change release…** button opens the release dialog) and **Musicbrainz Release ID** (editable text, `MUSICBRAINZ_ALBUMID`; a **Change release…** / **Choose release…** button opens the MusicBrainz dialog). There are no separate release bars below.
+4. **Discogs Release ID** (read-only: the ID badge with its icon and link, the same as in the inspector but with the full ID, followed by a pen that opens the release dialog) and **Musicbrainz Release ID** (`MUSICBRAINZ_ALBUMID`, the same badge and pen; the ID is set only through the MusicBrainz dialog, which also accepts a pasted ID, so it is no longer typed in this tab). There are no separate release bars below.
 
 | Tag | Meaning |
 |-----|---------|
@@ -27,7 +27,7 @@ Written to every file of the album; an emptied field removes the tag. Field labe
 | `ALBUM_FORMAT` | for example CD, SACD, Vinyl; **must not be empty** (otherwise `fixtags.py` would silently assume CD) |
 | `ALBUM_EDITION` | part of the version string; a changed value removes `VERSION` so the album becomes Ready again ([0006](0006-status-model-and-pipeline-steps.md)) |
 | `CATALOGNUMBER` | part of the version string; **must not be empty** (enter `none` if the release has none, as Discogs does); alternative spellings are removed when it is changed |
-| `MUSICBRAINZ_ALBUMID` | anchors language tags |
+| `MUSICBRAINZ_ALBUMID` | anchors language tags; set through the MusicBrainz dialog ([0023](0023-musicbrainz-release-search.md)), not typed here |
 
 The Discogs release dialog is [0013](0013-discogs-track-assignment.md), the MusicBrainz one [0023](0023-musicbrainz-release-search.md). The Discogs ID itself is changed only through its dialog. The `SUBTITLE` tag (a format fallback in `fixtags.py`) is deliberately not editable here; existing values stay untouched and still apply.
 
