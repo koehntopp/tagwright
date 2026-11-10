@@ -136,12 +136,11 @@ export default function Page() {
 				<div className="mr-2 flex items-center gap-2 font-serif text-xl font-semibold tracking-tight">
 					{/* eslint-disable-next-line @next/next/no-img-element */}
 					<img src="/static/icon.svg" alt="" className="size-8 shrink-0" />
-					<span className="hidden min-[1500px]:inline">Tagwright</span>
 				</div>
 				<nav className="flex shrink-0 items-center gap-1">
 					{FILTERS.map(f => (
-						<button key={f.id} onClick={() => setFilter(f.id)} className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm ${filter === f.id ? 'bg-slate-800 font-medium text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
-						{f.label}<span className={`rounded-full px-1.5 text-xs ${filter === f.id ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}`}>{count(f.id)}</span>
+						<button key={f.id} onClick={() => setFilter(f.id)} className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-base ${filter === f.id ? 'bg-slate-800 font-medium text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+						{f.label}<span className={`rounded-full px-2 text-sm ${filter === f.id ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}`}>{count(f.id)}</span>
 					</button>
 				))}
 				</nav>

@@ -11,7 +11,7 @@ With the new look ([0029](0029-nextjs-frontend-static-export.md), [0030](0030-ui
 ## Decision
 
 - **Layout**: a full-width **top bar** (56 px, white, bottom border) above two full-height columns: the card board (scrolls itself, padding 2 rem) and the inspector (600 px, left border, scrolls itself). No page scroll; 1440 px and wider.
-- **Top bar, left zone**: the app icon (`/static/icon.svg`) and the name "Tagwright" (the name from 1500 px up); the four filters **All albums**, **Needs input**, **Ready**, **Fixed** as pills with a count badge (the active one dark); a round **Rescan** icon button; the search (up to 18 rem, shrinks when space is short; the ⌘K hint from 1600 px up, the shortcut always works); right-aligned the sort select (**Newest**, Title, Artist, Status).
+- **Top bar, left zone**: the app icon (`/static/icon.svg`) alone, no name; the four filters **All albums**, **Needs input**, **Ready**, **Fixed** as pills in 16 px text with a count badge (the active one dark); a round **Rescan** icon button; the search (up to 18 rem, shrinks when space is short; the ⌘K hint from 1600 px up, the shortcut always works); right-aligned the sort select (**Newest**, Title, Artist, Status).
 - **Top bar, right zone** (600 px, above the inspector): the pipeline status (dot, "Pipeline", job line, a red outlined **Stop** button only while a job runs; dot colours as in 0017) and the **Settings** gear.
 - **Removed**: the sidebar, the page title row with the album count (the filter badges carry the counts), the **Artists** list (the search field finds an artist by name). The navigation stays the only filter; no stats bar or filter tabs.
 - Cards, colours, inspector, dialogs, toasts and theme are unchanged ([0030](0030-ui-layout-and-design-system-v2.md)).
