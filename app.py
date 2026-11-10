@@ -745,6 +745,11 @@ def by_role(extra: list[dict], *roles: str) -> list[str]:
 	return uniq(clean_artist(e.get('name', '')) for e in extra if any(w in (e.get('role') or '').lower() for w in roles))
 
 
+def release_format(r: dict) -> str:
+	"""The medium of a Discogs release for ALBUM_FORMAT: the first format name, ignoring the wrappers Box Set and All Media."""
+	return next((f['name'].strip() for f in r.get('formats') or [] if (f.get('name') or '').strip() and f['name'].strip().lower() not in ('box set', 'all media')), '')
+
+
 def release_tags(r: dict) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
 	"""(player tags, DISCOGS_* tags) from a raw Discogs release. Empty values are omitted.
 
@@ -989,6 +994,7 @@ def tracks_apply(body: dict):
 			a.add_tags()
 		a['DISCOGS_RELEASE_ID'] = [rel['id']]
 		fill(a, 'CATALOGNUMBER', rel['catno'], *CATALOG_KEYS[1:])
+		fill(a, 'ALBUM_FORMAT', release_format(raw_releases[rel['id']]))
 		fill(a, 'ARTIST', t['artist'])
 		if not tag(a.tags, 'ALBUM_ARTIST_OVERRIDE'):
 			fill(a, 'ALBUMARTIST', rel['artist'])

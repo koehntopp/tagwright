@@ -24,7 +24,7 @@ Written to every file of the album; an emptied field removes the tag. Field labe
 |-----|---------|
 | `ALBUM_ARTIST_OVERRIDE` | also written to `ALBUMARTIST` immediately; clearing restores the Discogs artist (see below) |
 | `ALBUM_TITLE_OVERRIDE` | also written to `ALBUM` immediately; clearing restores the Discogs master title (see below) |
-| `ALBUM_FORMAT` | for example CD, SACD, Vinyl; **must not be empty** (otherwise `fixtags.py` would silently assume CD) |
+| `ALBUM_FORMAT` | for example CD, SACD, Vinyl; filled from the Discogs release by the assignment when empty ([0013](0013-discogs-track-assignment.md)); **must not be empty** (otherwise `fixtags.py` would silently assume CD) |
 | `ALBUM_EDITION` | part of the version string; a changed value removes `VERSION` so the album becomes Ready again ([0006](0006-status-model-and-pipeline-steps.md)) |
 | `CATALOGNUMBER` | part of the version string; **must not be empty** (enter `none` if the release has none, as Discogs does); alternative spellings are removed when it is changed |
 | `MUSICBRAINZ_ALBUMID` | anchors language tags; set through the MusicBrainz dialog ([0023](0023-musicbrainz-release-search.md)), not typed here |

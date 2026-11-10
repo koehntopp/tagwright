@@ -37,6 +37,7 @@ Entries of type `track` only (index entries are skipped). Position `D-T` or `CDD
   |-----|--------------|
   | `ARTIST` | the track's artists, else the release artists (names without the `(n)` suffix, join words kept) |
   | `ALBUMARTIST` | the release artists; skipped when `ALBUM_ARTIST_OVERRIDE` is set (`fixtags.py` writes the override) |
+  | `ALBUM_FORMAT` | the release's first format name (`CD`, `SACD`, `Vinyl`, `DVD`, ...), ignoring the wrappers `Box Set` and `All Media`; nothing is written when the release names no format. So the "album format" warning of [0006](0006-status-model-and-pipeline-steps.md) appears only when Discogs has no format or the owner emptied the tag later (a later run of the assignment fills it again only if it is still empty) |
   | `ALBUM` | the master title, else the release title (the rule of discogs ADR 0002 section 3); skipped when `ALBUM_TITLE_OVERRIDE` is set. `fixtags.py` rewrites `ALBUM` on every run anyway |
   | `CATALOGNUMBER` | the first label's catalogue number, **including Discogs' own `none`** (the tag must never be empty, and the library already carries `none`); checked under all four spellings (`CATALOGNUMBER`, `CATALOG NUMBER`, `CATALOG_NUMBER`, `CATALOGNO`). The next fix run puts it into `VERSION` |
   | cover | the release's primary image, **only when the first file has no embedded picture** ([0016](0016-cover-art.md)) |
