@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Album, api, mmss, post } from '@/lib/api'
 import { CopyBtn, IdBadge } from '@/components/inspector'
+import { TrackTable } from '@/components/track-table'
 
 type Shell = { open: boolean; onClose: () => void; title: React.ReactNode; wide?: string; err?: string; save?: () => void; saveLabel?: string; saveDisabled?: boolean; children: React.ReactNode; header?: React.ReactNode }
 export function Shell({ open, onClose, title, wide = 'sm:max-w-[40rem]', err, save, saveLabel = 'Save', saveDisabled, children, header }: Shell) {
@@ -193,7 +194,7 @@ export function TagEditor({ a, tab, reload, onClose, done, openLyrics, openDisco
 	const save = async () => {
 		const changed: Record<string, string> = {}, edited: any[] = []
 		Object.keys(fields).forEach(k => { if (fields[k].trim() !== d.fields[k]) changed[k] = fields[k] })
-		tracks.forEach((x, i) => { if (KTRACK.some(([k]) => x[k] !== d.tracks[i][k])) edited.push(x) })
+		tracks.forEach(x => { const o = d.tracks.find((y: any) => y.file === x.file); if (o && KTRACK.some(([k]) => x[k] !== o[k])) edited.push(x) })
 		if (!Object.keys(changed).length && !edited.length) return onClose()
 		if ('ALBUM_FORMAT' in changed && !changed.ALBUM_FORMAT.trim()) return setErr('Album format must not be empty (for example CD, SACD, Vinyl).')
 		if ('CATALOGNUMBER' in changed && !changed.CATALOGNUMBER.trim()) return setErr("Add a catalog number (enter 'none' if the release has none).")
@@ -247,21 +248,7 @@ export function TagEditor({ a, tab, reload, onClose, done, openLyrics, openDisco
 						</div>
 					</div>
 				)}
-				{t === 'tracks' && (
-					<table className="w-full text-sm">
-						<thead><tr className="text-left text-xs text-slate-500">{KTRACK.map(c => <th key={c[0]} className="pb-1 font-medium">{c[1]}</th>)}<th /></tr></thead>
-						<tbody>
-							{tracks.map((x, i) => (
-								<tr key={x.file}>
-									{KTRACK.map(([k, , w]) => (
-										<td key={k} className="pr-2 pb-1"><Input className={`h-7 text-xs ${w}`} value={x[k] ?? ''} onChange={e => setTracks(tracks.map((y, j) => (j === i ? { ...y, [k]: e.target.value } : y)))} /></td>
-									))}
-									<td><button className="rounded-full p-1 hover:bg-slate-100" title="Edit lyrics" onClick={() => openLyrics(a.path, x.file)}><Pencil className="size-3" /></button></td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				)}
+				{t === 'tracks' && <TrackTable rows={tracks} setRows={setTracks} openLyrics={file => openLyrics(a.path, file)} />}
 				{t === 'discogs' && (
 					<>
 						<p className="mb-3 text-[13px] text-slate-600">Written from the Discogs and MusicBrainz releases, so edit the release choice rather than these values. The overrides on the Album tab take precedence over ALBUM and ALBUMARTIST.</p>
