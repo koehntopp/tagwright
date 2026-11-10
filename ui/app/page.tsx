@@ -189,7 +189,7 @@ export default function Page() {
 										<CoverImg a={x} className="size-full" />
 										<Pill className={`absolute left-3 top-3 shadow ${BADGE[x.status]}`}>{STATUS[x.status]}</Pill>
 										{playing?.startsWith(x.path + '|') && (
-											<span title="Playing" className="absolute right-3 top-3 flex h-6 items-end gap-0.5 rounded-full bg-yellow-400 px-2 py-1.5 shadow">
+											<span title="Playing" className="absolute right-3 top-3 flex h-5 items-center gap-0.5 rounded-full bg-yellow-400 px-2.5 shadow">
 												{[0, 0.25, 0.5, 0.15].map(d => <i key={d} className="eq-bar block w-0.5 rounded-sm bg-slate-900" style={{ animationDelay: `${d}s` }} />)}
 											</span>
 										)}
