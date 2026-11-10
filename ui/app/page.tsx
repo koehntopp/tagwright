@@ -21,6 +21,8 @@ const FILTERS = [
 ] as const
 const TONE = { needs: 'bg-rose-100 border-rose-200/70', ready: 'bg-sky-100 border-sky-200/70', fixed: 'bg-emerald-100 border-emerald-200/70' }
 const BADGE = { needs: 'bg-rose-600 text-white', ready: 'bg-sky-600 text-white', fixed: 'bg-emerald-600 text-white' }
+const SORT_KEYS = ['recent', 'name', 'artist', 'status']
+const SORT_NAMES: Record<string, string> = { recent: 'Newest', name: 'Title', artist: 'Artist', status: 'Status' }
 const ORDER = { needs: 0, ready: 1, fixed: 2 }
 const SORTS: Record<string, (a: Album, b: Album) => number> = {
 	recent: (a, b) => b.mtime - a.mtime,
@@ -102,6 +104,7 @@ export default function Page() {
 		return albums.filter(x => (filter === 'all' || x.status === filter) && (!s || [x.name, x.album, x.artist, x.discogs, x.mbid].some(v => (v || '').toLowerCase().includes(s)))).sort(SORTS[sort])
 	}, [albums, filter, q, sort])
 
+	const cycleSort = () => { const n = SORT_KEYS[(SORT_KEYS.indexOf(sort) + 1) % SORT_KEYS.length]; setSort(n); toast(`Sorted by ${SORT_NAMES[n]}`) }
 	const run = async () => {
 		if (!a) return
 		try {
@@ -143,28 +146,26 @@ export default function Page() {
 	const dk = dlg?.kind
 
 	return (
-		<div className="flex h-screen flex-col overflow-hidden bg-slate-50 text-[14px] text-slate-900">
-			<header className="flex h-14 shrink-0 items-center gap-2 border-b bg-white pl-6">
+		<div className="flex h-screen flex-col overflow-hidden bg-[#f1f4f9] text-[14px] text-slate-900">
+			<header className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-[#e9edf3] pl-6">
 				<div className="mr-2 flex items-center gap-2 font-serif text-xl font-semibold tracking-tight">
 					{/* eslint-disable-next-line @next/next/no-img-element */}
 					<img src="/static/icon.svg" alt="" className="size-8 shrink-0" />
 				</div>
 				<nav className="flex shrink-0 items-center gap-1">
 					{FILTERS.map(f => (
-						<button key={f.id} onClick={() => setFilter(f.id)} className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-base ${filter === f.id ? 'bg-slate-800 font-medium text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
-						{f.label}<span className={`rounded-full px-2 text-sm ${filter === f.id ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}`}>{count(f.id)}</span>
+						<button key={f.id} onClick={() => (filter === f.id ? cycleSort() : setFilter(f.id))} title={filter === f.id ? `Sorted by ${SORT_NAMES[sort]}; click again to change` : undefined} className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-[17px] font-medium ${filter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>
+						{f.label}<span className="text-sm font-normal text-slate-400">{count(f.id)}</span>
 					</button>
 				))}
 				</nav>
-				<button onClick={async () => { await load(); toast.success('Rescanned') }} title="Rescan folder" aria-label="Rescan folder" className="rounded-full p-2 text-slate-600 hover:bg-slate-100"><RefreshCw className="size-4" /></button>
+				<button onClick={async () => { await load(); toast.success('Rescanned') }} title="Rescan folder" aria-label="Rescan folder" className="rounded-full p-2 text-slate-600 hover:bg-white/60"><RefreshCw className="size-4" /></button>
 				<div className="relative ml-auto w-72 min-w-24 shrink">
 					<Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
 					<Input ref={searchRef} type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search" title="Search albums, artists, IDs (⌘K)" className="h-9 rounded-full border-slate-300 bg-white pl-9 pr-12" />
 					<kbd className="absolute right-3 top-2 hidden rounded bg-slate-100 px-1.5 text-xs text-slate-500 min-[1600px]:block">⌘K</kbd>
 				</div>
-				<select value={sort} onChange={e => setSort(e.target.value)} aria-label="Sort albums" className="h-9 w-28 shrink-0 rounded-full border border-slate-300 bg-white px-3 text-sm">
-					<option value="recent">Newest</option><option value="name">Title</option><option value="artist">Artist</option><option value="status">Status</option>
-				</select>
+				<button onClick={() => setDlg({ kind: 'settings' })} title="Settings" aria-label="Settings" className="mr-3 shrink-0 rounded-full p-2 text-slate-600 hover:bg-white/60"><Settings className="size-5" /></button>
 				<div className="ml-2 flex h-full w-[600px] shrink-0 items-center gap-2 border-l px-6 text-xs">
 					<span className={`size-2 shrink-0 rounded-full ${job.state === 'running' ? 'animate-pulse bg-sky-500' : job.state === 'failed' ? 'bg-rose-500' : job.state === 'stopped' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
 					<div className="min-w-0 flex-1 leading-tight">
@@ -174,7 +175,6 @@ export default function Page() {
 						</div>
 					</div>
 					{job.state === 'running' && <Button size="xs" variant="outline" className="border-rose-300 text-rose-600" onClick={async () => { try { await post('/api/stop', {}); toast.warning('Stopping…') } catch (e: any) { toast.error(e.message) } }}>Stop</Button>}
-					<button onClick={() => setDlg({ kind: 'settings' })} title="Settings" aria-label="Settings" className="rounded-full p-2 text-slate-600 hover:bg-slate-100"><Settings className="size-4" /></button>
 				</div>
 			</header>
 			<div className="flex min-h-0 flex-1">
