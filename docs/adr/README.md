@@ -36,6 +36,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0030](0030-ui-layout-and-design-system-v2.md) | UI layout and design system v2 (shadcn/ui; its sidebar replaced by 0031) | Accepted |
 | [0031](0031-top-bar-again.md) | Top bar again, no sidebar, no Artists list | Accepted |
 | [0032](0032-parallel-tag-writes-reopen-before-save.md) | Parallel pipeline scripts reopen a file before saving (discogs repository change) | Accepted |
+| [0033](0033-pipeline-tag-steps-run-in-sequence.md) | Dynamic range, ReplayGain and fingerprints run in sequence (discogs repository change) | Accepted |
 
 ## Which ADR covers what
 
@@ -59,7 +60,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | cover display, size warning, cover upload | 0016 |
 | cover delete | 0024 |
 | fingerprint length | 0025 |
-| parallel tag writes by pipeline scripts (lost tags) | 0032 |
+| parallel tag writes by pipeline scripts (lost tags), step order and concurrency in `nzbfix` | 0032, 0033 |
 | dynamic-range tag names | 0005, 0027 |
 | ReplayGain skip | 0028 |
 | top bar navigation entries | 0031, 0026 |

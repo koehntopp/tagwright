@@ -1,6 +1,6 @@
 # ADR 0032: Parallel pipeline scripts reopen a file before saving (discogs repository change)
 
-- **Status**: Accepted
+- **Status**: Accepted (the three tools no longer run in parallel since [0033](0033-pipeline-tag-steps-run-in-sequence.md); the reopen stays as a second safeguard)
 - **Date**: 2026-11-10
 
 ## Context

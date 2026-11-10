@@ -10,7 +10,7 @@ The `discogs` repository already implements the fix pipeline and its tag contrac
 ## Decision
 
 - "Run fixes" runs `nzbfix.py <album path>` from `DISCOGS_DIR` as a subprocess (`cwd=DISCOGS_DIR`, `LOG_LEVEL=INFO`), streaming stdout/stderr into the job log.
-- `nzbfix.py` runs `dot_clean`, then `calculate_dr`, `rsgain` and `calculate_fp` in parallel, then `fixtags` and `update_lyrics`. Tagwright does not reimplement, reorder or skip any of these.
+- `nzbfix.py` runs `dot_clean`, then `calculate_dr`, `rsgain` and `calculate_fp` one after another (they were parallel until [0033](0033-pipeline-tag-steps-run-in-sequence.md)), then `fixtags` and `update_lyrics`. Tagwright does not reimplement, reorder or skip any of these.
 - Tagwright **never changes the discogs scripts' behaviour from outside**. Changes to pipeline logic are made in the discogs repository under its own ADRs.
 - Tagwright reads and writes FLAC tags itself only for the features in [0013](0013-discogs-track-assignment.md), [0014](0014-internal-tag-editor.md), [0015](0015-track-playback-and-track-edit.md), [0016](0016-cover-art.md), and the file rename in [0010](0010-bliss-file-naming.md). All such writes obey the discogs tag contract: uppercase keys, no tool-written tag read back as input, user-set tags are never overwritten by automation.
 - After `nzbfix` exits with code 0, Tagwright renames the files ([0010](0010-bliss-file-naming.md)).
