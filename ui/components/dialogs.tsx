@@ -215,11 +215,11 @@ export function TagEditor({ a, tab, reload, onClose, done, openLyrics, openDisco
 				{t === 'album' && (
 					<div className="space-y-4">
 						<div className="grid grid-cols-2 gap-x-6 gap-y-4">
-							<Field label="Album Artist Override" help="Written to ALBUMARTIST on every fix and used in the folder name. Empty: remove the override and restore the Discogs artist.">
+							<Field label="Album Artist Override">
 								<Input value={fields.ALBUM_ARTIST_OVERRIDE ?? ''} onChange={e => setFields({ ...fields, ALBUM_ARTIST_OVERRIDE: e.target.value })} />
 								{d.discogs_id && d.album_artist && <Small>ALBUM ARTIST: {d.album_artist}</Small>}
 							</Field>
-							<Field label="Album Title Override" help="Replaces the Discogs title. Empty: remove the override and restore the Discogs master title.">
+							<Field label="Album Title Override">
 								<Input value={fields.ALBUM_TITLE_OVERRIDE ?? ''} onChange={e => setFields({ ...fields, ALBUM_TITLE_OVERRIDE: e.target.value })} />
 								{d.discogs_id && discogsTitle && <Small>ALBUM TITLE: {discogsTitle}</Small>}
 							</Field>
@@ -232,13 +232,13 @@ export function TagEditor({ a, tab, reload, onClose, done, openLyrics, openDisco
 							<Field label="Year Master Release" help="From Discogs, read-only."><Input readOnly tabIndex={-1} className="bg-slate-50 text-slate-600" value={dval('ALBUM_MASTER_YEAR')} /></Field>
 						</div>
 						<div className="grid grid-cols-2 gap-x-6">
-							<Field label="Discogs Release ID" help="Changed only through the release dialog (pen), which also assigns the tracks.">
+							<Field label="Discogs Release ID">
 								<div className="flex items-center gap-1 py-1">
 									<IdBadge l="D" v={d.discogs_id || ''} full />
 									<button onClick={openDiscogs} title={d.discogs_id ? 'Change the Discogs release' : 'Choose the Discogs release'} className="rounded-full p-1 hover:bg-slate-100"><Pencil className="size-3.5" /></button>
 								</div>
 							</Field>
-							<Field label="Musicbrainz Release ID" help="Changed only through the release dialog (pen); paste an ID there. Anchors the language tags.">
+							<Field label="Musicbrainz Release ID">
 								<div className="flex items-center gap-1 py-1">
 									<IdBadge l="MB" v={mbid || ''} full />
 									<button onClick={openMb} title={mbid ? 'Change the MusicBrainz release' : 'Choose the MusicBrainz release'} className="rounded-full p-1 hover:bg-slate-100"><Pencil className="size-3.5" /></button>

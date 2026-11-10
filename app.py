@@ -1307,7 +1307,7 @@ def get_tags(path: str):
 			'disc': tag(t, 'DISCNUMBER'), 'track': tag(t, 'TRACKNUMBER'), 'subtitle': tag(t, 'SET SUBTITLE'),
 		})
 	return {
-		'fields': {k: tag(t0, k, *alts) for k, alts in ALBUM_FIELDS.items()},
+		'fields': {k: tag(t0, k) if k in OVERRIDES else tag(t0, k, *alts) for k, alts in ALBUM_FIELDS.items()},  # an override shows only when really set
 		'discogs_id': tag(t0, 'DISCOGS_RELEASE_ID'),
 		'discogs': [{'key': k, 'value': ' / '.join(str(v) for v in t0[keys[k]])} for k in [*fixed, *extra]],
 		'musicbrainz': [{'key': k, 'value': ' / '.join(str(v) for v in t0[keys[k]])} for k in mb],
