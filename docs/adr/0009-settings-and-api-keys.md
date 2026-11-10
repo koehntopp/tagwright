@@ -9,7 +9,7 @@ Folders and API keys must be changeable from the UI without editing environment 
 
 ## Decision
 
-- Settings (UC-1): input folder, output folder, **minimum cover size in pixels** (`min_cover`, default 1400, 0 = off; [0016](0016-cover-art.md)), Discogs API key, lrclib.net API key. Dialog opened by the Settings entry at the bottom of the sidebar.
+- Settings (UC-1): input folder, output folder, **minimum cover size in pixels** (`min_cover`, default 1400, 0 = off; [0016](0016-cover-art.md)), Discogs API key, lrclib.net API key. Dialog opened by the gear in the top bar.
 - Precedence: values saved in `DATA_DIR/settings.json` override the environment (`ROOT`, `INGEST_DIR`). The input folder must exist and both folders must be absolute paths (`~` expanded). Saving clears the scan cache and is refused while a job runs.
 - Keys: a blank field keeps the stored key; `clear_<key>: true` removes it. The API returns only a hint of the last four characters.
 - **Config overlay**: when a key is stored, the app writes `DATA_DIR/overlay/config.py` (mode 0600) as a copy of the discogs `config.py` plus `discogs_api_key = ...` / `lrclib_api_key = ...`, and starts `nzbfix.py` with `CONFIG_DIR` pointing at it. `log.py` in the discogs repo puts `CONFIG_DIR` first on `sys.path`, so the overlay wins and the original `config.py` stays untouched. With no stored key, no overlay is made.

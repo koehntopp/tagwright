@@ -33,7 +33,8 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0027](0027-legacy-dynamic-range-tags-removed.md) | Legacy spaced dynamic-range tags removed from the discogs scripts | Accepted |
 | [0028](0028-replaygain-skip-needs-album-gain.md) | rsgain skips an album only when it already has album gain | Accepted |
 | [0029](0029-nextjs-frontend-static-export.md) | Frontend in Next.js with shadcn/ui, built to a committed static export | Accepted |
-| [0030](0030-ui-layout-and-design-system-v2.md) | UI layout and design system v2 (sidebar, shadcn/ui) | Accepted |
+| [0030](0030-ui-layout-and-design-system-v2.md) | UI layout and design system v2 (shadcn/ui; its sidebar replaced by 0031) | Accepted |
+| [0031](0031-top-bar-again.md) | Top bar again, no sidebar, no Artists list | Accepted |
 
 ## Which ADR covers what
 
@@ -59,7 +60,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | fingerprint length | 0025 |
 | dynamic-range tag names | 0005, 0027 |
 | ReplayGain skip | 0028 |
-| sidebar navigation entries | 0030, 0026 |
-| layout, colours, widths, dialogs, UI styling | 0030 (replaces 0017 and 0022) |
+| top bar navigation entries | 0031, 0026 |
+| layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar) |
 | how to test | 0018 |
 | commits, pushing, tags (no branches) | 0020 |

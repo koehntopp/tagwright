@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Archive, CheckCircle2, Clock, Disc3, Hash, RefreshCw, Search, Settings, TriangleAlert } from 'lucide-react'
+import { RefreshCw, Search, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,12 +12,11 @@ import { DiscogsDialog, MbDialog } from '@/components/releases'
 import { Album, Job, LogLine, STATUS, api, post, title } from '@/lib/api'
 
 const FILTERS = [
-	{ id: 'all', label: 'All albums', icon: Disc3 },
-	{ id: 'needs', label: 'Needs input', icon: TriangleAlert },
-	{ id: 'ready', label: 'Ready', icon: Clock },
-	{ id: 'fixed', label: 'Fixed', icon: CheckCircle2 },
+	{ id: 'all', label: 'All albums' },
+	{ id: 'needs', label: 'Needs input' },
+	{ id: 'ready', label: 'Ready' },
+	{ id: 'fixed', label: 'Fixed' },
 ] as const
-const TAGC = ['text-teal-500', 'text-orange-500', 'text-violet-500', 'text-slate-400', 'text-fuchsia-500', 'text-blue-500']
 const TONE = { needs: 'bg-rose-100 border-rose-200/70', ready: 'bg-sky-100 border-sky-200/70', fixed: 'bg-emerald-100 border-emerald-200/70' }
 const BADGE = { needs: 'bg-rose-600 text-white', ready: 'bg-sky-600 text-white', fixed: 'bg-emerald-600 text-white' }
 const ORDER = { needs: 0, ready: 1, fixed: 2 }
@@ -94,7 +93,6 @@ export default function Page() {
 	}, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
 	const count = (s: string) => albums.filter(x => s === 'all' || x.status === s).length
-	const artists = useMemo(() => Object.entries(albums.reduce<Record<string, number>>((m, x) => ({ ...m, [x.artist]: (m[x.artist] || 0) + 1 }), {})).filter(([n]) => n).sort((x, y) => y[1] - x[1]).slice(0, 12), [albums])
 	const shown = useMemo(() => {
 		const s = q.trim().toLowerCase()
 		return albums.filter(x => (filter === 'all' || x.status === filter) && (!s || [x.name, x.album, x.artist, x.discogs, x.mbid].some(v => (v || '').toLowerCase().includes(s)))).sort(SORTS[sort])
@@ -133,56 +131,43 @@ export default function Page() {
 	const dk = dlg?.kind
 
 	return (
-		<div className="flex h-screen overflow-hidden bg-slate-50 text-[14px] text-slate-900">
-			<aside className="flex w-64 shrink-0 flex-col gap-4 overflow-y-auto bg-slate-100/80 p-4">
-				<div className="flex items-center gap-2 px-2 pt-1 font-serif text-2xl font-semibold tracking-tight">
-					<span className="grid size-9 place-items-center rounded-xl bg-white shadow-sm"><Archive className="size-5" /></span>Tagwright
+		<div className="flex h-screen flex-col overflow-hidden bg-slate-50 text-[14px] text-slate-900">
+			<header className="flex h-14 shrink-0 items-center gap-2 border-b bg-white pl-6">
+				<div className="mr-2 flex items-center gap-2 font-serif text-xl font-semibold tracking-tight">
+					{/* eslint-disable-next-line @next/next/no-img-element */}
+					<img src="/static/icon.svg" alt="" className="size-8 shrink-0" />
+					<span className="hidden min-[1500px]:inline">Tagwright</span>
 				</div>
-				<button onClick={async () => { await load(); toast.success('Rescanned') }} className="flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-700">
-					<RefreshCw className="size-4" /> Rescan folder
-				</button>
-				<nav className="space-y-1">
+				<nav className="flex shrink-0 items-center gap-1">
 					{FILTERS.map(f => (
-						<button key={f.id} onClick={() => setFilter(f.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm ${filter === f.id ? 'bg-white font-medium shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>
-							<f.icon className="size-4 text-orange-500" /><span className="flex-1 text-left">{f.label}</span><span className="text-xs text-slate-400">{count(f.id)}</span>
-						</button>
-					))}
+						<button key={f.id} onClick={() => setFilter(f.id)} className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm ${filter === f.id ? 'bg-slate-800 font-medium text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+						{f.label}<span className={`rounded-full px-1.5 text-xs ${filter === f.id ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}`}>{count(f.id)}</span>
+					</button>
+				))}
 				</nav>
-				<div className="mt-2 px-3 text-xs font-medium uppercase tracking-wider text-slate-500">Artists</div>
-				<nav className="space-y-0.5">
-					{artists.map(([name, n], i) => (
-						<button key={name} onClick={() => setQ(q === name ? '' : name)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm ${q === name ? 'bg-white shadow-sm' : 'hover:bg-white/60'}`}>
-							<Hash className={`size-4 ${TAGC[i % TAGC.length]}`} /><span className="flex-1 truncate text-left">{name}</span><span className="text-xs text-slate-400">{n}</span>
-						</button>
-					))}
-				</nav>
-				<div className="mt-auto space-y-2">
-					<div className="flex items-center gap-2 rounded-xl bg-white p-3 text-xs shadow-sm">
-						<span className={`size-2 shrink-0 rounded-full ${job.state === 'running' ? 'animate-pulse bg-sky-500' : job.state === 'failed' ? 'bg-rose-500' : job.state === 'stopped' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-						<div className="min-w-0 flex-1 leading-tight">
-							<div className="font-medium">Pipeline</div>
-							<div className="truncate text-slate-500">
-								{job.state === 'running' ? `Running: ${title(albums.find(x => x.path === job.path) || ({ name: '…' } as Album))}${job.queue.length ? ` (+${job.queue.length} queued)` : ''}` : job.state === 'failed' ? 'Last run failed' : job.state === 'stopped' ? 'Last run stopped' : 'Idle'}
-							</div>
+				<button onClick={async () => { await load(); toast.success('Rescanned') }} title="Rescan folder" aria-label="Rescan folder" className="rounded-full p-2 text-slate-600 hover:bg-slate-100"><RefreshCw className="size-4" /></button>
+				<div className="relative ml-auto w-72 min-w-24 shrink">
+					<Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
+					<Input ref={searchRef} type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search" title="Search albums, artists, IDs (⌘K)" className="h-9 rounded-full border-slate-300 bg-white pl-9 pr-12" />
+					<kbd className="absolute right-3 top-2 hidden rounded bg-slate-100 px-1.5 text-xs text-slate-500 min-[1600px]:block">⌘K</kbd>
+				</div>
+				<select value={sort} onChange={e => setSort(e.target.value)} aria-label="Sort albums" className="h-9 w-28 shrink-0 rounded-full border border-slate-300 bg-white px-3 text-sm">
+					<option value="recent">Newest</option><option value="name">Title</option><option value="artist">Artist</option><option value="status">Status</option>
+				</select>
+				<div className="ml-2 flex h-full w-[600px] shrink-0 items-center gap-2 border-l px-6 text-xs">
+					<span className={`size-2 shrink-0 rounded-full ${job.state === 'running' ? 'animate-pulse bg-sky-500' : job.state === 'failed' ? 'bg-rose-500' : job.state === 'stopped' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+					<div className="min-w-0 flex-1 leading-tight">
+						<div className="font-medium">Pipeline</div>
+						<div className="truncate text-slate-500">
+							{job.state === 'running' ? `Running: ${title(albums.find(x => x.path === job.path) || ({ name: '…' } as Album))}${job.queue.length ? ` (+${job.queue.length} queued)` : ''}` : job.state === 'failed' ? 'Last run failed' : job.state === 'stopped' ? 'Last run stopped' : 'Idle'}
 						</div>
-						{job.state === 'running' && <Button size="xs" variant="outline" className="border-rose-300 text-rose-600" onClick={async () => { try { await post('/api/stop', {}); toast.warning('Stopping…') } catch (e: any) { toast.error(e.message) } }}>Stop</Button>}
 					</div>
-					<button onClick={() => setDlg({ kind: 'settings' })} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-white/60"><Settings className="size-4" />Settings</button>
+					{job.state === 'running' && <Button size="xs" variant="outline" className="border-rose-300 text-rose-600" onClick={async () => { try { await post('/api/stop', {}); toast.warning('Stopping…') } catch (e: any) { toast.error(e.message) } }}>Stop</Button>}
+					<button onClick={() => setDlg({ kind: 'settings' })} title="Settings" aria-label="Settings" className="rounded-full p-2 text-slate-600 hover:bg-slate-100"><Settings className="size-4" /></button>
 				</div>
-			</aside>
-
+			</header>
+			<div className="flex min-h-0 flex-1">
 			<main className="min-w-0 flex-1 overflow-y-auto p-8">
-				<div className="mb-6 flex items-center gap-4">
-					<h1 className="text-3xl font-semibold tracking-tight">{FILTERS.find(f => f.id === filter)!.label} <span className="ml-1 text-base font-normal text-slate-400">{shown.length}</span></h1>
-					<div className="relative ml-auto w-80">
-						<Search className="absolute left-3 top-3 size-4 text-slate-400" />
-						<Input ref={searchRef} type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search albums, artists, IDs" className="h-10 rounded-xl border-slate-300 bg-white pl-9 pr-12" />
-						<kbd className="absolute right-3 top-2.5 rounded bg-slate-100 px-1.5 text-xs text-slate-500">⌘K</kbd>
-					</div>
-					<select value={sort} onChange={e => setSort(e.target.value)} aria-label="Sort albums" className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm">
-						<option value="recent">Newest</option><option value="name">Title</option><option value="artist">Artist</option><option value="status">Status</option>
-					</select>
-				</div>
 				{shown.length ? (
 					<div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] items-start gap-5">
 						{shown.map(x => {
@@ -215,7 +200,6 @@ export default function Page() {
 					</div>
 				) : <div className="py-16 text-center text-slate-500">No albums match.</div>}
 			</main>
-
 			<aside className="w-[600px] shrink-0 overflow-y-auto border-l bg-white">
 				{a ? (
 					<Inspector key={a.path} a={a} job={job} log={log} refresh={() => refreshOne(a.path)} run={run} move={() => { setCerr(''); setDlg({ kind: 'move' }) }}
@@ -223,6 +207,7 @@ export default function Page() {
 						openLyrics={file => setDlg({ kind: 'lyrics', file, path: a.path })} delCover={() => { setCerr(''); setDlg({ kind: 'cover' }) }} putCover={putCover} />
 				) : <div className="p-6 text-slate-500">Select an album.</div>}
 			</aside>
+			</div>
 
 			<CoverDelete open={dk === 'cover'} onClose={() => setDlg(null)} onOk={delCover} err={cerr} />
 			<AlbumEdit a={dk === 'album' ? a : null} onClose={() => setDlg(null)} done={done} />

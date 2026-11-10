@@ -1,6 +1,6 @@
 # ADR 0030: UI layout and design system v2 (sidebar, shadcn/ui)
 
-- **Status**: Accepted
+- **Status**: Accepted (the Layout bullet, the sidebar, is superseded by [0031](0031-top-bar-again.md); everything else stands)
 - **Date**: 2026-11-10
 - **Supersedes**: [0017](0017-ui-layout-and-design-system.md) (layout, dialogs mechanism, theme; the colour meanings, pipeline, copy icons, inspector order and widths are carried over below), [0022](0022-top-bar-instead-of-sidebar.md) (the top bar is replaced by a sidebar again) and the top-bar location of the Ready filter in [0026](0026-ready-filter-returns.md) (the filter itself stays)
 
