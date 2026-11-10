@@ -181,9 +181,11 @@ export default function Page() {
 										<div className="flex min-w-0 items-center gap-1"><h3 className="truncate font-semibold leading-snug">{title(x)}</h3><CopyBtn text={title(x)} /></div>
 										<div className="flex min-w-0 items-center gap-1 text-[13px] text-slate-600"><p className="truncate">{x.artist || 'No artist'}{x.year ? ' · ' + x.year : ''}</p>{x.artist && <CopyBtn text={x.artist} />}</div>
 										<p className="truncate text-xs text-slate-500">{x.edition || ' '}</p>
-										<div className="mt-1 flex min-h-5 flex-nowrap items-center gap-1.5 overflow-hidden">
+										<div className="mt-1 flex min-h-6 flex-nowrap items-center gap-1.5 overflow-hidden">
 											{x.discogs && <IdBadge l="D" v={x.discogs} />}
 											{x.mbid && <IdBadge l="MB" v={x.mbid} />}
+										</div>
+										<div className="flex min-h-5 flex-nowrap items-center gap-1.5 overflow-hidden">
 											{x.dr && <Pill className="bg-white/70 text-emerald-800">DR{x.dr}</Pill>}
 											{ly.synced > 0 && <Pill className="bg-emerald-500 text-white">LRC {ly.synced}</Pill>}
 											{ly.plain > 0 && <Pill className="bg-amber-400 text-amber-950">TXT {ly.plain}</Pill>}
