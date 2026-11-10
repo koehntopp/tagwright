@@ -44,7 +44,7 @@ A track is "missing" only when it is `none`. Any non-empty lyrics, synced, plain
 
 ### Album status
 
-- `needs` (shown as **Needs input**): at least one blocking (`warn`) issue, see "Issue lines": no `DISCOGS_RELEASE_ID` (fixtags cannot run without it), an empty required tag, or files that disagree on an album-level tag. The server refuses to run such an album (409).
+- `needs` (shown as **Needs input**): at least one blocking (`error` or `warn`) issue, see "Issue lines": no `DISCOGS_RELEASE_ID` (fixtags cannot run without it), an empty required tag, or files that disagree on an album-level tag. The server refuses to run such an album (409).
 - `fixed`: no blocking issue and all six steps done.
 - `ready`: everything else.
 
@@ -52,17 +52,19 @@ A track is "missing" only when it is `none`. Any non-empty lyrics, synced, plain
 
 ### Issue lines
 
-`summarize` also returns `issues`: the clearly identifiable problems of the album, **one line each**, recomputed from the tags on every refresh (so a line disappears as soon as an edit fixes it). Each has a level (`warn` blocks the album, `info` is a notice) and an action (which button the UI offers):
+`summarize` also returns `issues`: the clearly identifiable problems of the album, **one line each**, recomputed from the tags on every refresh (so a line disappears as soon as an edit fixes it). Each has a level (`error` and `warn` block the album, `info` is a notice; `error` is used only for the Discogs release ID lines, is shown red and always listed first) and an action (which button the UI offers):
 
 | Issue | Level | Action |
 |-------|-------|--------|
-| no `DISCOGS_RELEASE_ID` on the first file | warn | Search (Discogs assignment) |
+| no `DISCOGS_RELEASE_ID` on the first file | **error** (red, first) | Search (Discogs assignment) |
 | no catalog number (all tracks: "Add a catalog number (enter 'none' if the release has none)."; some: "N of M tracks have no catalog number") | warn | Tag Editor, Album tab |
 | no album artist (`ALBUMARTIST`) or album format (`ALBUM_FORMAT`), on all or some tracks | warn | Tag Editor, Album tab |
 | the files **disagree** on an album-level tag that `fixtags.py` and `bliss.py` read from the **first file only**: Discogs release ID, album artist, catalog number, album format (different values), and edition, MusicBrainz ID and the two overrides (different values, or set on only some tracks) | warn | Search for the release ID, else Tag Editor, Album tab (one save writes every file) |
 | tracks without disc number, track number, title or artist (one line per tag, with counts) | warn | Tag Editor, Tracks tab |
 | the same disc/track number on more than one file | warn | Tag Editor, Tracks tab |
 | cover smaller than the minimum cover size (setting, default 1400 px, either side), or none | ingest (blocks only the move to ingest) | Upload |
+
+**Without a Discogs release ID the Discogs line is the only blocker shown** (plus the cover line): the Discogs assignment fills or sets artist, album artist, album format, catalog number, titles and numbers ([0013](0013-discogs-track-assignment.md)), so the lines about them would only distract from the first thing to do. They appear again as soon as the album has a release ID and the tag is still missing. The album stays `needs` meanwhile.
 
 Adding a rule here means adding it to `album_issues()` and this table. A check that the pipeline enforces by itself and that Tagwright cannot fix in the editor (for example the Discogs-derived `ALBUM` or dates) is not an issue line.
 

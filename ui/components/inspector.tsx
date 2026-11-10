@@ -157,7 +157,7 @@ export function Inspector(p: Props) {
 
 			<div className="space-y-2">
 				{a.issues.map(i => (
-					<Alert key={i.text} className={`flex items-center gap-2 text-[13px] ${i.level === 'info' ? 'border-sky-200 bg-sky-50 text-sky-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+					<Alert key={i.text} className={`flex items-center gap-2 text-[13px] ${i.level === 'info' ? 'border-sky-200 bg-sky-50 text-sky-900' : i.level === 'error' ? 'border-rose-300 bg-rose-50 text-rose-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
 						<TriangleAlert className="size-4 shrink-0" />
 						<span className="flex-1">{i.text}</span>
 						{i.action && (

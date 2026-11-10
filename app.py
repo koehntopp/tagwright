@@ -304,20 +304,25 @@ MISSING_TEXT = {
 def album_issues(out: dict, tags: list, small_cover: bool) -> list[dict]:
 	"""Clearly identifiable problems, one line each: {text, action, level}; recomputed from the tags on every refresh.
 
-	level 'warn' blocks the album (status needs), 'ingest' blocks only the move to ingest, 'info' is a notice. action tells the UI which button to offer.
+	level 'error' (a Discogs release ID problem, listed first) and 'warn' block the album (status needs), 'ingest' blocks only the move to ingest,
+	'info' is a notice. action tells the UI which button to offer. Without a Discogs release ID that is the only blocker listed: the assignment
+	fills or sets everything else (artist, format, catalog number, titles, numbers), so those lines would only distract.
 	"""
 	n, issues = len(tags), []
 	missing = lambda *keys: sum(1 for t in tags if not tag(t, *keys))  # noqa: E731
 	if not out['discogs']:
-		issues.append({'text': 'Add a Discogs release ID before running fixes.', 'action': 'search', 'level': 'warn'})
+		issues.append({'text': 'Add a Discogs release ID before running fixes.', 'action': 'search', 'level': 'error'})
+		if small_cover:
+			issues.append({'text': cover_note(out['cover']), 'action': 'cover', 'level': 'ingest'})
+		return issues
 	for label, keys, action, required in ALBUM_LEVEL:
 		values = [tag(t, *keys) for t in tags]
 		if required and (m := values.count('')) and not (label == 'Discogs release ID' and m == n):  # all empty: the Discogs line above
 			text = MISSING_TEXT[label] if m == n else f'{m} of {n} tracks have no {label}.'
-			issues.append({'text': text, 'action': action, 'level': 'warn'})
+			issues.append({'text': text, 'action': action, 'level': 'error' if label == 'Discogs release ID' else 'warn'})
 		filled = [v for v in values if v]
 		if len(set(filled)) > 1:
-			issues.append({'text': f'The files disagree on the {label} ({len(set(filled))} different values); it is read from the first file only.', 'action': action, 'level': 'warn'})
+			issues.append({'text': f'The files disagree on the {label} ({len(set(filled))} different values); it is read from the first file only.', 'action': action, 'level': 'error' if label == 'Discogs release ID' else 'warn'})
 		elif not required and filled and len(filled) < n:  # a gap in a required tag is reported above
 			issues.append({'text': f'The {label} is set on only {len(filled)} of {n} tracks; it is read from the first file only.', 'action': action, 'level': 'warn'})
 	for key, what in (('DISCNUMBER', 'a disc number'), ('TRACKNUMBER', 'a track number'), ('TITLE', 'a title'), ('ARTIST', 'an artist')):
@@ -328,12 +333,12 @@ def album_issues(out: dict, tags: list, small_cover: bool) -> list[dict]:
 		issues.append({'text': f'{dup} disc/track number{" is" if dup == 1 else "s are"} used by more than one file.', 'action': 'tracks', 'level': 'warn'})
 	if small_cover:
 		issues.append({'text': cover_note(out['cover']), 'action': 'cover', 'level': 'ingest'})
-	return issues
+	return sorted(issues, key=lambda i: i['level'] != 'error')  # the Discogs lines always come first
 
 
 def status(s: dict) -> str:
 	"""needs: a blocking issue (no Discogs id, an empty required tag, files that disagree); fixed: all steps done; else ready."""
-	if any(i['level'] == 'warn' for i in s['issues']):
+	if any(i['level'] in ('warn', 'error') for i in s['issues']):
 		return 'needs'
 	return 'fixed' if s['steps_done'] == len(s['steps']) else 'ready'
 
