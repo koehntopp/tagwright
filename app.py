@@ -1296,6 +1296,9 @@ def get_tags(path: str):
 	keys = {k.upper(): k for k in t0.keys()}
 	fixed = [k for k in DISCOGS_FIXED if k in keys]
 	extra = sorted(k for k in keys if k.startswith(DISCOGS_PREFIXES) and k != 'DISCOGS_RELEASE_ID')
+	# read-only MusicBrainz tags (written by the MusicBrainz apply, 0023); the release ID itself is an Album-tab field
+	mb = sorted(k for k in keys if k.startswith('MUSICBRAINZ') and k not in ('MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID'))
+	mb += [k for k in ('BARCODE', 'ASIN') if k in keys]
 	tracks = []
 	for f in files:
 		t = FLAC(f).tags or {}
@@ -1307,6 +1310,8 @@ def get_tags(path: str):
 		'fields': {k: tag(t0, k, *alts) for k, alts in ALBUM_FIELDS.items()},
 		'discogs_id': tag(t0, 'DISCOGS_RELEASE_ID'),
 		'discogs': [{'key': k, 'value': ' / '.join(str(v) for v in t0[keys[k]])} for k in [*fixed, *extra]],
+		'musicbrainz': [{'key': k, 'value': ' / '.join(str(v) for v in t0[keys[k]])} for k in mb],
+		'album_artist': tag(t0, 'ALBUMARTIST'),
 		'tracks': tracks,
 	}
 

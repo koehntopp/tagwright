@@ -32,6 +32,7 @@ export function Shell({ open, onClose, title, wide = 'sm:max-w-[40rem]', err, sa
 	)
 }
 
+const Small = ({ children }: { children: React.ReactNode }) => <p className="text-[11px] leading-snug text-slate-500">{children}</p>
 const Field = ({ label, help, children }: { label: string; help?: string; children: React.ReactNode }) => (
 	<div className="space-y-1">
 		<div className="text-sm font-medium">{label}</div>
@@ -176,14 +177,6 @@ export function LyricsEdit({ target, onClose, done }: { target: { path: string; 
 	)
 }
 
-const KFIELDS: [string, string, string][] = [
-	['ALBUM_ARTIST_OVERRIDE', 'Album artist', 'Written to ALBUMARTIST on every fix and used in the folder name. Empty: remove the override and restore the Discogs artist.'],
-	['ALBUM_TITLE_OVERRIDE', 'Album title', 'Replaces the Discogs title. Empty: remove the override and restore the Discogs master title.'],
-	['ALBUM_FORMAT', 'Format', 'For example CD, SACD, Vinyl. Required.'],
-	['ALBUM_EDITION', 'Edition', 'For example Remastered or Gold Disc. Part of the version string.'],
-	['CATALOGNUMBER', 'Catalog number', "Part of the version string. Add a catalog number (enter 'none' if the release has none)."],
-	['MUSICBRAINZ_ALBUMID', 'MusicBrainz release ID', 'Anchors the language tags to a MusicBrainz release.'],
-]
 const KTRACK: [string, string, string][] = [['disc', 'Disc', 'w-14'], ['track', 'Track', 'w-14'], ['title', 'Title', 'min-w-40'], ['artist', 'Artist', 'min-w-32'], ['subtitle', 'Disc subtitle', 'min-w-28']]
 
 export function TagEditor({ a, tab, reload, onClose, done, openLyrics, openDiscogs, openMb }: {
@@ -209,32 +202,52 @@ export function TagEditor({ a, tab, reload, onClose, done, openLyrics, openDisco
 		catch (e: any) { setErr(e.message) }
 	}
 	const mbid = fields.MUSICBRAINZ_ALBUMID
+	const dval = (k: string) => d.discogs.find((r: any) => r.key === k)?.value ?? ''
+	const discogsTitle = dval('ALBUM_MASTER_TITLE') || dval('ALBUM_RELEASE_TITLE')
 	return (
 		<Shell open onClose={onClose} wide="sm:max-w-[72rem]" title="Tag editor" err={err} save={save}
 			header={
 				<Tabs value={t} onValueChange={setT} className="ml-auto">
-					<TabsList><TabsTrigger value="album">Album</TabsTrigger><TabsTrigger value="tracks">Tracks</TabsTrigger><TabsTrigger value="discogs">From Discogs</TabsTrigger></TabsList>
+					<TabsList><TabsTrigger value="album">Album</TabsTrigger><TabsTrigger value="tracks">Tracks</TabsTrigger><TabsTrigger value="discogs">Discogs / Musicbrainz</TabsTrigger></TabsList>
 				</Tabs>
 			}>
 			<div className="max-h-[62vh] overflow-y-auto pr-1">
 				{t === 'album' && (
-					<>
-						<div className="grid grid-cols-2 gap-x-6 gap-y-3">
-							{KFIELDS.map(([k, label, help]) => (
-								<Field key={k} label={label} help={help}><Input value={fields[k] ?? ''} onChange={e => setFields({ ...fields, [k]: e.target.value })} /></Field>
-							))}
+					<div className="space-y-4">
+						<div className="grid grid-cols-2 gap-x-6 gap-y-4">
+							<Field label="Album Artist Override" help="Written to ALBUMARTIST on every fix and used in the folder name. Empty: remove the override and restore the Discogs artist.">
+								<Input value={fields.ALBUM_ARTIST_OVERRIDE ?? ''} onChange={e => setFields({ ...fields, ALBUM_ARTIST_OVERRIDE: e.target.value })} />
+								{d.discogs_id && d.album_artist && <Small>ALBUM ARTIST: {d.album_artist}</Small>}
+							</Field>
+							<Field label="Album Title Override" help="Replaces the Discogs title. Empty: remove the override and restore the Discogs master title.">
+								<Input value={fields.ALBUM_TITLE_OVERRIDE ?? ''} onChange={e => setFields({ ...fields, ALBUM_TITLE_OVERRIDE: e.target.value })} />
+								{d.discogs_id && discogsTitle && <Small>ALBUM TITLE: {discogsTitle}</Small>}
+							</Field>
+							<Field label="Album Format" help="For example CD, SACD, Vinyl. Required."><Input value={fields.ALBUM_FORMAT ?? ''} onChange={e => setFields({ ...fields, ALBUM_FORMAT: e.target.value })} /></Field>
+							<Field label="Album Edition" help="For example Remastered or Gold Disc. Part of the version string."><Input value={fields.ALBUM_EDITION ?? ''} onChange={e => setFields({ ...fields, ALBUM_EDITION: e.target.value })} /></Field>
 						</div>
-						<div className="mt-4 flex items-center gap-3 rounded-xl bg-slate-100 p-3 text-[13px]">
-							<span className="text-slate-500">Discogs release</span>
-							{d.discogs_id ? <a className="font-mono text-sky-700 underline" href={`https://www.discogs.com/release/${d.discogs_id}`} target="_blank" rel="noopener">{d.discogs_id}</a> : <span className="text-rose-600">missing</span>}
-							<Button size="xs" variant="outline" className="ml-auto" onClick={openDiscogs}>{d.discogs_id ? 'Change release…' : 'Choose release…'}</Button>
+						<div className="grid grid-cols-3 gap-x-6">
+							<Field label="Catalog #" help="Part of the version string. Enter 'none' if the release has none."><Input value={fields.CATALOGNUMBER ?? ''} onChange={e => setFields({ ...fields, CATALOGNUMBER: e.target.value })} /></Field>
+							<Field label="Year Release" help="From Discogs, read-only."><Input readOnly tabIndex={-1} className="bg-slate-50 text-slate-600" value={dval('ALBUM_RELEASE_YEAR')} /></Field>
+							<Field label="Year Master Release" help="From Discogs, read-only."><Input readOnly tabIndex={-1} className="bg-slate-50 text-slate-600" value={dval('ALBUM_MASTER_YEAR')} /></Field>
 						</div>
-						<div className="mt-2 flex items-center gap-3 rounded-xl bg-slate-100 p-3 text-[13px]">
-							<span className="text-slate-500">MusicBrainz release</span>
-							{mbid ? <a className="font-mono text-sky-700 underline" href={`https://musicbrainz.org/release/${mbid}`} target="_blank" rel="noopener">{mbid}</a> : <span className="text-slate-500">none</span>}
-							<Button size="xs" variant="outline" className="ml-auto" onClick={openMb}>{mbid ? 'Change release…' : 'Choose release…'}</Button>
+						<div className="grid grid-cols-2 gap-x-6">
+							<Field label="Discogs Release ID" help="Changed only through the release dialog, which also assigns the tracks.">
+								<div className="flex items-center gap-2">
+									<Input readOnly tabIndex={-1} className="bg-slate-50 font-mono" value={d.discogs_id || ''} placeholder="missing" />
+									{d.discogs_id && <a className="shrink-0 text-xs text-sky-700 underline" href={`https://www.discogs.com/release/${d.discogs_id}`} target="_blank" rel="noopener">open</a>}
+									<Button size="sm" variant="outline" className="shrink-0" onClick={openDiscogs}>{d.discogs_id ? 'Change release…' : 'Choose release…'}</Button>
+								</div>
+							</Field>
+							<Field label="Musicbrainz Release ID" help="Anchors the language tags to a MusicBrainz release.">
+								<div className="flex items-center gap-2">
+									<Input className="font-mono" value={mbid ?? ''} onChange={e => setFields({ ...fields, MUSICBRAINZ_ALBUMID: e.target.value })} />
+									{mbid && <a className="shrink-0 text-xs text-sky-700 underline" href={`https://musicbrainz.org/release/${mbid}`} target="_blank" rel="noopener">open</a>}
+									<Button size="sm" variant="outline" className="shrink-0" onClick={openMb}>{mbid ? 'Change release…' : 'Choose release…'}</Button>
+								</div>
+							</Field>
 						</div>
-					</>
+					</div>
 				)}
 				{t === 'tracks' && (
 					<table className="w-full text-sm">
@@ -253,14 +266,19 @@ export function TagEditor({ a, tab, reload, onClose, done, openLyrics, openDisco
 				)}
 				{t === 'discogs' && (
 					<>
-						<p className="mb-3 text-[13px] text-slate-600">Written from the Discogs release on every run, so edit the release choice rather than these values. The album title and artist overrides on the Album tab take precedence over ALBUM and ALBUMARTIST.</p>
-						<table className="w-full text-sm">
-							<tbody>
-								{d.discogs.length ? d.discogs.map((r: any) => (
-									<tr key={r.key} className="border-b text-slate-700"><td className="w-72 py-1 align-top font-mono text-xs">{r.key}</td><td className="whitespace-pre-wrap break-words">{r.value}</td></tr>
-								)) : <tr><td className="text-slate-500">No Discogs tags yet. Run fixes to write them.</td></tr>}
-							</tbody>
-						</table>
+						<p className="mb-3 text-[13px] text-slate-600">Written from the Discogs and MusicBrainz releases, so edit the release choice rather than these values. The overrides on the Album tab take precedence over ALBUM and ALBUMARTIST.</p>
+						{([['Discogs', d.discogs, 'No Discogs tags yet. Run fixes to write them.'], ['MusicBrainz', d.musicbrainz, 'No MusicBrainz tags yet. Choose a MusicBrainz release.']] as [string, { key: string; value: string }[], string][]).map(([name, rows, none]) => (
+							<div key={name} className="mb-4">
+								<h4 className="mb-1 text-xs font-medium uppercase tracking-wider text-slate-500">{name}</h4>
+								<table className="w-full text-sm">
+									<tbody>
+										{rows.length ? rows.map(r => (
+											<tr key={r.key} className="border-b text-slate-700"><td className="w-72 py-1 align-top font-mono text-xs">{r.key}</td><td className="whitespace-pre-wrap break-words">{r.value}</td></tr>
+										)) : <tr><td className="text-slate-500">{none}</td></tr>}
+									</tbody>
+								</table>
+							</div>
+						))}
 					</>
 				)}
 			</div>
