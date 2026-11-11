@@ -1,8 +1,9 @@
 services:
   tagwright:
     build: .
+    restart: unless-stopped
     ports: ["8080:8080"]
     volumes:
-      - /path/to/staging:/staging
-      - /srv/flac/ingest:/flac/ingest
-      - ./data:/data               # settings.json (includes API keys) and the MusicBrainz cache
+      - /path/to/staging:/staging          # the staging folder
+      - /srv/flac/ingest:/flac/ingest   # the library folder (the watcher keeps it in the layout)
+      - ./data:/data                    # settings.json (includes API keys), library.db, the MusicBrainz cache

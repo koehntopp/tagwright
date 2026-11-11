@@ -10,12 +10,12 @@ The first idea was a native macOS app. The pipeline needs `rsgain`, Python tools
 ## Decision
 
 - Tagwright is a **web app served by a Linux server**, packaged as a Docker image (`Dockerfile`, `compose.yaml`). The browser is the only client.
-- The image holds Python 3.14 (the version the discogs scripts target), `uv`, `flac`, `chromaprint-tools` (`fpcalc`). `rsgain` and `drmeter` binaries are expected in `./bin/` of the build context (not committed; they have no apt packages).
-- Mounts: input folder at `/staging`, ingest folder at `/flac/ingest`, a checkout of the discogs repo read-only at `/opt/discogs`, and `./data` at `/data` for settings.
-- The same code runs directly on macOS for development: `ROOT=... INGEST_DIR=... DISCOGS_DIR=... ./app.py` (shebang `uv run`).
-- Environment: `ROOT`, `INGEST_DIR`, `DISCOGS_DIR`, `DATA_DIR`, `PORT` (default 8080). Paths must be absolute; `~` is expanded by the app but a relative path is a startup error.
+- The image holds Python 3.14, `uv`, `chromaprint-tools` (`fpcalc`), `drcalc` (release binary for the build architecture, SHA256 checked) and `rsgain` (built from source in a build stage; no package exists; only its runtime libraries are installed in the final image). Nothing is expected in the build context.
+- Mounts: input folder at `/staging`, ingest folder at `/flac/ingest`, and `./data` at `/data` for settings.
+- The same code runs directly on macOS for development: `ROOT=... INGEST_DIR=... ./app.py` (shebang `uv run`).
+- Environment: `ROOT`, `INGEST_DIR`, `DATA_DIR`, `PORT` (default 8080). Paths must be absolute; `~` is expanded by the app but a relative path is a startup error.
 
 ## Consequences
 
 - Anything the browser needs from the filesystem goes through the API (covers, audio). Paths shown in the UI are server paths; the UI never assumes they exist on the client. This is why the external-editor link (a `yate://` URL with a client-side path mapping) was removed in favour of the internal tag editor ([0014](0014-internal-tag-editor.md)).
-- The Docker image has not been built or run end to end; the `bin/` binaries are a manual prerequisite.
+- The image was built (aarch64, 527 MB) and checked on scratch data: server starts, `/api/albums` and `/api/library` answer, `fpcalc`, `drcalc` and `rsgain` write their tags. Not run in the container: the full pipeline (needs a Discogs key and release), and an amd64 build.
