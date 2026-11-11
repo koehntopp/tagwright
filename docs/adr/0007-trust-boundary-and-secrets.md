@@ -1,6 +1,6 @@
 # ADR 0007: Trust boundary, no authentication, secrets
 
-- **Status**: Accepted
+- **Status**: Accepted (`safe()` also accepts the library folder: [0038](0038-staging-and-library-views.md))
 - **Date**: 2026-11-08
 
 ## Context

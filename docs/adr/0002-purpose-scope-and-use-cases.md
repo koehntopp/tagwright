@@ -29,6 +29,7 @@ Tagwright is a single-user, self-hosted web app that lets one person work throug
 | UC-12 | Keep the output folder in the canonical artist/album/disc/file layout automatically (a watcher with a cooldown). | [0037](0037-library-watcher-and-layout.md) |
 | UC-13 | Configure that layout in Settings with drag and drop and preview it on a real album. | [0037](0037-library-watcher-and-layout.md) |
 | UC-14 | See the library's state in the top bar (album artists, albums, tracks, activity, unplaced files) and re-analyse it by hand. | [0037](0037-library-watcher-and-layout.md) |
+| UC-15 | Switch the board between the staging folder and the library folder to fix details of albums that are already in the library. | [0038](0038-staging-and-library-views.md) |
 
 ### Out of scope
 

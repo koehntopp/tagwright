@@ -76,9 +76,22 @@ class Index:
 		return [r[0] for r in rows]
 
 	def forget_dirs(self, paths: Iterable[str]) -> None:
-		"""Make the next pass list these directories again (their mtime is unknown)."""
+		"""Make the next pass list these directories again: their mtime becomes unknown. (The rows stay, because the
+		scanner finds subdirectories through them.)"""
 		with self._lock:
-			self._db.executemany('delete from dirs where path = ?', [(p,) for p in paths])
+			self._db.executemany(
+				'update dirs set mtime_ns = -1 where path = ?', [(p,) for p in paths]
+			)
+			self._db.commit()
+
+	def forget_tree(self, path: str) -> None:
+		"""Make the next pass list this directory and everything below it again."""
+		like = path.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '/%'
+		with self._lock:
+			self._db.execute(
+				"update dirs set mtime_ns = -1 where path = ? or path like ? escape '\\'",
+				(path, like),
+			)
 			self._db.commit()
 
 	def delete_tree(self, path: str) -> int:

@@ -262,7 +262,9 @@ def test_the_rename_is_the_filenames_step(
 	folder = open_album(make_flac)
 	steps: list[str] = []
 	monkeypatch.setattr(
-		tagwright, 'rename_files', lambda album: steps.append(tagwright.job['step']) or ['ok']
+		tagwright,
+		'rename_files',
+		lambda album, name_of=None: steps.append(tagwright.job['step']) or ['ok'],
 	)
 	use_steps(monkeypatch, ('fake', write_tags))
 	client.post('/api/run', json={'path': str(folder)})
@@ -356,6 +358,10 @@ def test_move_uses_the_configured_template(
 		'disc_folder': None,
 	}
 	monkeypatch.setattr(tagwright, 'settings', {'library': {'template': template}})
+	assert (
+		tagwright.fresh_summary(album)['status'] == 'ready'
+	)  # the files still carry the bliss names
+	tagwright.rename_files(album, tagwright.file_name)  # what a run does after the steps
 	assert client.post('/api/move', json={'path': str(album)}).status_code == 200
 	assert (tagwright.INGEST / 'Test_Album' / '01 One.flac').is_file()
 

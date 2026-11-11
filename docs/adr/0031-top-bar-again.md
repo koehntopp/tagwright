@@ -1,6 +1,6 @@
 # ADR 0031: Top bar again, no sidebar, no Artists list
 
-- **Status**: Accepted (the right zone also holds the library status: [0037](0037-library-watcher-and-layout.md))
+- **Status**: Accepted (the right zone also holds the library status: [0037](0037-library-watcher-and-layout.md); the left zone has the Staging | Library switch after the icon: [0038](0038-staging-and-library-views.md))
 - **Date**: 2026-11-10
 - **Supersedes**: the **Layout** bullet of [0030](0030-ui-layout-and-design-system-v2.md) (the 256 px sidebar and its Artists list and bottom status card); the rest of 0030 stands
 

@@ -36,7 +36,7 @@ from starlette.types import Scope
 
 from library import planner as lib_planner
 from library.scanner import read_tags
-from library.template import PALETTE, Template
+from library.template import INDEXED_TAGS, PALETTE, MissingTag, Template, render_level
 from library.template import default as default_template
 from library.template import validate as validate_template
 from library.watcher import Library
@@ -47,7 +47,7 @@ from pipeline.config import Config
 from pipeline.fixtags import DISCOGS_TAG_PREFIXES
 from pipeline.http import ApiError
 from pipeline.layout import album_dirs, flacs, is_disc_dir
-from pipeline.naming import bliss_album, bliss_name, rename_files
+from pipeline.naming import bliss_album, rename_files
 from pipeline.run import run_album
 from pipeline.tagio import Tags, tag
 from pipeline.tools import Context, Stopped
@@ -132,11 +132,16 @@ lock = threading.Lock()
 
 
 def safe(p: str) -> Path:
-	"""Resolve p and require it under ROOT (trust boundary for every endpoint)."""
+	"""Resolve p and require it under the staging or the library folder (trust boundary for every endpoint)."""
 	path = Path(p).resolve()
-	if path != ROOT and ROOT not in path.parents:
-		raise HTTPException(400, 'path outside root')
+	if not any(path == base or base in path.parents for base in (ROOT, INGEST)):
+		raise HTTPException(400, 'path outside the staging and library folders')
 	return path
+
+
+def in_library(path: Path) -> bool:
+	"""True for a path in the library folder (and not also in the staging folder)."""
+	return (path == INGEST or INGEST in path.parents) and not (path == ROOT or ROOT in path.parents)
 
 
 def lyric_kind(t: Tags) -> str:
@@ -184,7 +189,7 @@ def track_files(
 					bool(tag(t, 'ACOUSTID_FINGERPRINT', 'ACOUSTID FINGERPRINT')),
 					tags_ok,
 					kind != 'none',
-					f.name == bliss_name(t),
+					f.name == file_name(t),
 				],
 			}
 		)
@@ -267,7 +272,7 @@ def summarize(album: Path) -> dict:
 		('Lyrics', mis == 0),
 		(
 			'Filenames',
-			all(f.name == bliss_name(t) for f, t in zip(files, tags, strict=False)),
+			all(f.name == file_name(t) for f, t in zip(files, tags, strict=False)),
 		),  # None (not ready) never equals a name
 	]
 	out.update(
@@ -429,6 +434,10 @@ def fresh_summary(album: Path) -> dict:
 	"""After a write: drop the cached summary first. A write that keeps the size (it fits the FLAC padding) on a network
 	volume with coarse or cached timestamps would otherwise match the old signature and show the old state."""
 	cache.pop(str(album), None)
+	if in_library(album):
+		library.refresh(
+			album
+		)  # the watcher lists it again: a changed tag may change the album's place
 	return get_summary(album)
 
 
@@ -584,7 +593,7 @@ def runner(path: Path, ctx: Context) -> int:
 		return -1
 	job['step'] = 'Filenames'
 	job['lines'].append('-- rename files')
-	job['lines'].extend(rename_files(path))
+	job['lines'].extend(rename_files(path, file_name))
 	return 0 if ok else 1
 
 
@@ -605,6 +614,9 @@ def worker(paths: list[Path], ctx: Context) -> None:
 				failed += 1
 	finally:
 		pipeline_log.removeHandler(handler)
+		for p in paths:
+			if in_library(p):
+				library.refresh(p)  # tags were written in place: the watcher lists the album again
 		job.update(
 			queue=[],
 			ctx=None,
@@ -687,6 +699,18 @@ def library_settings() -> LibrarySettings:
 
 
 library = Library(lambda: INGEST, DATA / 'library.db', library_settings)
+
+
+def file_name(t: Tags) -> str | None:
+	"""The file name the layout gives a file (the bliss name with the default template), or None while a tag it
+	needs is empty. The Filenames step and every rename use it, so they agree with the watcher (ADR 0038)."""
+	try:
+		stem = render_level(
+			library_settings().template.filename, {k: tag(t, k) for k in INDEXED_TAGS}
+		)
+	except MissingTag:
+		return None
+	return f'{stem}.flac' if stem else None
 
 
 def library_json() -> dict:
@@ -780,11 +804,11 @@ def set_settings(body: dict) -> dict:
 		raise HTTPException(400, 'Minimum cover size must be between 0 and 20000 pixels')
 	new_in = Path(str(body.get('input') or ROOT)).expanduser()
 	new_out = Path(str(body.get('output') or INGEST)).expanduser()
-	for label, p in (('Input folder', new_in), ('Output folder', new_out)):
+	for label, p in (('Staging folder', new_in), ('Library folder', new_out)):
 		if not p.is_absolute():
 			raise HTTPException(400, f'{label} must be an absolute path')
 	if not new_in.is_dir():
-		raise HTTPException(400, 'Input folder does not exist')
+		raise HTTPException(400, 'Staging folder does not exist')
 	new_library = parse_library(body['library']) if isinstance(body.get('library'), dict) else None
 	template_changed = new_library is not None and new_library.get('template') != (
 		settings.get('library') or {}
@@ -821,6 +845,15 @@ def get_job(since: int = 0) -> dict:
 def move_plan(path: Path) -> tuple[dict, list[lib_planner.Move]]:
 	"""What "Move to library" would do with an album, and why it cannot (`problems`); nothing is changed."""
 	items, problems, files = [], [], []
+	if in_library(path):
+		return {
+			'library': str(INGEST),
+			'album_dir': '',
+			'files': [],
+			'problems': ['this album is already in the library'],
+			'can_move': False,
+			'stays': '',
+		}, []
 	s = get_summary(path)
 	if job['state'] == 'running':
 		problems.append('a job is running')
@@ -858,7 +891,7 @@ def move_plan(path: Path) -> tuple[dict, list[lib_planner.Move]]:
 		'files': files,
 		'problems': problems,
 		'can_move': bool(plan.moves) and not problems,
-		'stays': 'Only the FLAC files move. Other files in the album folder (images, logs) stay in the input folder.',
+		'stays': 'Only the FLAC files move. Other files in the album folder (images, logs) stay in the staging folder.',
 	}
 	return info, plan.moves
 
@@ -1352,7 +1385,7 @@ def tracks_apply(body: dict) -> dict:
 			'filled from Discogs: '
 			+ ', '.join(f'{k} x{v}' if v > 1 else k for k, v in filled.items())
 		)
-	log += rename_files(album)
+	log += rename_files(album, file_name)
 	return {'log': log, 'album': fresh_summary(album)}
 
 
@@ -1885,7 +1918,7 @@ def set_tags(body: dict) -> dict:
 			del a.tags['DISCSUBTITLE']
 		a.save()
 		log.append(f'track: {tr["file"]}')
-	return {'log': [*log, *rename_files(album)], 'album': fresh_summary(album)}
+	return {'log': [*log, *rename_files(album, file_name)], 'album': fresh_summary(album)}
 
 
 @app.post('/api/overrides')

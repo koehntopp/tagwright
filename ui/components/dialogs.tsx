@@ -94,8 +94,8 @@ export function SettingsDialog({ open, onClose, saved }: { open: boolean; onClos
 			header={<Tabs value={tab} onValueChange={setTab} className="ml-auto mr-8"><TabsList><TabsTrigger value="general">General</TabsTrigger><TabsTrigger value="library">Library</TabsTrigger></TabsList></Tabs>}>
 			{s && tab === 'general' && (
 				<div className="space-y-3">
-					<Field label="Input folder" help="Albums to fix are read from here."><Input className="font-mono" value={f.input} onChange={set('input')} /></Field>
-					<Field label="Output folder (the library)" help="Fixed albums are placed here in the library layout, and a watcher keeps this folder in that layout (see the Library tab)."><Input className="font-mono" value={f.output} onChange={set('output')} /></Field>
+					<Field label="Staging folder" help="Albums to fix are read from here."><Input className="font-mono" value={f.input} onChange={set('input')} /></Field>
+					<Field label="Library folder" help="Fixed albums are placed here in the library layout, and a watcher keeps this folder in that layout (see the Library tab)."><Input className="font-mono" value={f.output} onChange={set('output')} /></Field>
 					<Field label="Minimum cover size (pixels)" help="An album whose cover is smaller than this on either side, or has none, cannot be moved to the library. 0 turns the check off."><Input type="number" min={0} max={20000} step={50} className="w-40 font-mono" value={f.min_cover} onChange={set('min_cover')} /></Field>
 					<Field label="Discogs API key" help="Leave blank to keep the stored key."><Input type="password" className="font-mono" placeholder={s.discogs_api_key_hint || 'Not set'} value={f.discogs_api_key} onChange={set('discogs_api_key')} /></Field>
 					<Field label="lrclib.net API key" help="Optional. Stored with the other settings."><Input type="password" className="font-mono" placeholder={s.lrclib_api_key_hint || 'Not set'} value={f.lrclib_api_key} onChange={set('lrclib_api_key')} /></Field>

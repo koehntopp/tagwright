@@ -5,6 +5,7 @@ their names. An empty tag means the album is not ready; nothing is invented (no 
 """
 
 import unicodedata
+from collections.abc import Callable
 from pathlib import Path
 
 from mutagen.flac import FLAC
@@ -47,11 +48,11 @@ def same_name(a: str, b: str) -> bool:
 	return n(a) == n(b)
 
 
-def rename_files(album: Path) -> list[str]:
-	"""Rename FLACs in place to the bliss pattern. Returns log lines."""
+def rename_files(album: Path, name_of: Callable[[Tags], str | None] = bliss_name) -> list[str]:
+	"""Rename FLACs in place to the name `name_of` gives (the bliss pattern by default). Returns log lines."""
 	out = []
 	for f in flacs(album):
-		new = bliss_name(FLAC(f).tags or {})
+		new = name_of(FLAC(f).tags or {})
 		if new is None:
 			out.append(f'skip {f.name}: title or track number is empty')
 			continue

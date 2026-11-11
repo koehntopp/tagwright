@@ -95,6 +95,18 @@ class Library:
 		self._full_requested = True
 		self._wake.set()
 
+	def refresh(self, folder: Path) -> None:
+		"""Something inside this folder was changed by Tagwright (a tag, a cover): list it again at the next pass,
+		although no directory's mtime moved. A folder outside the library is ignored."""
+		if self._index is None or self._root is None:
+			return
+		try:
+			rel = folder.resolve().relative_to(self._root)
+		except ValueError:
+			return
+		self._index.forget_tree(str(PurePosixPath(*rel.parts)) if rel.parts else '')
+		self.poke()
+
 	def poke(self) -> None:
 		"""Run a quick pass soon (settings changed, a file was added by Tagwright itself)."""
 		self._wake.set()

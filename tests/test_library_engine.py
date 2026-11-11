@@ -381,6 +381,25 @@ class TestWatcher:
 		lib.cycle()
 		assert (lib_root / 'Artist' / 'Album' / '01_01_Better_Title.flac').is_file()
 
+	def test_a_folder_that_received_files_is_still_watched(
+		self, make_flac: MakeFlac, lib_root: Path, tmp_path: Path
+	) -> None:
+		song(
+			make_flac, lib_root / 'Artist' / 'Album' / '01_01_Song_1.flac'
+		)  # the album folder exists already
+		song(make_flac, lib_root / 'dump' / 'x.flac', 2)
+		clock = Clock()
+		lib = library(lib_root, tmp_path, clock, cooldown=0)
+		clock.now += 5
+		lib.cycle()
+		assert (lib_root / 'Artist' / 'Album' / '01_02_Song_2.flac').is_file()
+		song(
+			make_flac, lib_root / 'Artist' / 'Album' / 'late.flac', 3
+		)  # something arrives in the folder that was moved into
+		clock.now += 5
+		lib.cycle()
+		assert (lib_root / 'Artist' / 'Album' / '01_03_Song_3.flac').is_file()
+
 	def test_a_changed_template_re_lays_out_the_library(
 		self, make_flac: MakeFlac, lib_root: Path, tmp_path: Path
 	) -> None:

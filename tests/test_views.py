@@ -1,0 +1,167 @@
+"""Staging and Library views: both folders are reachable, names follow the layout, edits refresh the watcher (ADR 0038)."""
+
+import os
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+from mutagen.flac import FLAC
+
+import app as tagwright
+from library.index import Index
+from library.scanner import scan
+from library.watcher import Library, Settings
+from pipeline.naming import bliss_name
+
+from .conftest import COMPLETE, MakeFlac
+
+
+def library_album(make_flac: MakeFlac) -> Path:
+	folder = tagwright.INGEST / 'Test_Artist' / 'Test_Album_2020_DR10_CD_TST_001'
+	for number, title in ((1, 'One'), (2, 'Two')):
+		make_flac(
+			folder / f'01_{number:02d}_{title}.flac',
+			TITLE=title,
+			TRACKNUMBER=str(number),
+			DISCNUMBER='1',
+			**COMPLETE,
+		)
+	return folder
+
+
+class TestBothFolders:
+	def test_safe_accepts_the_staging_and_the_library_folder(self) -> None:
+		assert tagwright.safe(str(tagwright.ROOT / 'a')) == tagwright.ROOT / 'a'
+		assert tagwright.safe(str(tagwright.INGEST / 'a')) == tagwright.INGEST / 'a'
+		assert tagwright.safe(str(tagwright.INGEST)) == tagwright.INGEST
+
+	@pytest.mark.parametrize('bad', ['/etc', '/', '..'])
+	def test_everything_else_is_refused(self, bad: str) -> None:
+		with pytest.raises(Exception, match='400'):
+			tagwright.safe(bad)
+
+	def test_a_path_next_to_the_library_folder_is_refused(self) -> None:
+		with pytest.raises(Exception, match='400'):
+			tagwright.safe(str(tagwright.INGEST) + '_other/x')
+
+	def test_the_board_lists_the_library_folder_like_the_staging_folder(
+		self, client: TestClient, make_flac: MakeFlac
+	) -> None:
+		library_album(make_flac)
+		r = client.get('/api/albums', params={'path': str(tagwright.INGEST)}).json()
+		assert r['base'] == str(tagwright.INGEST)
+		assert [(a['status'], a['tracks']) for a in r['albums']] == [('fixed', 2)]
+		assert client.get('/api/albums').json()['albums'] == []  # the default is still staging
+
+	def test_a_library_album_can_be_opened_and_edited(
+		self, client: TestClient, make_flac: MakeFlac
+	) -> None:
+		folder = library_album(make_flac)
+		assert client.get('/api/tags', params={'path': str(folder)}).status_code == 200
+		r = client.post(
+			'/api/overrides', json={'path': str(folder), 'artist': 'Other', 'title': ''}
+		)
+		assert r.status_code == 200
+
+	def test_an_album_already_in_the_library_cannot_be_moved(
+		self, client: TestClient, make_flac: MakeFlac
+	) -> None:
+		folder = library_album(make_flac)
+		p = client.get('/api/move/preview', params={'path': str(folder)}).json()
+		assert (p['can_move'], p['problems']) == (False, ['this album is already in the library'])
+		assert client.post('/api/move', json={'path': str(folder)}).status_code == 409
+		assert len(list(folder.glob('*.flac'))) == 2
+
+	def test_in_library_tells_the_two_apart(self) -> None:
+		assert tagwright.in_library(tagwright.INGEST / 'a')
+		assert not tagwright.in_library(tagwright.ROOT / 'a')
+
+
+class TestFileNames:
+	def test_the_default_template_gives_the_bliss_name(self) -> None:
+		t = {'TITLE': ['Hello World'], 'TRACKNUMBER': ['3/12'], 'DISCNUMBER': ['1/2']}
+		assert tagwright.file_name(t) == bliss_name(t) == '01_03_Hello_World.flac'
+
+	def test_a_missing_tag_gives_no_name(self) -> None:
+		assert tagwright.file_name({'TITLE': ['x'], 'TRACKNUMBER': ['1']}) is None
+
+	def test_the_filenames_step_follows_the_template(
+		self, album: Path, monkeypatch: pytest.MonkeyPatch
+	) -> None:
+		assert tagwright.summarize(album)['steps'][5]['done'] is True
+		template = {
+			'folders': [[{'tag': 'ALBUMARTIST'}]],
+			'filename': [
+				{'tag': 'TRACKNUMBER', 'fmt': 'num', 'pad': 2},
+				{'text': ' '},
+				{'tag': 'TITLE'},
+			],
+		}
+		monkeypatch.setattr(tagwright, 'settings', {'library': {'template': template}})
+		assert tagwright.summarize(album)['steps'][5]['done'] is False
+		tagwright.rename_files(album, tagwright.file_name)
+		assert sorted(f.name for f in album.glob('*.flac')) == ['01 One.flac', '02 Two.flac']
+		assert tagwright.summarize(album)['steps'][5]['done'] is True
+
+
+class TestRefresh:
+	def clock_library(self, root: Path, tmp_path: Path) -> Library:
+		return Library(lambda: root, tmp_path / 'l.db', lambda: Settings(apply=False))
+
+	def test_a_tag_edited_in_place_is_noticed_after_refresh(
+		self, make_flac: MakeFlac, tmp_path: Path
+	) -> None:
+		root = tmp_path / 'lib'
+		f = make_flac(root / 'A' / 'x.flac', TITLE='Old', ALBUMARTIST='A', ALBUM='B')
+		lib = self.clock_library(root, tmp_path)
+		lib.cycle()
+		audio = FLAC(f)
+		audio['TITLE'] = ['New']
+		audio.save()
+		os.utime(
+			f, (f.stat().st_atime, f.stat().st_mtime + 5)
+		)  # coarse timestamps must not hide the edit
+		assert scan(root, lib._index, 1.0).read == 0  # a quiet pass does not look inside files
+		lib.refresh(root / 'A')
+		assert scan(root, lib._index, 2.0).read == 1
+		assert lib._index.items()[0].tags['TITLE'] == 'New'
+
+	def test_refresh_ignores_folders_outside_the_library(
+		self, make_flac: MakeFlac, tmp_path: Path
+	) -> None:
+		root = tmp_path / 'lib'
+		make_flac(root / 'x.flac', TITLE='T', ALBUMARTIST='A', ALBUM='B')
+		lib = self.clock_library(root, tmp_path)
+		lib.cycle()
+		lib.refresh(tmp_path / 'elsewhere')
+		assert lib._index.dir_mtime('') is not None
+
+	def test_refresh_before_the_first_pass_does_nothing(self, tmp_path: Path) -> None:
+		self.clock_library(tmp_path, tmp_path).refresh(tmp_path)
+
+	def test_a_write_in_a_library_album_refreshes_it(
+		self, make_flac: MakeFlac, album: Path, monkeypatch: pytest.MonkeyPatch
+	) -> None:
+		folder = library_album(make_flac)
+		seen: list[Path] = []
+		monkeypatch.setattr(tagwright.library, 'refresh', seen.append)
+		tagwright.fresh_summary(folder)
+		tagwright.fresh_summary(album)  # staging: not the watcher's business
+		assert seen == [folder]
+
+	def test_forget_tree_only_takes_the_folder_and_below(self) -> None:
+		index = Index(':memory:')
+		for d in ('a', 'a/b', 'a_b', 'c'):
+			index.set_dir(d, 1)
+		index.forget_tree('a')
+		assert [d for d in ('a', 'a/b', 'a_b', 'c') if index.dir_mtime(d) == 1] == ['a_b', 'c']
+		assert (
+			index.dir_mtime('a/b') == -1
+		)  # unknown, so it is listed again; the row stays for the scanner
+
+
+def test_the_settings_use_the_two_folder_names(client: TestClient, tmp_path: Path) -> None:
+	r = client.post('/api/settings', json={'input': 'relative', 'output': str(tagwright.INGEST)})
+	assert 'Staging folder' in r.json()['detail']
+	r = client.post('/api/settings', json={'input': str(tagwright.ROOT), 'output': 'relative'})
+	assert 'Library folder' in r.json()['detail']

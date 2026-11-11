@@ -37,6 +37,8 @@ const Pill = ({ className = '', ...p }: React.ComponentProps<'span'>) => (
 
 export default function Page() {
 	const [albums, setAlbums] = useState<Album[]>([])
+	const [area, setArea] = useState<'staging' | 'library'>('staging')
+	const areaRef = useRef<'staging' | 'library'>('staging'), libPath = useRef('')
 	const [filter, setFilter] = useState('all')
 	const [q, setQ] = useState('')
 	const [sort, setSort] = useState('recent')
@@ -54,10 +56,18 @@ export default function Page() {
 
 	const a = albums.find(x => x.path === selected) || null
 	const load = useCallback(async (path = '') => {
+		if (!path && areaRef.current === 'library') path = libPath.current
 		const r = await api('/api/albums' + (path ? '?path=' + encodeURIComponent(path) : ''))
 		setAlbums(r.albums)
 		return r.albums as Album[]
 	}, [])
+	const switchArea = async (next: 'staging' | 'library') => {
+		if (next === areaRef.current) return
+		areaRef.current = next
+		localStorage.setItem('tagwright-area', next)
+		setArea(next); setSelected(null); setAlbums([])
+		try { await load() } catch (e: any) { toast.error(e.message) }
+	}
 	const refreshOne = useCallback(async (path: string) => {
 		try {
 			const s = await api<Album>('/api/album?path=' + encodeURIComponent(path))
@@ -88,6 +98,9 @@ export default function Page() {
 
 	useEffect(() => {
 		(async () => {
+			try { libPath.current = (await api('/api/settings')).output } catch {}
+			const saved = localStorage.getItem('tagwright-area')
+			if (saved === 'library') { areaRef.current = 'library'; setArea('library') }
 			await load()
 			const j = await api('/api/job?since=0')
 			since.current = j.next
@@ -161,6 +174,11 @@ export default function Page() {
 					{/* eslint-disable-next-line @next/next/no-img-element */}
 					<img src="/static/icon.svg" alt="" className="size-8 shrink-0" />
 				</div>
+				<div role="tablist" aria-label="Folder" className="mr-2 flex shrink-0 rounded-full bg-slate-300/50 p-0.5 text-sm font-medium">
+					{(['staging', 'library'] as const).map(k => (
+						<button key={k} role="tab" aria-selected={area === k} onClick={() => switchArea(k)} title={k === 'staging' ? 'Albums that are being fixed' : 'Albums already in the library'} className={`rounded-full px-3 py-1 ${area === k ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>{k === 'staging' ? 'Staging' : 'Library'}</button>
+					))}
+				</div>
 				<nav className="flex shrink-0 items-center gap-1">
 					{FILTERS.map(f => (
 						<button key={f.id} onClick={() => (filter === f.id ? cycleSort() : setFilter(f.id))} title={filter === f.id ? `Sorted by ${SORT_NAMES[sort]}; click again to change` : undefined} className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-[17px] font-medium ${filter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>
@@ -231,7 +249,7 @@ export default function Page() {
 			</main>
 			<aside className="w-[600px] shrink-0 overflow-y-auto border-l bg-white">
 				{a ? (
-					<Inspector key={a.path} a={a} job={job} log={log} refresh={() => refreshOne(a.path)} run={run} move={() => { setCerr(''); setDlg({ kind: 'move' }) }}
+					<Inspector key={a.path} a={a} job={job} log={log} inLibrary={area === 'library'} refresh={() => refreshOne(a.path)} run={run} move={() => { setCerr(''); setDlg({ kind: 'move' }) }}
 						openEditor={tab => setTagTab(tab)} openAlbum={() => setDlg({ kind: 'album' })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })}
 						openLyrics={file => setDlg({ kind: 'lyrics', file, path: a.path })} playing={playing} play={play} delCover={() => { setCerr(''); setDlg({ kind: 'cover' }) }} putCover={putCover} />
 				) : <div className="p-6 text-slate-500">Select an album.</div>}
@@ -263,7 +281,7 @@ export default function Page() {
 			<DiscogsDialog a={dk === 'discogs' ? a : null} onClose={() => setDlg(null)} done={done} />
 			<MbDialog a={dk === 'mb' ? a : null} onClose={() => setDlg(null)} done={done} />
 			<LibraryDialog open={dk === 'library'} onClose={() => setDlg(null)} st={lib.st} reload={lib.reload} />
-			<SettingsDialog open={dk === 'settings'} onClose={() => setDlg(null)} saved={() => { setSelected(null); load('') }} />
+			<SettingsDialog open={dk === 'settings'} onClose={() => setDlg(null)} saved={async () => { setSelected(null); try { libPath.current = (await api('/api/settings')).output } catch {} load('') }} />
 		</div>
 	)
 }
