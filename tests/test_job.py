@@ -274,16 +274,16 @@ def test_stop_without_a_job_is_409(client: TestClient) -> None:
 	assert client.post('/api/stop').status_code == 409
 
 
-def test_move_takes_only_fixed_albums_and_never_overwrites(
+def test_move_places_a_fixed_album_in_the_library_layout_and_never_overwrites(
 	client: TestClient, album: Path, make_flac: MakeFlac
 ) -> None:
-	dest = tagwright.INGEST / album.name
+	where = tagwright.INGEST / 'Test_Artist' / 'Test_Album_2020_DR10_CD_TST_001'
 	r = client.post('/api/move', json={'path': str(album)})
-	assert r.json() == {'moved_to': str(dest)}
-	assert sorted(f.name for f in dest.glob('*.flac')) == ['01_01_One.flac', '01_02_Two.flac']
-	assert not album.exists() or not tagwright.flacs(album)
+	assert r.json() == {'moved_to': str(where)}
+	assert sorted(f.name for f in where.glob('*.flac')) == ['01_01_One.flac', '01_02_Two.flac']
+	assert not tagwright.flacs(album)
 
-	again = tagwright.ROOT / album.name  # same folder name again: destination exists
+	again = tagwright.ROOT / album.name  # the same album again: the target names exist
 	for number, title in ((1, 'One'), (2, 'Two')):
 		make_flac(
 			again / f'01_{number:02d}_{title}.flac',
@@ -292,8 +292,72 @@ def test_move_takes_only_fixed_albums_and_never_overwrites(
 			DISCNUMBER='1',
 			**COMPLETE,
 		)
-	assert client.post('/api/move', json={'path': str(again)}).status_code == 409
+	r = client.post('/api/move', json={'path': str(again)})
+	assert r.status_code == 409
+	assert 'already exists' in r.json()['detail']
 	assert len(tagwright.flacs(again)) == 2  # nothing was merged or removed
+
+
+def test_move_makes_disc_folders_for_a_multi_disc_album(
+	client: TestClient, make_flac: MakeFlac
+) -> None:
+	folder = tagwright.ROOT / 'Box'
+	for disc in (1, 2):
+		make_flac(
+			folder / f'0{disc}_01_x.flac',
+			TITLE='x',
+			TRACKNUMBER='1',
+			DISCNUMBER=str(disc),
+			**COMPLETE,
+		)
+	r = client.post('/api/move', json={'path': str(folder)})
+	assert r.status_code == 200
+	where = tagwright.INGEST / 'Test_Artist' / 'Test_Album_2020_DR10_CD_TST_001'
+	assert sorted(p.relative_to(where).as_posix() for p in where.rglob('*.flac')) == [
+		'Disc 1/01_01_x.flac',
+		'Disc 2/02_01_x.flac',
+	]
+
+
+def test_a_single_disc_album_joins_an_existing_multi_disc_one(
+	client: TestClient, album: Path
+) -> None:
+	(tagwright.INGEST / 'Test_Artist' / 'Test_Album_2020_DR10_CD_TST_001' / 'Disc 2').mkdir(
+		parents=True
+	)
+	client.post('/api/move', json={'path': str(album)})
+	assert (
+		tagwright.INGEST
+		/ 'Test_Artist'
+		/ 'Test_Album_2020_DR10_CD_TST_001'
+		/ 'Disc 1'
+		/ '01_01_One.flac'
+	).is_file()
+
+
+def test_move_refuses_files_the_layout_cannot_place(client: TestClient, album: Path) -> None:
+	f = FLAC(tagwright.flacs(album)[0])
+	f['TITLE'] = ['']
+	f.save()  # a title that is empty: the album is no longer fixed, so it is refused earlier
+	assert client.post('/api/move', json={'path': str(album)}).status_code == 409
+	assert not (tagwright.INGEST / 'Test_Artist').exists()
+
+
+def test_move_uses_the_configured_template(
+	client: TestClient, album: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	template = {
+		'folders': [[{'tag': 'ALBUM', 'fmt': 'text'}]],
+		'filename': [
+			{'tag': 'TRACKNUMBER', 'fmt': 'num', 'pad': 2},
+			{'text': ' '},
+			{'tag': 'TITLE', 'fmt': 'text'},
+		],
+		'disc_folder': None,
+	}
+	monkeypatch.setattr(tagwright, 'settings', {'library': {'template': template}})
+	assert client.post('/api/move', json={'path': str(album)}).status_code == 200
+	assert (tagwright.INGEST / 'Test_Album' / '01 One.flac').is_file()
 
 
 def test_move_refuses_an_album_that_is_not_fixed(client: TestClient, make_flac: MakeFlac) -> None:

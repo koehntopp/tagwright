@@ -19,10 +19,11 @@ import threading
 import unicodedata
 import urllib.error
 import urllib.request
-from collections.abc import Iterable
+from collections.abc import AsyncIterator, Iterable
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
 from difflib import SequenceMatcher
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import urlencode
 
 import uvicorn
@@ -33,12 +34,19 @@ from mutagen.flac import FLAC, Picture
 from PIL import Image, UnidentifiedImageError
 from starlette.types import Scope
 
+from library import planner as lib_planner
+from library.scanner import read_tags
+from library.template import PALETTE, Template
+from library.template import default as default_template
+from library.template import validate as validate_template
+from library.watcher import Library
+from library.watcher import Settings as LibrarySettings
 from pipeline import discogs as discogs_api
 from pipeline import musicbrainz as mb_api
 from pipeline.config import Config
 from pipeline.fixtags import DISCOGS_TAG_PREFIXES
 from pipeline.http import ApiError
-from pipeline.layout import album_dirs, flacs
+from pipeline.layout import album_dirs, flacs, is_disc_dir
 from pipeline.naming import bliss_album, bliss_name, rename_files
 from pipeline.run import run_album
 from pipeline.tagio import Tags, tag
@@ -100,7 +108,16 @@ INSTRUMENTAL_RE = re.compile(
 	r'\[instrumental:true\]|\[\d{2}:\d{2}\.\d{2}\]\s*(?:\[instrumental\]|\(instrumental\))', re.I
 )
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+	"""The library watcher runs for as long as the server does (ADR 0037)."""
+	library.start()
+	yield
+	library.stop()
+
+
+app = FastAPI(lifespan=lifespan)
 job = {
 	'path': None,
 	'state': 'idle',
@@ -641,12 +658,110 @@ def hint(v: str) -> str:
 	return '\u2022' * 4 + v[-4:] if v else ''
 
 
+# ---------- the library: layout template, watcher, status (ADR 0037) ----------
+def library_settings() -> LibrarySettings:
+	"""The watcher's settings from settings.json, with defaults for anything missing or unusable."""
+	cfg = settings.get('library') or {}
+	try:
+		template = (
+			Template.from_dict(cfg['template']) if cfg.get('template') else default_template()
+		)
+		if validate_template(template)[0]:
+			template = default_template()
+	except KeyError, TypeError, ValueError, AttributeError:
+		template = default_template()
+
+	def number(key: str, default: float) -> float:
+		try:
+			return float(cfg.get(key, default))
+		except TypeError, ValueError:
+			return default
+
+	return LibrarySettings(
+		apply=bool(cfg.get('apply', True)),
+		cooldown=number('cooldown', 60.0),
+		interval=number('interval', 120.0),
+		sweep_hours=number('sweep_hours', 24.0),
+		template=template,
+	)
+
+
+library = Library(lambda: INGEST, DATA / 'library.db', library_settings)
+
+
+def library_json() -> dict:
+	cfg = library_settings()
+	return {
+		'apply': cfg.apply,
+		'cooldown': cfg.cooldown,
+		'interval': cfg.interval,
+		'sweep_hours': cfg.sweep_hours,
+		'template': cfg.template.to_dict(),
+		'default_template': default_template().to_dict(),
+		'palette': [{'key': k, 'label': v} for k, v in PALETTE.items()],
+	}
+
+
+def parse_library(body: dict) -> dict:
+	"""Validate the library part of a settings update; the cleaned dict to store. Raises 400 with what is wrong."""
+	old = settings.get('library') or {}
+	out: dict = {'apply': bool(body.get('apply', old.get('apply', True)))}
+	for key, lo, hi, default in (
+		('cooldown', 0, 86400, 60),
+		('interval', 10, 86400, 120),
+		('sweep_hours', 1, 720, 24),
+	):
+		try:
+			value = float(body.get(key, old.get(key, default)))
+		except (TypeError, ValueError) as e:
+			raise HTTPException(400, f'{key} must be a number') from e
+		if not lo <= value <= hi:
+			raise HTTPException(400, f'{key} must be between {lo} and {hi}')
+		out[key] = value
+	if 'template' in body:
+		try:
+			template = Template.from_dict(body['template'])
+		except (KeyError, TypeError, ValueError, AttributeError) as e:
+			raise HTTPException(400, 'the template is malformed') from e
+		errors, _ = validate_template(template)
+		if errors:
+			raise HTTPException(400, 'Template: ' + '; '.join(errors))
+		out['template'] = template.to_dict()
+	elif old.get('template'):
+		out['template'] = old['template']
+	return out
+
+
+@app.get('/api/library')
+def get_library() -> dict:
+	"""What the watcher is doing and what it found (the top bar's status indicator)."""
+	return library.status()
+
+
+@app.post('/api/library/rescan')
+def rescan_library() -> dict:
+	"""Re-analyse everything now: a full pass that ignores what the index remembers."""
+	library.rescan()
+	return {'ok': True}
+
+
+@app.post('/api/library/preview')
+def preview_library(body: dict) -> dict:
+	"""What a template would do to one album of the library; nothing is changed."""
+	try:
+		template = Template.from_dict(body.get('template') or {})
+	except (KeyError, TypeError, ValueError, AttributeError) as e:
+		raise HTTPException(400, 'the template is malformed') from e
+	return library.preview(template, body.get('album'))
+
+
 @app.get('/api/settings')
 def get_settings() -> dict:
 	return {
 		'input': str(ROOT),
 		'output': str(INGEST),
 		'min_cover': MIN_COVER,
+		'library': library_json(),
 		**{k + '_hint': hint(settings.get(k, '')) for k in KEYS},
 	}
 
@@ -670,7 +785,13 @@ def set_settings(body: dict) -> dict:
 			raise HTTPException(400, f'{label} must be an absolute path')
 	if not new_in.is_dir():
 		raise HTTPException(400, 'Input folder does not exist')
+	new_library = parse_library(body['library']) if isinstance(body.get('library'), dict) else None
+	template_changed = new_library is not None and new_library.get('template') != (
+		settings.get('library') or {}
+	).get('template')
 	settings.update(input=str(new_in.resolve()), output=str(new_out.resolve()), min_cover=new_min)
+	if new_library is not None:
+		settings['library'] = new_library
 	for k in KEYS:
 		if body.get('clear_' + k):
 			settings.pop(k, None)
@@ -681,6 +802,10 @@ def set_settings(body: dict) -> dict:
 	SETTINGS_FILE.chmod(0o600)
 	ROOT, INGEST, MIN_COVER = Path(settings['input']), Path(settings['output']), new_min
 	cache.clear()
+	if template_changed:
+		library.rescan()  # a new layout applies to everything
+	else:
+		library.poke()
 	return get_settings()
 
 
@@ -695,6 +820,7 @@ def get_job(since: int = 0) -> dict:
 
 @app.post('/api/move')
 def move(body: dict) -> dict:
+	"""Place a fixed album in the library: each FLAC goes straight to its path in the layout (ADR 0037)."""
 	path = safe(body.get('path', ''))
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
@@ -707,16 +833,31 @@ def move(body: dict) -> dict:
 		raise HTTPException(
 			409, 'cover is below the minimum size; replace it or lower the minimum in settings'
 		)
-	dest = INGEST / path.name
-	if dest.exists():
-		raise HTTPException(409, f'{dest} already exists')
-	files = flacs(path)
-	if len({f.name for f in files}) != len(files):
-		raise HTTPException(409, 'two files have the same name; they cannot be moved flat')
-	dest.mkdir(parents=True)
-	for f in files:
-		shutil.move(str(f), str(dest / f.name))
-	return {'moved_to': str(dest)}
+	items = []
+	for f in flacs(path):
+		tags, error = read_tags(f)
+		if error:
+			raise HTTPException(409, f'{f.name} cannot be read: {error}')
+		items.append(lib_planner.Item(PurePosixPath(str(f)), tags))
+	template = library_settings().template
+
+	def has_disc_dirs(album_dir: tuple[str, ...]) -> bool:
+		d = INGEST.joinpath(*album_dir)
+		return d.is_dir() and any(is_disc_dir(x.name) for x in d.iterdir() if x.is_dir())
+
+	plan = lib_planner.plan(items, template, has_disc_dirs)
+	if problems := [*plan.unplaced, *plan.skipped]:
+		raise HTTPException(409, f'{problems[0].path.name}: {problems[0].reason}')
+	for m in plan.moves:
+		if (INGEST / m.dst).exists():
+			raise HTTPException(409, f'{INGEST / m.dst} already exists')
+	with library.exclusive:
+		for m in plan.moves:
+			dst = INGEST / m.dst
+			dst.parent.mkdir(parents=True, exist_ok=True)
+			shutil.move(str(m.src), dst)
+	library.poke()
+	return {'moved_to': str(INGEST.joinpath(*plan.moves[0].dst.parts[: len(template.folders)]))}
 
 
 # ---------- track editor: assign album files to a Discogs release ----------
