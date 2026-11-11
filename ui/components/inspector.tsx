@@ -160,7 +160,7 @@ export function Inspector(p: Props) {
 			<div className="flex gap-2">
 				<Button className="flex-1 bg-slate-800 text-white hover:bg-slate-700" onClick={() => p.openEditor('album')}>Tag Editor</Button>
 				<Button className="flex-1" variant="outline" disabled={a.status === 'needs' || job.state === 'running'} onClick={p.run}>Run fixes</Button>
-				<Button className="flex-1" variant="outline" disabled={a.status !== 'fixed' || a.issues.some(i => i.level === 'ingest') || job.state === 'running'} onClick={p.move}>Move to ingest</Button>
+				<Button className="flex-1" variant="outline" disabled={a.status !== 'fixed' || a.issues.some(i => i.level === 'ingest') || job.state === 'running'} onClick={p.move}>Move to library</Button>
 			</div>
 
 			<div className="space-y-2">

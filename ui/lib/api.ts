@@ -51,3 +51,13 @@ export const mmss = (n: number) => (n ? Math.floor(n / 60) + ':' + String(n % 60
 export const fmtBytes = (n: number) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB')
 export const coverUrl = (a: Album) => `/api/cover?path=${encodeURIComponent(a.path)}&v=${a.mtime}`
 export const STATUS = { needs: 'Needs input', ready: 'Ready', fixed: 'Fixed' }
+
+export type Chip = { tag?: string; text?: string; fmt?: string; pad?: number; fallback?: string }
+export type Tpl = { folders: Chip[][]; disc_folder: Chip[] | null; filename: Chip[] }
+export type LibraryStatus = {
+	phase: string; message: string; error: string; artists: number; albums: number; tracks: number
+	planned: { from: string; to: string }[]; waiting: number
+	unplaced: { path: string; reason: string }[]; skipped: { path: string; reason: string }[]
+	recent: { t: number; text: string }[]; last_scan: number; last_full: number
+	root: string; apply: boolean; cooldown: number; interval: number
+}

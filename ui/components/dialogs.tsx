@@ -12,9 +12,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Album, api, mmss, post } from '@/lib/api'
 import { CopyBtn, IdBadge } from '@/components/inspector'
 import { TrackTable } from '@/components/track-table'
+import { LibraryTab } from '@/components/library'
 
-type Shell = { open: boolean; onClose: () => void; title: React.ReactNode; wide?: string; err?: string; save?: () => void; saveLabel?: string; saveDisabled?: boolean; children: React.ReactNode; header?: React.ReactNode }
-export function Shell({ open, onClose, title, wide = 'sm:max-w-[40rem]', err, save, saveLabel = 'Save', saveDisabled, children, header }: Shell) {
+type Shell = { open: boolean; onClose: () => void; title: React.ReactNode; wide?: string; err?: string; save?: () => void; saveLabel?: string; saveDisabled?: boolean; cancelLabel?: string; children: React.ReactNode; header?: React.ReactNode }
+export function Shell({ open, onClose, title, wide = 'sm:max-w-[40rem]', err, save, saveLabel = 'Save', saveDisabled, cancelLabel = 'Cancel', children, header }: Shell) {
 	return (
 		<Dialog open={open} onOpenChange={o => !o && onClose()}>
 			<DialogContent className={`${wide} gap-0 rounded-2xl`}>
@@ -25,7 +26,7 @@ export function Shell({ open, onClose, title, wide = 'sm:max-w-[40rem]', err, sa
 				<div className="mt-3">{children}</div>
 				{err && <p className="mt-2 text-sm text-rose-600">{err}</p>}
 				<DialogFooter className="mt-4">
-					<Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+					<Button variant="outline" size="sm" onClick={onClose}>{cancelLabel}</Button>
 					{save && <Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" disabled={saveDisabled} onClick={save}>{saveLabel}</Button>}
 				</DialogFooter>
 			</DialogContent>
@@ -76,27 +77,31 @@ export function AlbumEdit({ a, onClose, done }: { a: Album | null; onClose: () =
 }
 
 export function SettingsDialog({ open, onClose, saved }: { open: boolean; onClose: () => void; saved: () => void }) {
-	const [s, setS] = useState<any>(null), [f, setF] = useState<any>({}), [err, setErr] = useState('')
+	const [s, setS] = useState<any>(null), [f, setF] = useState<any>({}), [lib, setLib] = useState<any>(null), [err, setErr] = useState(''), [tab, setTab] = useState('general')
 	useEffect(() => {
 		if (!open) return
-		api('/api/settings').then(r => { setS(r); setF({ input: r.input, output: r.output, min_cover: r.min_cover, discogs_api_key: '', lrclib_api_key: '' }); setErr('') }, e => toast.error(e.message))
+		api('/api/settings').then(r => { setS(r); setLib(r.library); setF({ input: r.input, output: r.output, min_cover: r.min_cover, discogs_api_key: '', lrclib_api_key: '' }); setErr(''); setTab('general') }, e => toast.error(e.message))
 	}, [open])
 	const save = async () => {
-		try { await post('/api/settings', { ...f, input: f.input.trim(), output: f.output.trim() }); toast.success('Settings saved'); onClose(); saved() }
-		catch (e: any) { setErr(e.message) }
+		try {
+			await post('/api/settings', { ...f, input: f.input.trim(), output: f.output.trim(), library: { apply: lib.apply, cooldown: +lib.cooldown, interval: +lib.interval, sweep_hours: lib.sweep_hours, template: lib.template } })
+			toast.success('Settings saved'); onClose(); saved()
+		} catch (e: any) { setErr(e.message) }
 	}
 	const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value })
 	return (
-		<Shell open={open && !!s} onClose={onClose} title="Settings" wide="sm:max-w-[48rem]" err={err} save={save}>
-			{s && (
+		<Shell open={open && !!s} onClose={onClose} title="Settings" wide={tab === 'library' ? 'sm:max-w-[56rem]' : 'sm:max-w-[48rem]'} err={err} save={save}
+			header={<Tabs value={tab} onValueChange={setTab} className="ml-auto mr-8"><TabsList><TabsTrigger value="general">General</TabsTrigger><TabsTrigger value="library">Library</TabsTrigger></TabsList></Tabs>}>
+			{s && tab === 'general' && (
 				<div className="space-y-3">
 					<Field label="Input folder" help="Albums to fix are read from here."><Input className="font-mono" value={f.input} onChange={set('input')} /></Field>
-					<Field label="Output folder" help="Fixed albums are moved here."><Input className="font-mono" value={f.output} onChange={set('output')} /></Field>
-					<Field label="Minimum cover size (pixels)" help="An album whose cover is smaller than this on either side, or has none, cannot be moved to ingest. 0 turns the check off."><Input type="number" min={0} max={20000} step={50} className="w-40 font-mono" value={f.min_cover} onChange={set('min_cover')} /></Field>
+					<Field label="Output folder (the library)" help="Fixed albums are placed here in the library layout, and a watcher keeps this folder in that layout (see the Library tab)."><Input className="font-mono" value={f.output} onChange={set('output')} /></Field>
+					<Field label="Minimum cover size (pixels)" help="An album whose cover is smaller than this on either side, or has none, cannot be moved to the library. 0 turns the check off."><Input type="number" min={0} max={20000} step={50} className="w-40 font-mono" value={f.min_cover} onChange={set('min_cover')} /></Field>
 					<Field label="Discogs API key" help="Leave blank to keep the stored key."><Input type="password" className="font-mono" placeholder={s.discogs_api_key_hint || 'Not set'} value={f.discogs_api_key} onChange={set('discogs_api_key')} /></Field>
-					<Field label="lrclib.net API key" help="Optional. Stored and passed to the scripts as lrclib_api_key."><Input type="password" className="font-mono" placeholder={s.lrclib_api_key_hint || 'Not set'} value={f.lrclib_api_key} onChange={set('lrclib_api_key')} /></Field>
+					<Field label="lrclib.net API key" help="Optional. Stored with the other settings."><Input type="password" className="font-mono" placeholder={s.lrclib_api_key_hint || 'Not set'} value={f.lrclib_api_key} onChange={set('lrclib_api_key')} /></Field>
 				</div>
 			)}
+			{s && tab === 'library' && lib && <LibraryTab lib={lib} setLib={setLib} />}
 		</Shell>
 	)
 }

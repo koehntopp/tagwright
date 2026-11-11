@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { AlbumEdit, CoverDelete, LyricsEdit, SettingsDialog, Shell, TagEditor } from '@/components/dialogs'
 import { CopyBtn, CoverImg, IdBadge, Inspector } from '@/components/inspector'
+import { LibraryDialog, LibraryIndicator, useLibrary } from '@/components/library'
 import { DiscogsDialog, MbDialog } from '@/components/releases'
 import { Album, Job, LogLine, STATUS, TrackFile, api, post, title } from '@/lib/api'
 
@@ -41,6 +42,7 @@ export default function Page() {
 	const [sort, setSort] = useState('recent')
 	const [selected, setSelected] = useState<string | null>(null)
 	const [job, setJob] = useState<Job>({ state: 'idle', path: null, queue: [] })
+	const lib = useLibrary()
 	const [log, setLog] = useState<LogLine[]>([])
 	const [dlg, setDlg] = useState<{ kind: string; tab?: string; file?: string; path?: string } | null>(null)
 	const [tagTab, setTagTab] = useState<string | null>(null)
@@ -115,7 +117,7 @@ export default function Page() {
 	}
 	const move = async () => {
 		if (!a) return
-		try { const r = await post('/api/move', { path: a.path }); addLog(['moved to ' + r.moved_to]); setDlg(null); toast.success('Moved to ingest'); setSelected(null); await load() }
+		try { const r = await post('/api/move', { path: a.path }); addLog(['moved to ' + r.moved_to]); setDlg(null); toast.success('Moved to the library'); setSelected(null); await load() }
 		catch (e: any) { setCerr(e.message) }
 	}
 	const putCover = async (f: File) => {
@@ -166,7 +168,9 @@ export default function Page() {
 					<kbd className="absolute right-3 top-2 hidden rounded bg-slate-100 px-1.5 text-xs text-slate-500 min-[1600px]:block">⌘K</kbd>
 				</div>
 				<button onClick={() => setDlg({ kind: 'settings' })} title="Settings" aria-label="Settings" className="mr-3 shrink-0 rounded-full p-2 text-slate-600 hover:bg-white/60"><Settings className="size-5" /></button>
-				<div className="ml-2 flex h-full w-[600px] shrink-0 items-center gap-2 border-l px-6 text-xs">
+				<div className="ml-2 flex h-full w-[600px] shrink-0 items-center gap-2 border-l px-4 text-xs">
+					<LibraryIndicator st={lib.st} open={() => setDlg({ kind: 'library' })} />
+					<div className="h-8 w-px shrink-0 bg-slate-300" />
 					<span className={`size-2 shrink-0 rounded-full ${job.state === 'running' ? 'animate-pulse bg-sky-500' : job.state === 'failed' ? 'bg-rose-500' : job.state === 'stopped' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
 					<div className="min-w-0 flex-1 leading-tight">
 						<div className="font-medium">Pipeline</div>
@@ -232,11 +236,12 @@ export default function Page() {
 			<TagEditor a={tagTab ? a : null} tab={tagTab || 'album'} reload={kreload} onClose={() => setTagTab(null)} done={done}
 				openLyrics={(path, file) => setDlg({ kind: 'lyrics', path, file })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })} />
 			<LyricsEdit target={dk === 'lyrics' && dlg?.path ? { path: dlg.path, file: dlg.file! } : null} onClose={() => setDlg(null)} done={refreshOne} />
-			<Shell open={dk === 'move'} onClose={() => setDlg(null)} title="Move to ingest?" wide="sm:max-w-[24rem]" err={cerr} save={move} saveLabel="Move">
-				<p className="text-sm">&ldquo;{a ? title(a) : ''}&rdquo; is moved to the ingest folder.</p>
+			<Shell open={dk === 'move'} onClose={() => setDlg(null)} title="Move to the library?" wide="sm:max-w-[24rem]" err={cerr} save={move} saveLabel="Move">
+				<p className="text-sm">&ldquo;{a ? title(a) : ''}&rdquo; is placed in the library folder, each track in its folder and under its name from the layout.</p>
 			</Shell>
 			<DiscogsDialog a={dk === 'discogs' ? a : null} onClose={() => setDlg(null)} done={done} />
 			<MbDialog a={dk === 'mb' ? a : null} onClose={() => setDlg(null)} done={done} />
+			<LibraryDialog open={dk === 'library'} onClose={() => setDlg(null)} st={lib.st} reload={lib.reload} />
 			<SettingsDialog open={dk === 'settings'} onClose={() => setDlg(null)} saved={() => { setSelected(null); load('') }} />
 		</div>
 	)

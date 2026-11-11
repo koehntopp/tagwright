@@ -26,7 +26,7 @@ Tagwright is a self-hosted web app (FastAPI backend, Next.js frontend) with its 
 - **Ingest** (0011): move only `fixed` albums; never overwrite or merge into an existing destination.
 - **Status model** (0006, 0016): changing what makes a step done or partial is an ADR change.
 - **Stack** (0005, 0029, 0034, 0036): backend `app.py` (web layer, PEP 723 deps) plus the `pipeline/` package; frontend in `ui/` (Next.js static export, shadcn/ui). Tabs, single quotes. No new framework or build step without an ADR. Any change under `ui/` means `cd ui && npm run build` and committing the resulting `static/ui/`.
-- **UI** (0030, 0031): colours keep their meaning; do not add a stats bar or filter tabs; the top bar navigation is the only filter; follow the dialog widths and fixed-width badge columns.
+- **UI** (0030, 0031, 0037): colours keep their meaning; do not add a stats bar or filter tabs; the top bar navigation is the only filter; follow the dialog widths and fixed-width badge columns.
 
 ## 4. Verification (ADR 0018)
 
