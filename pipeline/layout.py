@@ -34,14 +34,28 @@ def find_flacs(base: Path) -> list[Path]:
 
 
 def flacs(album: Path) -> list[Path]:
-	"""All FLAC files of an album, sorted (its own files and those in disc folders)."""
-	return find_flacs(album)
+	"""The FLAC files of an album, sorted: those in its own folder and those in its `Disc N` / `CD N` folders. Other
+	subfolders are other albums (or art) and not part of this one."""
+	found = []
+	try:
+		entries = sorted(os.scandir(album), key=lambda e: e.name)
+	except OSError:
+		return []
+	for e in entries:
+		if e.name.startswith('.'):
+			continue
+		if e.is_file(follow_symlinks=False) and e.name.lower().endswith('.flac'):
+			found.append(Path(e.path))
+		elif e.is_dir(follow_symlinks=False) and is_disc_dir(e.name):
+			found += find_flacs(Path(e.path))
+	return sorted(found)
 
 
 def album_dirs(base: Path) -> list[Path]:
-	"""The albums below base: every folder with FLACs, a `Disc N` folder counting as part of its parent."""
+	"""The albums below base: every folder with FLACs, a `Disc N` folder counting as part of its parent. The base
+	folder itself is never an album (ADR 0006): a `CD1` folder lying directly in it is an album of its own."""
 	found = set()
 	for f in find_flacs(base):
 		d = f.parent
-		found.add(d.parent if is_disc_dir(d.name) else d)
+		found.add(d.parent if is_disc_dir(d.name) and d.parent != base else d)
 	return sorted(found)

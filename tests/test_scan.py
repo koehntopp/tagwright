@@ -64,3 +64,36 @@ def test_a_dotted_root_is_still_scanned(make_flac: MakeFlac, tmp_path: Path) -> 
 def test_the_board_does_not_list_hidden_folders(client: TestClient, make_flac: MakeFlac) -> None:
 	make_flac(tagwright.ROOT / '.slskd-incomplete' / 'x' / '01.flac', TITLE='t')
 	assert client.get('/api/albums').json()['albums'] == []
+
+
+def test_a_disc_folder_directly_in_the_base_is_an_album_of_its_own_not_the_base(
+	make_flac: MakeFlac,
+) -> None:
+	root = tagwright.ROOT
+	make_flac(root / 'CD1' / '01.flac')
+	make_flac(root / 'CD2' / '01.flac')
+	make_flac(root / 'Real Album' / '01.flac')
+	assert tagwright.album_dirs(root) == [root / 'CD1', root / 'CD2', root / 'Real Album']
+	assert tagwright.flacs(root / 'CD1') == [root / 'CD1' / '01.flac']
+
+
+def test_an_album_does_not_swallow_the_albums_in_its_other_subfolders(make_flac: MakeFlac) -> None:
+	root = tagwright.ROOT
+	make_flac(root / 'Outer' / '01.flac')
+	make_flac(root / 'Outer' / 'Disc 2' / '01.flac')
+	make_flac(root / 'Outer' / 'Inner Album' / '01.flac')  # another album below it
+	assert tagwright.flacs(root / 'Outer') == [
+		root / 'Outer' / '01.flac',
+		root / 'Outer' / 'Disc 2' / '01.flac',
+	]
+	assert tagwright.album_dirs(root) == [root / 'Outer', root / 'Outer' / 'Inner Album']
+
+
+def test_the_base_folder_is_never_listed_as_an_album(
+	client: TestClient, make_flac: MakeFlac
+) -> None:
+	make_flac(tagwright.ROOT / 'CD1' / '01.flac', TITLE='t')
+	make_flac(tagwright.ROOT / 'Other' / '01.flac', TITLE='u')
+	paths = {a['path'] for a in client.get('/api/albums').json()['albums']}
+	assert str(tagwright.ROOT) not in paths
+	assert paths == {str(tagwright.ROOT / 'CD1'), str(tagwright.ROOT / 'Other')}
