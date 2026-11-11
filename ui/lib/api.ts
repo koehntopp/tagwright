@@ -20,6 +20,7 @@ export type Album = {
 	title_override: string
 	album: string
 	new_title: string
+	folder?: string
 	year: string
 	edition: string
 	discogs: string

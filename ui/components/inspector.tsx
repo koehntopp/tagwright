@@ -207,6 +207,11 @@ export function Inspector(p: Props) {
 			)}
 
 			<div className="border-b border-slate-200 py-2 text-[13px]">
+				<div className="mb-1 text-slate-500">Current folder</div>
+				<code className="break-all text-xs">{a.folder || a.name}</code>
+			</div>
+
+			<div className="border-b border-slate-200 py-2 text-[13px]">
 				<div className="mb-1 text-slate-500">New folder</div>
 				{a.new_title ? <code className="break-all text-xs">{a.new_title}</code> : <span className="text-xs text-slate-400">Not ready: artist or album is empty</span>}
 			</div>

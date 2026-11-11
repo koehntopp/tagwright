@@ -139,6 +139,15 @@ def safe(p: str) -> Path:
 	return path
 
 
+def folder_of(album: Path) -> str:
+	"""Where an album is now: its path below the staging or the library folder (the inspector's "Current folder")."""
+	base = INGEST if in_library(album) else ROOT
+	try:
+		return album.relative_to(base).as_posix()
+	except ValueError:
+		return album.name
+
+
 def in_library(path: Path) -> bool:
 	"""True for a path in the library folder (and not also in the staging folder)."""
 	return (path == INGEST or INGEST in path.parents) and not (path == ROOT or ROOT in path.parents)
@@ -268,6 +277,7 @@ def summarize(album: Path) -> dict:
 	out = {
 		'path': str(album),
 		'name': album.name,
+		'folder': folder_of(album),
 		'artist': tag(t0, 'ALBUMARTIST', 'ARTIST'),
 		'artist_is_albumartist': bool(tag(t0, 'ALBUMARTIST')),
 		'new_title': bliss_album(t0),

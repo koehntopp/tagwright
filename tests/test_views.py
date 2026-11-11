@@ -171,3 +171,13 @@ def test_the_page_itself_is_never_cached(client: TestClient) -> None:
 	r = client.get('/')
 	assert r.status_code == 200
 	assert r.headers['cache-control'] == 'no-cache'
+
+
+def test_the_summary_says_where_an_album_is_now(album: Path, make_flac: MakeFlac) -> None:
+	assert (
+		tagwright.summarize(album)['folder'] == 'Test Artist-Test Album'
+	)  # below the staging folder
+	assert (
+		tagwright.summarize(library_album(make_flac))['folder']
+		== 'Test_Artist/Test_Album_2020_DR10_CD_TST_001'
+	)
