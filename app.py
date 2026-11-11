@@ -109,6 +109,7 @@ job = {
 	'queue': [],
 	'stop': False,
 	'ctx': None,  # the Context of the running job (Stop ends its tools)
+	'step': '',  # the pipeline step running now, as the UI names it ('' between steps)
 }  # lines accumulate across runs
 lock = threading.Lock()
 
@@ -535,6 +536,16 @@ def cover(path: str) -> Response:
 	return Response(status_code=204)  # no art: 204 keeps the browser console free of 404s
 
 
+# Pipeline step -> the step of the UI's pipeline row it works on (dot_clean has none).
+UI_STEP = {
+	'Dynamic range': 'Dynamic range',
+	'ReplayGain': 'ReplayGain',
+	'Fingerprints': 'Fingerprints',
+	'Discogs tags': 'Tags and cover',
+	'Lyrics': 'Lyrics',
+}
+
+
 class JobLog(logging.Handler):
 	"""Copies what the pipeline logs into the job log that the UI polls (ADR 0008)."""
 
@@ -547,13 +558,14 @@ def runner(path: Path, ctx: Context) -> int:
 	job['path'] = str(path)
 	job['lines'].append(f'=== {path.name} ===')
 	try:
-		ok = run_album(path, ctx)
+		ok = run_album(path, ctx, on_step=lambda name: job.update(step=UI_STEP.get(name, '')))
 	except Stopped:
 		job['lines'].append('-- stopped by user')
 		return -1
 	except Exception as e:  # the job thread must survive anything; the message goes to the log pane
 		job['lines'].append(f'pipeline failed: {e}')
 		return -1
+	job['step'] = 'Filenames'
 	job['lines'].append('-- rename files')
 	job['lines'].extend(rename_files(path))
 	return 0 if ok else 1
@@ -579,6 +591,7 @@ def worker(paths: list[Path], ctx: Context) -> None:
 		job.update(
 			queue=[],
 			ctx=None,
+			step='',
 			rc=1 if failed else 0,
 			state='stopped' if job['stop'] else 'failed' if failed else 'done',
 		)
@@ -674,7 +687,7 @@ def set_settings(body: dict) -> dict:
 @app.get('/api/job')
 def get_job(since: int = 0) -> dict:
 	return {
-		**{k: job[k] for k in ('path', 'state', 'rc', 'queue')},
+		**{k: job[k] for k in ('path', 'state', 'rc', 'queue', 'step')},
 		'lines': job['lines'][since:],
 		'next': len(job['lines']),
 	}

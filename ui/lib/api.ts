@@ -35,7 +35,7 @@ export type Album = {
 	issues: Issue[]
 	status: 'needs' | 'ready' | 'fixed'
 }
-export type Job = { state: string; path: string | null; queue: string[] }
+export type Job = { state: string; path: string | null; queue: string[]; step?: string }
 export type LogLine = { t: string; k: string; m: string }
 
 export async function api<T = any>(u: string, o?: RequestInit): Promise<T> {

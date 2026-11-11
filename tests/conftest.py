@@ -58,7 +58,9 @@ def sandbox(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 	monkeypatch.setattr(tagwright, 'MIN_COVER', 0)
 	monkeypatch.setattr(tagwright, 'settings', {})
 	tagwright.cache.clear()
-	tagwright.job.update(path=None, state='idle', lines=[], rc=None, queue=[], stop=False, ctx=None)
+	tagwright.job.update(
+		path=None, state='idle', lines=[], rc=None, queue=[], stop=False, ctx=None, step=''
+	)
 	assert root.is_relative_to(tmp_path)  # ADR 0018: never a real library
 	yield
 	ctx = tagwright.job.get('ctx')

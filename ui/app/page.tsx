@@ -72,7 +72,7 @@ export default function Page() {
 		clearTimeout(poll.current)
 		const j = await api('/api/job?since=' + since.current)
 		since.current = j.next
-		setJob({ state: j.state, path: j.path, queue: j.queue || [] })
+		setJob({ state: j.state, path: j.path, queue: j.queue || [], step: j.step || '' })
 		addLog(j.lines)
 		if (j.state === 'running') {
 			if (++ticks.current % 3 === 0 && j.path) await refreshOne(j.path)
@@ -88,7 +88,7 @@ export default function Page() {
 			await load()
 			const j = await api('/api/job?since=0')
 			since.current = j.next
-			setJob({ state: j.state, path: j.path, queue: j.queue || [] })
+			setJob({ state: j.state, path: j.path, queue: j.queue || [], step: j.step || '' })
 			addLog(j.lines)
 			if (j.state === 'running') tick()
 		})()

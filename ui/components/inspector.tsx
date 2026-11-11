@@ -99,7 +99,6 @@ export function Inspector(p: Props) {
 		return () => { live = false }
 	}, [a.path, a.discogs, a.mbid, a.mtime])
 	const running = job.state === 'running' && job.path === a.path
-	const firstOpen = a.steps.findIndex(s => !s.done)
 
 	const cov = a.cover
 	return (
@@ -200,7 +199,7 @@ export function Inspector(p: Props) {
 				<ol className="grid grid-cols-6 gap-1 text-center text-[11px] leading-tight">
 					{a.steps.map((s, i) => (
 						<li key={s.name} title={s.note} className="cursor-pointer" onClick={() => { setStep(stepSel === i ? null : i); setTracksOpen(true) }}>
-							<div className={`mx-auto mb-1 grid size-7 place-items-center rounded-full text-white ${s.done ? (s.partial ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200 text-slate-500'} ${running && i === firstOpen ? 'animate-pulse ring-2 ring-sky-400' : ''}`}>
+							<div className={`mx-auto mb-1 grid size-7 place-items-center rounded-full text-white ${s.done ? (s.partial ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200 text-slate-500'} ${running && s.name === job.step ? 'animate-pulse ring-2 ring-sky-400' : ''}`}>
 								{s.done ? <Check className="size-4" /> : i + 1}
 							</div>
 							<span className={`rounded px-1 ${stepSel === i ? 'bg-slate-800/10 font-medium' : ''}`}>{s.name.replace(' and ', ' & ')}</span>

@@ -40,16 +40,24 @@ STEPS: list[tuple[str, StepFn]] = [
 ]
 
 
-def run_album(album: Path, ctx: Context, steps: list[tuple[str, StepFn]] | None = None) -> bool:
+def run_album(
+	album: Path,
+	ctx: Context,
+	steps: list[tuple[str, StepFn]] | None = None,
+	on_step: Callable[[str], None] | None = None,
+) -> bool:
 	"""Run every step on the album. True when all of them finished without an error.
 
 	A step that fails is logged and the next one still runs (they do not depend on each other's success).
-	Stopped (the user pressed Stop) ends the run at once and is not caught here.
+	Stopped (the user pressed Stop) ends the run at once and is not caught here. `on_step(name)` is called
+	before each step, so the caller can show where the run is.
 	"""
 	ok = True
 	for name, step in STEPS if steps is None else steps:
 		ctx.check()
 		log.info('-- %s', name)
+		if on_step:
+			on_step(name)
 		try:
 			step(album, ctx)
 		except Stopped:

@@ -356,6 +356,12 @@ class TestRun:
 			run.run_album(tmp_path, ctx, self.steps(seen))
 		assert seen == []
 
+	def test_on_step_is_told_before_each_step(self, ctx: Context, tmp_path: Path) -> None:
+		told: list[str] = []
+		seen: list[str] = []
+		run.run_album(tmp_path, ctx, self.steps(seen), on_step=told.append)
+		assert told == ['one', 'two', 'three']
+
 	def test_the_default_order(self) -> None:
 		assert [name for name, _ in run.STEPS] == [
 			'dot_clean',

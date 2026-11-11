@@ -46,6 +46,7 @@ Verified on a scratch copy of one real album (11 tracks, Discogs lookup with the
 - A step that fails (for example `drcalc` on a track shorter than 12 s) is logged and the album is shown as failed, but the remaining steps and the file rename still run. The old `nzbfix` returned success in this case.
 - The lyrics cache export (`{id}_{track}.lrc|txt` files in a `lyrics/` folder) is not carried over; the lyrics live in the tag only.
 - `data/overlay/` (the generated config copy) is obsolete and can be deleted.
+- `/api/job` has a `step` field: the pipeline step running now, named as the UI's pipeline row names it (`Discogs tags` is `Tags and cover`, the rename is `Filenames`). The row pulses that step. The old UI pulsed the first step that was not done, which stopped working once steps could re-run a step that was already done.
 
 ## Consequences
 

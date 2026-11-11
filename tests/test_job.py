@@ -222,6 +222,54 @@ def test_stop_clears_the_queue(
 	assert '=== Second ===' not in job['lines']
 
 
+def test_the_job_names_the_step_that_is_running(
+	client: TestClient, make_flac: MakeFlac, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	folder = open_album(make_flac)
+	seen: list[str] = []
+	started = threading.Event()
+	release = threading.Event()
+
+	def watch(name: str) -> run.StepFn:
+		def step(album: Path, ctx: Context) -> None:
+			seen.append(client.get('/api/job').json()['step'])
+			if name == 'Lyrics':
+				started.set()
+				release.wait(10)
+
+		return step
+
+	use_steps(
+		monkeypatch,
+		*((n, watch(n)) for n in ('dot_clean', 'Dynamic range', 'Discogs tags', 'Lyrics')),
+	)
+	client.post('/api/run', json={'path': str(folder)})
+	assert started.wait(10)
+	assert seen == [
+		'',
+		'Dynamic range',
+		'Tags and cover',
+		'Lyrics',
+	]  # the names of the UI's pipeline row; dot_clean has none
+	release.set()
+	job = wait_for_end(client)
+	assert job['step'] == ''  # nothing is running any more
+
+
+def test_the_rename_is_the_filenames_step(
+	client: TestClient, make_flac: MakeFlac, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	folder = open_album(make_flac)
+	steps: list[str] = []
+	monkeypatch.setattr(
+		tagwright, 'rename_files', lambda album: steps.append(tagwright.job['step']) or ['ok']
+	)
+	use_steps(monkeypatch, ('fake', write_tags))
+	client.post('/api/run', json={'path': str(folder)})
+	wait_for_end(client)
+	assert steps == ['Filenames']
+
+
 def test_stop_without_a_job_is_409(client: TestClient) -> None:
 	assert client.post('/api/stop').status_code == 409
 
