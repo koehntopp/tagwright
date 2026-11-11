@@ -15,7 +15,7 @@ Tagwright is a single-user, self-hosted web app that lets one person work throug
 
 | ID | Use case | Where documented |
 |----|----------|------------------|
-| UC-1 | Choose an input folder and an output (ingest) folder, and enter the Discogs and lrclib API keys. | [0009](0009-settings-and-api-keys.md) |
+| UC-1 | Choose an input folder and an output (ingest) folder, and enter the Discogs API key. | [0009](0009-settings-and-api-keys.md) |
 | UC-2 | See all album folders of the input folder with cover, artist, album, year, edition, Discogs and MusicBrainz IDs, album DR, lyrics counts and a pipeline progress bar; filter by status, sort, search. | [0006](0006-status-model-and-pipeline-steps.md), [0030](0030-ui-layout-and-design-system-v2.md) |
 | UC-3 | Run the fix pipeline for one album and follow a live log. | [0004](0004-pipeline-engine-reuses-discogs-scripts.md), [0008](0008-job-model.md) |
 | UC-4 | See per pipeline step whether it is done, and which tracks are missing it. | [0006](0006-status-model-and-pipeline-steps.md) |

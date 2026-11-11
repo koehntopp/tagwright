@@ -1,6 +1,6 @@
 # ADR 0021: Lyrics search on lrclib.net in the track editor
 
-- **Status**: Accepted
+- **Status**: Accepted (the search now sends the application ID like the pipeline does: [0044](0044-lrclib-application-id-no-key-setting.md))
 - **Date**: 2026-11-09
 
 ## Context

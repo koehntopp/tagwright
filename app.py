@@ -41,7 +41,7 @@ from library.template import default as default_template
 from library.template import validate as validate_template
 from library.watcher import Library
 from library.watcher import Settings as LibrarySettings
-from pipeline import covers
+from pipeline import covers, lrclib
 from pipeline import discogs as discogs_api
 from pipeline import musicbrainz as mb_api
 from pipeline.config import Config
@@ -68,7 +68,7 @@ DATA = env_path(
 	'DATA_DIR', str(Path(__file__).parent / 'data')
 )  # settings.json and generated config overlay
 SETTINGS_FILE = DATA / 'settings.json'
-KEYS = ('discogs_api_key', 'lrclib_api_key')
+KEYS = ('discogs_api_key',)
 settings: dict = {}
 if SETTINGS_FILE.is_file():
 	settings = json.loads(SETTINGS_FILE.read_text())
@@ -897,6 +897,7 @@ def set_settings(body: dict) -> dict:
 			settings.pop(k, None)
 		elif str(body.get(k) or '').strip():
 			settings[k] = str(body[k]).strip()
+	settings.pop('lrclib_api_key', None)  # ADR 0044: the setting is gone, drop a stored value
 	DATA.mkdir(parents=True, exist_ok=True)
 	SETTINGS_FILE.write_text(json.dumps(settings, indent=2))
 	SETTINGS_FILE.chmod(0o600)
@@ -1806,7 +1807,7 @@ def lrclib_search(title: str, artist: str = '') -> list[dict]:
 	q = {'track_name': title.strip(), **({'artist_name': artist.strip()} if artist.strip() else {})}
 	req = urllib.request.Request(
 		'https://lrclib.net/api/search?' + urlencode(q),
-		headers={'User-Agent': 'Tagwright/0.2 (+https://github.com/koehntopp/tagwright)'},
+		headers=lrclib.headers(),
 	)
 	try:
 		with urllib.request.urlopen(req, timeout=15) as r:

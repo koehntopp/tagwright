@@ -80,7 +80,7 @@ export function SettingsDialog({ open, onClose, saved }: { open: boolean; onClos
 	const [s, setS] = useState<any>(null), [f, setF] = useState<any>({}), [lib, setLib] = useState<any>(null), [err, setErr] = useState(''), [tab, setTab] = useState('general')
 	useEffect(() => {
 		if (!open) return
-		api('/api/settings').then(r => { setS(r); setLib(r.library); setF({ input: r.input, output: r.output, min_cover: r.min_cover, discogs_api_key: '', lrclib_api_key: '' }); setErr(''); setTab('general') }, e => toast.error(e.message))
+		api('/api/settings').then(r => { setS(r); setLib(r.library); setF({ input: r.input, output: r.output, min_cover: r.min_cover, discogs_api_key: '' }); setErr(''); setTab('general') }, e => toast.error(e.message))
 	}, [open])
 	const save = async () => {
 		try {
@@ -98,7 +98,6 @@ export function SettingsDialog({ open, onClose, saved }: { open: boolean; onClos
 					<Field label="Library folder" help="Fixed albums are placed here in the library layout, and a watcher keeps this folder in that layout (see the Library tab)."><Input className="font-mono" value={f.output} onChange={set('output')} /></Field>
 					<Field label="Minimum cover size (pixels)" help="An album whose cover is smaller than this on either side, or has none, cannot be moved to the library. 0 turns the check off."><Input type="number" min={0} max={20000} step={50} className="w-40 font-mono" value={f.min_cover} onChange={set('min_cover')} /></Field>
 					<Field label="Discogs API key" help="Leave blank to keep the stored key."><Input type="password" className="font-mono" placeholder={s.discogs_api_key_hint || 'Not set'} value={f.discogs_api_key} onChange={set('discogs_api_key')} /></Field>
-					<Field label="lrclib.net API key" help="Optional. Stored with the other settings."><Input type="password" className="font-mono" placeholder={s.lrclib_api_key_hint || 'Not set'} value={f.lrclib_api_key} onChange={set('lrclib_api_key')} /></Field>
 				</div>
 			)}
 			{s && tab === 'library' && lib && <LibraryTab lib={lib} setLib={setLib} />}

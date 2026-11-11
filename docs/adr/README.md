@@ -47,6 +47,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0041](0041-wider-inspector.md) | A wider inspector on wide screens | Accepted |
 | [0042](0042-covers-are-scaled-on-upload.md) | A dropped or fetched cover is scaled to the limit at once | Accepted |
 | [0043](0043-assignment-refreshes-the-discogs-tags.md) | Assigning a Discogs release refreshes the Discogs-owned tags at once | Accepted |
+| [0044](0044-lrclib-application-id-no-key-setting.md) | lrclib.net is reached with the application ID; no key setting | Accepted |
 
 ## Which ADR covers what
 
@@ -67,7 +68,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | statuses, steps, lyrics rules, scan cache | 0006 |
 | paths, endpoints, secrets, access | 0007 |
 | jobs, queue, log, endpoints that write | 0008 |
-| settings dialog, API keys, config overlay | 0009 |
+| settings dialog, API keys, config overlay | 0009, 0044 (no lrclib key) |
 | file names, `rename_files`, `clean()` | 0010 |
 | Move to ingest | 0011 |
 | Discogs search, track assignment | 0013 |

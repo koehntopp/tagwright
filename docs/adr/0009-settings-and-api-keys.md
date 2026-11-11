@@ -1,6 +1,6 @@
 # ADR 0009: Settings and API keys
 
-- **Status**: Accepted (the generated config overlay for the discogs scripts is gone: the pipeline reads the keys from the settings directly, [0036](0036-standalone-pipeline-package.md))
+- **Status**: Accepted (the lrclib.net API key setting is gone: [0044](0044-lrclib-application-id-no-key-setting.md); the generated config overlay for the discogs scripts is gone: the pipeline reads the keys from the settings directly, [0036](0036-standalone-pipeline-package.md))
 - **Date**: 2026-11-08
 
 ## Context

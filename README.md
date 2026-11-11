@@ -86,7 +86,7 @@ Requirements: Python 3.14, [`uv`](https://docs.astral.sh/uv/), and on `PATH`: `d
 ROOT=/path/to/staging INGEST_DIR=/path/to/library DATA_DIR=./data ./app.py
 ```
 
-Open <http://localhost:8080>. In Settings enter your **Discogs API key** (required for the Discogs step) and, optionally, an lrclib.net key. Keys live in `DATA_DIR/settings.json` and are never logged or returned by the API.
+Open <http://localhost:8080>. In Settings enter your **Discogs API key** (required for the Discogs step). It lives in `DATA_DIR/settings.json` and is never logged or returned by the API. lrclib.net needs no key: Tagwright identifies itself with its registered application ID.
 
 | Variable | Default | Meaning |
 |---|---|---|
