@@ -36,7 +36,7 @@ function describe(st: LibraryStatus) {
 	if (!st.apply && st.planned.length) return { dot: 'bg-amber-500', text: `Report only: ${st.planned.length} move${st.planned.length > 1 ? 's' : ''} planned` }
 	if (st.phase === 'waiting') return { dot: 'bg-amber-500', text: st.message || 'Waiting for files to settle' }
 	if (st.unplaced.length) return { dot: 'bg-amber-500', text: `${st.unplaced.length} file${st.unplaced.length > 1 ? 's' : ''} cannot be placed` }
-	return { dot: 'bg-emerald-500', text: st.phase === 'starting' ? 'Starting…' : 'Library in order' }
+	return { dot: 'bg-emerald-500', text: st.phase === 'starting' ? 'Starting…' : 'Up to date' }
 }
 
 export function LibraryIndicator({ st, open }: { st: LibraryStatus | null; open: () => void }) {
