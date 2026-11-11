@@ -200,7 +200,7 @@ export default function Page() {
 					<kbd className="absolute right-3 top-2 hidden rounded bg-slate-100 px-1.5 text-xs text-slate-500 min-[1600px]:block">⌘K</kbd>
 				</div>
 				<button onClick={() => setDlg({ kind: 'settings' })} title="Settings" aria-label="Settings" className="mr-3 grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-white/60"><Settings className="size-5" /></button>
-				<div className="ml-2 flex h-full w-[600px] shrink-0 items-center gap-2 border-l px-4 text-[15px]">
+				<div className="ml-2 flex h-full w-[600px] shrink-0 items-center gap-2 border-l px-4 text-[15px] min-[1600px]:w-[720px]">
 					<LibraryIndicator st={lib.st} open={() => setDlg({ kind: 'library' })} />
 					<div className="h-8 w-px shrink-0 bg-slate-300" />
 					<span className={`size-2 shrink-0 rounded-full ${job.state === 'running' ? 'animate-pulse bg-sky-500' : job.state === 'failed' ? 'bg-rose-500' : job.state === 'stopped' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
@@ -275,7 +275,7 @@ export default function Page() {
 					</div>
 				) : <div className="py-16 text-center text-slate-500">No albums match.</div>}
 			</main>
-			<aside className="w-[600px] shrink-0 overflow-y-auto border-l bg-white">
+			<aside className="w-[600px] shrink-0 overflow-y-auto border-l bg-white min-[1600px]:w-[720px]">
 				{a ? (
 					<Inspector key={a.path} a={a} job={job} log={log} inLibrary={area === 'library'} refresh={() => refreshOne(a.path)} run={run} move={() => { setCerr(''); setDlg({ kind: 'move' }) }}
 						openEditor={tab => setTagTab(tab)} openAlbum={() => setDlg({ kind: 'album' })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })}

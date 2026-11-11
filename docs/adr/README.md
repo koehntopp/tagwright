@@ -44,6 +44,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0038](0038-staging-and-library-views.md) | Staging and Library views; one name for each folder | Accepted |
 | [0039](0039-incomplete-and-what-is-missing.md) | "Incomplete" instead of "Ready", and showing what is missing | Accepted |
 | [0040](0040-channel-badges.md) | Channel badges (Mono, Stereo, 5.1, 7.1) on tracks | Accepted |
+| [0041](0041-wider-inspector.md) | A wider inspector on wide screens | Accepted |
 
 ## Which ADR covers what
 
