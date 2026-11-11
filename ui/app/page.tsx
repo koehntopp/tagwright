@@ -244,7 +244,7 @@ export default function Page() {
 											{ly.plain > 0 && <Pill className="bg-amber-400 text-amber-950">TXT {ly.plain}</Pill>}
 										</div>
 										{!!x.missing?.length && (
-											<div className="mt-1 flex flex-wrap items-center gap-1.5">
+											<div className="flex min-h-5 flex-wrap items-center gap-1.5">
 												{x.missing.map(m => <Pill key={m.step} title={`${m.count} of ${m.of} tracks: ${m.tracks.slice(0, 5).join(', ')}${m.tracks.length > 5 ? ', …' : ''}`} className="bg-rose-100 text-rose-700 ring-1 ring-rose-200">{m.label} {m.count}</Pill>)}
 											</div>
 										)}
