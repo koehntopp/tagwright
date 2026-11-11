@@ -55,7 +55,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 	const token = useRef<object>({})
 	useEffect(() => {
 		if (!a) return
-		setRows(null); setRel(null); setErr(''); setQ(a.discogs || [a.artist, a.album].filter(Boolean).join(' '))
+		setRows(null); setRel(null); setErr(''); setBusy(false); setWhat(''); setQ(a.discogs || [a.artist, a.album].filter(Boolean).join(' '))
 		if (a.discogs) pick(a.discogs)
 	}, [a?.path])  // eslint-disable-line react-hooks/exhaustive-deps
 	if (!a) return null
@@ -99,7 +99,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 		setBusy(true); setWhat('Assigning the tracks…')
 		try {
 			await post('/api/tracks/apply', { path: a.path, release_id: rid, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at })) })
-			toast.success('Tracks assigned'); onClose(); done(a.path)
+			toast.success('Tracks assigned'); setBusy(false); onClose(); done(a.path)
 		} catch (e: any) { setErr(e.message); setBusy(false) }
 	}
 	return (
@@ -152,7 +152,7 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 	const [rel, setRel] = useState<any>(null), [busy, setBusy] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState('')
 	useEffect(() => {
 		if (!a) return
-		setRows(null); setRel(null); setErr(''); setQ(a.mbid || [a.artist, a.album].filter(Boolean).join(' '))
+		setRows(null); setRel(null); setErr(''); setBusy(false); setWhat(''); setQ(a.mbid || [a.artist, a.album].filter(Boolean).join(' '))
 		if (a.mbid) pick(a.mbid)
 	}, [a?.path])  // eslint-disable-line react-hooks/exhaustive-deps
 	if (!a) return null
@@ -170,7 +170,7 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 	}
 	const apply = async () => {
 		setBusy(true); setWhat('Writing the MusicBrainz tags…')
-		try { await post('/api/musicbrainz/apply', { path: a.path, id: rel.id }); toast.success('MusicBrainz release applied'); onClose(); done(a.path) }
+		try { await post('/api/musicbrainz/apply', { path: a.path, id: rel.id }); toast.success('MusicBrainz release applied'); setBusy(false); onClose(); done(a.path) }
 		catch (e: any) { setErr(e.message); setBusy(false) }
 	}
 	const commas = (xs: any[]) => xs.map((x, i) => <span key={x.id}>{i ? ', ' : ''}<L kind="artist" id={x.id} text={x.name} /></span>)
