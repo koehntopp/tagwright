@@ -1,6 +1,6 @@
 # ADR 0023: MusicBrainz release search and tags
 
-- **Status**: Accepted
+- **Status**: Accepted (the year note compares with the year of the Discogs release itself, not the year tags in the files, which keep the previous release's year until the next run)
 - **Date**: 2026-11-09
 - **Supersedes**: the out-of-scope bullet "MusicBrainz release search" of [0002](0002-purpose-scope-and-use-cases.md) (tracklist assignment stays out of scope)
 

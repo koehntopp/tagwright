@@ -1703,7 +1703,13 @@ def musicbrainz_check(path: str) -> dict:
 		notes.append(
 			f'MusicBrainz links Discogs release {", ".join(mb["discogs_ids"])}, this album uses {rid}.'
 		)
-	year = (tag(t0, 'ALBUM_RELEASE_YEAR', 'YEAR', 'DATE') or '')[:4]
+	# The year of the Discogs release itself (cached after the first request), not the year tags in the files: those
+	# keep the old release's year until the next run rewrites them (ADR 0023).
+	try:
+		year = str(release_tracks(rid).get('year') or '')
+	except HTTPException:  # Discogs unreachable: the tags are the best there is
+		year = ''
+	year = year or (tag(t0, 'ALBUM_RELEASE_YEAR', 'YEAR', 'DATE') or '')[:4]
 	if year and mb['year'] and year != mb['year']:
 		notes.append(f'Year: Discogs {year}, MusicBrainz {mb["year"]}.')
 	if mb['tracks'] and len(mb['tracks']) != len(files):
