@@ -46,6 +46,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0040](0040-channel-badges.md) | Channel badges (Mono, Stereo, 5.1, 7.1) on tracks | Accepted |
 | [0041](0041-wider-inspector.md) | A wider inspector on wide screens | Accepted |
 | [0042](0042-covers-are-scaled-on-upload.md) | A dropped or fetched cover is scaled to the limit at once | Accepted |
+| [0043](0043-assignment-refreshes-the-discogs-tags.md) | Assigning a Discogs release refreshes the Discogs-owned tags at once | Accepted |
 
 ## Which ADR covers what
 

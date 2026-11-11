@@ -45,7 +45,7 @@ from pipeline import covers
 from pipeline import discogs as discogs_api
 from pipeline import musicbrainz as mb_api
 from pipeline.config import Config
-from pipeline.fixtags import DISCOGS_TAG_PREFIXES
+from pipeline.fixtags import DISCOGS_TAG_PREFIXES, fix_album
 from pipeline.http import ApiError
 from pipeline.layout import album_dirs, flacs, is_disc_dir
 from pipeline.naming import bliss_album, rename_files
@@ -1363,7 +1363,7 @@ def tracks_propose(body: dict) -> dict:
 
 @app.post('/api/tracks/apply')
 def tracks_apply(body: dict) -> dict:
-	"""Write release id and per-track tags for the assigned files, then rename them (bliss pattern).
+	"""Write release id and per-track tags for the assigned files, refresh the Discogs-owned tags, then rename the files.
 
 	Tracks are renumbered 1..n per disc in release order, so a subset of the release gets no gaps.
 	Files without an assignment are left untouched.
@@ -1463,6 +1463,17 @@ def tracks_apply(body: dict) -> dict:
 			'filled from Discogs: '
 			+ ', '.join(f'{k} x{v}' if v > 1 else k for k, v in filled.items())
 		)
+	# The Discogs-owned tags of the new release (year, album title, version, label ...) at once, as a run would write
+	# them, so the card and the inspector do not keep the previous release's data (ADR 0013).
+	try:
+		fixed = fix_album(album, Config(data_dir=DATA))
+		log.append(
+			f'Discogs tags refreshed: {fixed.album_name} [{fixed.version}] ({fixed.changed} files changed)'
+			if not fixed.skipped
+			else f'Discogs tags not refreshed: {fixed.skipped}'
+		)
+	except ApiError as e:
+		log.append(f'Discogs tags not refreshed: {e.message}; Run fixes does it later')
 	log += rename_files(album, file_name)
 	return {'log': log, 'album': fresh_summary(album)}
 

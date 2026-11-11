@@ -1,6 +1,6 @@
 # ADR 0013: Discogs release search and track assignment
 
-- **Status**: Accepted
+- **Status**: Accepted (an assignment also refreshes the Discogs-owned tags at once: [0043](0043-assignment-refreshes-the-discogs-tags.md))
 - **Date**: 2026-11-08
 
 ## Context
