@@ -18,10 +18,11 @@ import signal
 import subprocess
 import threading
 import time
+import unicodedata
 import urllib.error
 import urllib.request
+from collections.abc import Iterable, Mapping
 from concurrent.futures import ThreadPoolExecutor
-import unicodedata
 from difflib import SequenceMatcher
 from pathlib import Path
 from urllib.parse import urlencode
@@ -31,9 +32,13 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from mutagen.flac import FLAC, Picture
-from PIL import Image, UnidentifiedImageError
 from pathvalidate import sanitize_filename
+from PIL import Image, UnidentifiedImageError
 from slugify import slugify
+from starlette.types import Scope
+
+type Tags = Mapping[str, list[str]]  # what mutagen gives for a FLAC file (empty dict without tags)
+
 
 def env_path(name: str, default: str) -> Path:
 	"""Read a path from the environment; ~ is expanded, relative paths are a startup error."""
@@ -46,7 +51,9 @@ def env_path(name: str, default: str) -> Path:
 ROOT = env_path('ROOT', '/staging')
 INGEST = env_path('INGEST_DIR', '/flac/ingest')
 SCRIPTS = env_path('DISCOGS_DIR', '/opt/discogs')
-DATA = env_path('DATA_DIR', str(Path(__file__).parent / 'data'))  # settings.json and generated config overlay
+DATA = env_path(
+	'DATA_DIR', str(Path(__file__).parent / 'data')
+)  # settings.json and generated config overlay
 SETTINGS_FILE = DATA / 'settings.json'
 KEYS = ('discogs_api_key', 'lrclib_api_key')
 settings: dict = {}
@@ -55,20 +62,53 @@ if SETTINGS_FILE.is_file():
 	ROOT = Path(settings.get('input') or ROOT)
 	INGEST = Path(settings.get('output') or INGEST)
 DISC_RE = re.compile(r'^(?:Disc|CD)\s*\d+$', re.I)  # same rule as discogs disc_layout.DISC_DIR_RE
-CATALOG_KEYS = ('CATALOGNUMBER', 'CATALOG NUMBER', 'CATALOG_NUMBER', 'CATALOGNO')  # spellings fixtags reads, first present wins
+CATALOG_KEYS = (
+	'CATALOGNUMBER',
+	'CATALOG NUMBER',
+	'CATALOG_NUMBER',
+	'CATALOGNO',
+)  # spellings fixtags reads, first present wins
 # One entry per required tag (alternative spellings together); an empty one means the album is not ready.
-REQUIRED_TAGS = (('ARTIST',), ('ALBUMARTIST',), ('TITLE',), ('ALBUM',), ('TRACKNUMBER',), ('DISCNUMBER',), ('ALBUM_FORMAT',), CATALOG_KEYS)
-MIN_COVER = int(settings.get('min_cover', 1400))  # px, either side; a smaller or missing cover blocks the album; 0 turns the check off
+REQUIRED_TAGS = (
+	('ARTIST',),
+	('ALBUMARTIST',),
+	('TITLE',),
+	('ALBUM',),
+	('TRACKNUMBER',),
+	('DISCNUMBER',),
+	('ALBUM_FORMAT',),
+	CATALOG_KEYS,
+)
+MIN_COVER = int(
+	settings.get('min_cover', 1400)
+)  # px, either side; a smaller or missing cover blocks the album; 0 turns the check off
 
 
 def cover_note(cov: dict | None) -> str:
-	return f'Cover is {cov["w"]}x{cov["h"]}, below the minimum {MIN_COVER}x{MIN_COVER}.' if cov else 'The album has no cover.'
+	return (
+		f'Cover is {cov["w"]}x{cov["h"]}, below the minimum {MIN_COVER}x{MIN_COVER}.'
+		if cov
+		else 'The album has no cover.'
+	)
 
-SYNCED_RE = re.compile(r'\[\d{2}:\d{2}\.\d{2}\]')  # strict [MM:SS.xx], as in the discogs lrc_count.py
-INSTRUMENTAL_RE = re.compile(r'\[instrumental:true\]|\[\d{2}:\d{2}\.\d{2}\]\s*(?:\[instrumental\]|\(instrumental\))', re.I)
+
+SYNCED_RE = re.compile(
+	r'\[\d{2}:\d{2}\.\d{2}\]'
+)  # strict [MM:SS.xx], as in the discogs lrc_count.py
+INSTRUMENTAL_RE = re.compile(
+	r'\[instrumental:true\]|\[\d{2}:\d{2}\.\d{2}\]\s*(?:\[instrumental\]|\(instrumental\))', re.I
+)
 
 app = FastAPI()
-job = {'path': None, 'state': 'idle', 'lines': [], 'rc': None, 'queue': [], 'stop': False, 'proc': None}  # lines accumulate across runs
+job = {
+	'path': None,
+	'state': 'idle',
+	'lines': [],
+	'rc': None,
+	'queue': [],
+	'stop': False,
+	'proc': None,
+}  # lines accumulate across runs
 lock = threading.Lock()
 
 
@@ -92,7 +132,7 @@ def album_dirs(base: Path) -> list[Path]:
 	return sorted(found)
 
 
-def tag(t, *keys) -> str:
+def tag(t: Tags, *keys: str) -> str:
 	for k in keys:
 		v = t.get(k)
 		if v:
@@ -105,7 +145,7 @@ def clean(text: str) -> str:
 	return sanitize_filename(slugify(text, lowercase=False, separator='_'))
 
 
-def bliss_name(t) -> str | None:
+def bliss_name(t: Tags) -> str | None:
 	"""Bliss file name <disc>_<track>_<title>.flac, or None while TITLE, TRACKNUMBER or DISCNUMBER is empty.
 
 	An empty tag means the album is not ready; nothing is invented (no "Unknown Title", no track 00, no disc 01).
@@ -116,7 +156,7 @@ def bliss_name(t) -> str | None:
 	return f'{disc.split("/")[0].zfill(2)}_{number.split("/")[0].zfill(2)}_{clean(title)}.flac'
 
 
-def bliss_album(t) -> str:
+def bliss_album(t: Tags) -> str:
 	"""Bliss library path <album artist>/<album [version]>, or '' while ALBUMARTIST or ALBUM is empty (not ready)."""
 	album, artist = tag(t, 'ALBUM'), tag(t, 'ALBUMARTIST')
 	if not album or not artist:
@@ -128,7 +168,10 @@ def bliss_album(t) -> str:
 
 
 def same_name(a: str, b: str) -> bool:
-	n = lambda x: unicodedata.normalize('NFD', x.lower())  # noqa: E731
+
+	def n(x: str) -> str:
+		return unicodedata.normalize('NFD', x.lower())
+
 	return n(a) == n(b)
 
 
@@ -151,7 +194,7 @@ def rename_files(album: Path) -> list[str]:
 	return out or ['filenames already match']
 
 
-def lyric_kind(t) -> str:
+def lyric_kind(t: Tags) -> str:
 	"""instr (instrumental marker, or no lyrics with language zxx), lrc (synced), txt (plain) or none."""
 	ly = tag(t, 'LYRICS')
 	if not ly.strip():
@@ -161,36 +204,45 @@ def lyric_kind(t) -> str:
 	return 'lrc' if SYNCED_RE.search(ly) else 'txt'
 
 
-def track_dr_mean(tags) -> str:
+def track_dr_mean(tags: list[Tags]) -> str:
 	"""Album DR fallback: mean of the per-track DYNAMIC_RANGE tags."""
 	vals = [int(v) for t in tags if (v := tag(t, 'DYNAMIC_RANGE')).isdigit() and int(v) > 0]
 	return str(round(sum(vals) / len(vals))).zfill(2) if vals else ''
 
 
-def track_files(album: Path, files, tags, lengths, has_discogs: bool) -> list[dict]:
+def track_files(
+	album: Path, files: list[Path], tags: list[Tags], lengths: list[float], has_discogs: bool
+) -> list[dict]:
 	"""Per-track rows; checks[i] answers pipeline step i (same order as steps in summarize)."""
 	out = []
-	for f, t, length in zip(files, tags, lengths):
+	for f, t, length in zip(files, tags, lengths, strict=False):
 		kind = lyric_kind(t)
-		tags_ok = has_discogs and all(tag(t, *k) for k in REQUIRED_TAGS) and bool(tag(t, 'DATE', 'YEAR')) and bool(tag(t, 'VERSION'))
-		out.append({
-			'name': f.name,
-			'length': round(length),
-			'file': str(f.relative_to(album)),
-			'disc': tag(t, 'DISCNUMBER'),
-			'track': tag(t, 'TRACKNUMBER'),
-			'title': tag(t, 'TITLE') or f.stem,
-			'dr': tag(t, 'DYNAMIC_RANGE'),
-			'lyrics': kind,
-			'checks': [
-				bool(tag(t, 'DYNAMIC_RANGE')),
-				bool(tag(t, 'REPLAYGAIN_ALBUM_GAIN')),
-				bool(tag(t, 'ACOUSTID_FINGERPRINT', 'ACOUSTID FINGERPRINT')),
-				tags_ok,
-				kind != 'none',
-				f.name == bliss_name(t),
-			],
-		})
+		tags_ok = (
+			has_discogs
+			and all(tag(t, *k) for k in REQUIRED_TAGS)
+			and bool(tag(t, 'DATE', 'YEAR'))
+			and bool(tag(t, 'VERSION'))
+		)
+		out.append(
+			{
+				'name': f.name,
+				'length': round(length),
+				'file': str(f.relative_to(album)),
+				'disc': tag(t, 'DISCNUMBER'),
+				'track': tag(t, 'TRACKNUMBER'),
+				'title': tag(t, 'TITLE') or f.stem,
+				'dr': tag(t, 'DYNAMIC_RANGE'),
+				'lyrics': kind,
+				'checks': [
+					bool(tag(t, 'DYNAMIC_RANGE')),
+					bool(tag(t, 'REPLAYGAIN_ALBUM_GAIN')),
+					bool(tag(t, 'ACOUSTID_FINGERPRINT', 'ACOUSTID FINGERPRINT')),
+					tags_ok,
+					kind != 'none',
+					f.name == bliss_name(t),
+				],
+			}
+		)
 	return out
 
 
@@ -207,7 +259,7 @@ def cover_info(a: FLAC, album: Path) -> dict | None:
 			try:
 				with Image.open(io.BytesIO(pic.data)) as im:
 					w, h = im.width, im.height
-			except (OSError, UnidentifiedImageError):
+			except OSError, UnidentifiedImageError:
 				pass
 		return {'w': w, 'h': h, 'bytes': len(pic.data), 'embedded': True}
 	for name in COVER_FILES:
@@ -215,8 +267,13 @@ def cover_info(a: FLAC, album: Path) -> dict | None:
 		if img.is_file():
 			try:
 				with Image.open(img) as im:
-					return {'w': im.width, 'h': im.height, 'bytes': img.stat().st_size, 'embedded': False}
-			except (OSError, UnidentifiedImageError):
+					return {
+						'w': im.width,
+						'h': im.height,
+						'bytes': img.stat().st_size,
+						'embedded': False,
+					}
+			except OSError, UnidentifiedImageError:
 				return None
 	return None
 
@@ -248,7 +305,10 @@ def summarize(album: Path) -> dict:
 		'mtime': max(f.stat().st_mtime for f in files),
 	}
 	n = len(tags)
-	have = lambda *k: sum(1 for t in tags if tag(t, *k)) == n  # noqa: E731
+
+	def have(*k: str) -> bool:
+		return sum(1 for t in tags if tag(t, *k)) == n
+
 	kinds = [lyric_kind(t) for t in tags]
 	syn, pla, ins, mis = (kinds.count(k) for k in ('lrc', 'txt', 'instr', 'none'))
 	req = all(have(*k) for k in REQUIRED_TAGS) and have('DATE', 'YEAR') and have('VERSION')
@@ -260,15 +320,26 @@ def summarize(album: Path) -> dict:
 		('Fingerprints', have('ACOUSTID_FINGERPRINT', 'ACOUSTID FINGERPRINT')),
 		('Tags and cover', bool(did) and req),
 		('Lyrics', mis == 0),
-		('Filenames', all(f.name == bliss_name(t) for f, t in zip(files, tags))),  # None (not ready) never equals a name
+		(
+			'Filenames',
+			all(f.name == bliss_name(t) for f, t in zip(files, tags, strict=False)),
+		),  # None (not ready) never equals a name
 	]
 	out.update(
 		dr=tag(t0, 'ALBUM_DR') or track_dr_mean(tags),
 		files=track_files(album, files, tags, [a.info.length for a in audio], bool(did)),
 		lyrics={'synced': syn, 'plain': pla, 'instrumental': ins, 'missing': mis},
 		# partial = done but worth a look (yellow, still counts as done): some lyrics are plain text only, or the cover is small
-		steps=[{'name': a, 'done': b, 'partial': b and ((a == 'Lyrics' and pla > 0) or (a == 'Tags and cover' and small_cover)),
-			'note': cover_note(cov) if a == 'Tags and cover' and small_cover else ''} for a, b in steps],
+		steps=[
+			{
+				'name': a,
+				'done': b,
+				'partial': b
+				and ((a == 'Lyrics' and pla > 0) or (a == 'Tags and cover' and small_cover)),
+				'note': cover_note(cov) if a == 'Tags and cover' and small_cover else '',
+			}
+			for a, b in steps
+		],
 		tags_ok=req,
 		steps_done=sum(1 for _, ok in steps if ok),
 	)
@@ -279,7 +350,9 @@ def summarize(album: Path) -> dict:
 
 def count_text(n: int, total: int, what: str) -> str:
 	if n == total:
-		return f'No track has {what}.' if total > 1 else f'The track has no {what.split(" ", 1)[-1]}.'
+		return (
+			f'No track has {what}.' if total > 1 else f'The track has no {what.split(" ", 1)[-1]}.'
+		)
 	return f'{n} of {total} tracks {"has" if n == 1 else "have"} no {what.split(" ", 1)[-1]}.'
 
 
@@ -296,7 +369,8 @@ ALBUM_LEVEL = (
 	('album title override', ('ALBUM_TITLE_OVERRIDE',), 'album', False),
 )
 MISSING_TEXT = {
-	'album artist': 'Set the album artist.', 'catalog number': "Add a catalog number (enter 'none' if the release has none).",
+	'album artist': 'Set the album artist.',
+	'catalog number': "Add a catalog number (enter 'none' if the release has none).",
 	'album format': 'Set the album format (for example CD, SACD, Vinyl).',
 }
 
@@ -309,31 +383,79 @@ def album_issues(out: dict, tags: list, small_cover: bool) -> list[dict]:
 	fills or sets everything else (artist, format, catalog number, titles, numbers), so those lines would only distract.
 	"""
 	n, issues = len(tags), []
-	missing = lambda *keys: sum(1 for t in tags if not tag(t, *keys))  # noqa: E731
+
+	def missing(*keys: str) -> int:
+		return sum(1 for t in tags if not tag(t, *keys))
+
 	if not out['discogs']:
-		issues.append({'text': 'Add a Discogs release ID before running fixes.', 'action': 'search', 'level': 'error'})
+		issues.append(
+			{
+				'text': 'Add a Discogs release ID before running fixes.',
+				'action': 'search',
+				'level': 'error',
+			}
+		)
 		if small_cover:
 			issues.append({'text': cover_note(out['cover']), 'action': 'cover', 'level': 'ingest'})
 		return issues
 	for label, keys, action, required in ALBUM_LEVEL:
 		values = [tag(t, *keys) for t in tags]
-		if required and (m := values.count('')) and not (label == 'Discogs release ID' and m == n):  # all empty: the Discogs line above
+		if (
+			required and (m := values.count('')) and not (label == 'Discogs release ID' and m == n)
+		):  # all empty: the Discogs line above
 			text = MISSING_TEXT[label] if m == n else f'{m} of {n} tracks have no {label}.'
-			issues.append({'text': text, 'action': action, 'level': 'error' if label == 'Discogs release ID' else 'warn'})
+			issues.append(
+				{
+					'text': text,
+					'action': action,
+					'level': 'error' if label == 'Discogs release ID' else 'warn',
+				}
+			)
 		filled = [v for v in values if v]
 		if len(set(filled)) > 1:
-			issues.append({'text': f'The files disagree on the {label} ({len(set(filled))} different values); it is read from the first file only.', 'action': action, 'level': 'error' if label == 'Discogs release ID' else 'warn'})
-		elif not required and filled and len(filled) < n:  # a gap in a required tag is reported above
-			issues.append({'text': f'The {label} is set on only {len(filled)} of {n} tracks; it is read from the first file only.', 'action': action, 'level': 'warn'})
-	for key, what in (('DISCNUMBER', 'a disc number'), ('TRACKNUMBER', 'a track number'), ('TITLE', 'a title'), ('ARTIST', 'an artist')):
+			issues.append(
+				{
+					'text': f'The files disagree on the {label} ({len(set(filled))} different values); it is read from the first file only.',
+					'action': action,
+					'level': 'error' if label == 'Discogs release ID' else 'warn',
+				}
+			)
+		elif (
+			not required and filled and len(filled) < n
+		):  # a gap in a required tag is reported above
+			issues.append(
+				{
+					'text': f'The {label} is set on only {len(filled)} of {n} tracks; it is read from the first file only.',
+					'action': action,
+					'level': 'warn',
+				}
+			)
+	for key, what in (
+		('DISCNUMBER', 'a disc number'),
+		('TRACKNUMBER', 'a track number'),
+		('TITLE', 'a title'),
+		('ARTIST', 'an artist'),
+	):
 		if m := missing(key):
 			issues.append({'text': count_text(m, n, what), 'action': 'tracks', 'level': 'warn'})
-	numbers = [(tag(t, 'DISCNUMBER').split('/')[0], tag(t, 'TRACKNUMBER').split('/')[0]) for t in tags if tag(t, 'DISCNUMBER') and tag(t, 'TRACKNUMBER')]
+	numbers = [
+		(tag(t, 'DISCNUMBER').split('/')[0], tag(t, 'TRACKNUMBER').split('/')[0])
+		for t in tags
+		if tag(t, 'DISCNUMBER') and tag(t, 'TRACKNUMBER')
+	]
 	if dup := sum(1 for v in {x: numbers.count(x) for x in numbers}.values() if v > 1):
-		issues.append({'text': f'{dup} disc/track number{" is" if dup == 1 else "s are"} used by more than one file.', 'action': 'tracks', 'level': 'warn'})
+		issues.append(
+			{
+				'text': f'{dup} disc/track number{" is" if dup == 1 else "s are"} used by more than one file.',
+				'action': 'tracks',
+				'level': 'warn',
+			}
+		)
 	if small_cover:
 		issues.append({'text': cover_note(out['cover']), 'action': 'cover', 'level': 'ingest'})
-	return sorted(issues, key=lambda i: i['level'] != 'error')  # the Discogs lines always come first
+	return sorted(
+		issues, key=lambda i: i['level'] != 'error'
+	)  # the Discogs lines always come first
 
 
 def status(s: dict) -> str:
@@ -366,7 +488,7 @@ def fresh_summary(album: Path) -> dict:
 
 
 @app.get('/api/dirs')
-def dirs(path: str = ''):
+def dirs(path: str = '') -> dict:
 	p = safe(path) if path else ROOT
 	subs = sorted(d.name for d in p.iterdir() if d.is_dir() and not d.name.startswith('.'))
 	return {'path': str(p), 'root': str(ROOT), 'dirs': subs}
@@ -375,12 +497,23 @@ def dirs(path: str = ''):
 def safe_summary(a: Path) -> dict:
 	try:
 		return get_summary(a)
-	except Exception as e:  # noqa: BLE001  # one unreadable album must not break the list
-		return {'path': str(a), 'name': a.name, 'discogs': '', 'mbid': '', 'status': 'needs', 'steps_done': 0, 'steps': [], 'tracks': 0, 'mtime': 0, 'error': str(e)}
+	except Exception as e:  # one unreadable album must not break the list
+		return {
+			'path': str(a),
+			'name': a.name,
+			'discogs': '',
+			'mbid': '',
+			'status': 'needs',
+			'steps_done': 0,
+			'steps': [],
+			'tracks': 0,
+			'mtime': 0,
+			'error': str(e),
+		}
 
 
 @app.get('/api/albums')
-def albums(path: str = ''):
+def albums(path: str = '') -> dict:
 	base = safe(path) if path else ROOT
 	with ThreadPoolExecutor(8) as ex:
 		res = list(ex.map(safe_summary, album_dirs(base)))
@@ -389,7 +522,7 @@ def albums(path: str = ''):
 
 
 @app.get('/api/album')
-def album(path: str):
+def album(path: str) -> dict:
 	return get_summary(safe(path))
 
 
@@ -405,7 +538,14 @@ def make_picture(data: bytes) -> Picture:
 	except (OSError, UnidentifiedImageError) as e:
 		raise HTTPException(400, 'not a readable image') from e
 	pic = Picture()
-	pic.type, pic.mime, pic.desc, pic.width, pic.height, pic.data = 3, f'image/{fmt.lower()}', '', w, h, data
+	pic.type, pic.mime, pic.desc, pic.width, pic.height, pic.data = (
+		3,
+		f'image/{fmt.lower()}',
+		'',
+		w,
+		h,
+		data,
+	)
 	pic.depth = {'1': 1, 'L': 8, 'P': 8, 'RGB': 24, 'RGBA': 32}.get(mode, 24)
 	return pic
 
@@ -425,7 +565,7 @@ def embed_cover(album: Path, pic: Picture, only_missing: bool = False) -> None:
 
 
 @app.put('/api/cover')
-async def set_cover(path: str, request: Request):
+async def set_cover(path: str, request: Request) -> dict:
 	"""Replace the embedded front cover of every file with the uploaded image (raw request body)."""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
@@ -435,7 +575,7 @@ async def set_cover(path: str, request: Request):
 
 
 @app.delete('/api/cover')
-def delete_cover(path: str):
+def delete_cover(path: str) -> dict:
 	"""Remove the front and untyped covers from every file (other picture types stay) and the folder images (ADR 0024)."""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
@@ -454,7 +594,7 @@ def delete_cover(path: str):
 
 
 @app.get('/api/cover')
-def cover(path: str):
+def cover(path: str) -> Response:
 	album = safe(path)
 	for f in flacs(album)[:1]:
 		pics = FLAC(f).pictures
@@ -486,7 +626,7 @@ def overlay_env(env: dict) -> None:
 	env['CONFIG_DIR'] = str(d)
 
 
-def runner(path: Path):
+def runner(path: Path) -> int:
 	"""Run nzbfix for one album, then rename files. Returns the exit code."""
 	env = {**os.environ, 'LOG_LEVEL': 'INFO'}
 	overlay_env(env)
@@ -495,7 +635,11 @@ def runner(path: Path):
 	try:
 		p = subprocess.Popen(
 			[str(SCRIPTS / 'nzbfix.py'), str(path)],
-			stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, cwd=SCRIPTS,
+			stdout=subprocess.PIPE,
+			stderr=subprocess.STDOUT,
+			text=True,
+			env=env,
+			cwd=SCRIPTS,
 			start_new_session=True,  # own process group, so Stop can end nzbfix and the tools it started
 		)
 		job['proc'] = p
@@ -507,42 +651,56 @@ def runner(path: Path):
 		elif rc == 0:
 			job['lines'].append('-- rename files')
 			job['lines'].extend(rename_files(path))
-	except Exception as e:  # noqa: BLE001  # surface launch failures in the log pane
+	except Exception as e:  # surface launch failures in the log pane
 		job['lines'].append(f'launch failed: {e}')
 		rc = -1
 	return rc
 
 
-def worker(paths: list[Path]):
+def worker(paths: list[Path]) -> None:
 	"""Process the queue one album at a time; a failure is logged and the queue continues."""
 	failed = 0
 	for p in paths:
 		if job['stop']:
 			break
-		job['queue'] = [str(x) for x in paths[paths.index(p) + 1:]]
+		job['queue'] = [str(x) for x in paths[paths.index(p) + 1 :]]
 		if runner(p) != 0:
 			failed += 1
-	job.update(queue=[], proc=None, rc=1 if failed else 0, state='stopped' if job['stop'] else 'failed' if failed else 'done')
+	job.update(
+		queue=[],
+		proc=None,
+		rc=1 if failed else 0,
+		state='stopped' if job['stop'] else 'failed' if failed else 'done',
+	)
 
 
 @app.post('/api/run')
-def run(body: dict):
+def run(body: dict) -> dict:
 	"""Body: {path} for one album or {paths: [...]} for a queue (the UI starts one album at a time)."""
 	raw = body.get('paths') or [body.get('path', '')]
 	paths = [safe(p) for p in raw]
 	for path in paths:
 		if get_summary(path)['status'] == 'needs':
-			raise HTTPException(409, f'{path.name} is not ready: fix the problems listed for it first')
+			raise HTTPException(
+				409, f'{path.name} is not ready: fix the problems listed for it first'
+			)
 	with lock:  # one heavy task at a time
 		if job['state'] == 'running':
 			raise HTTPException(409, 'a job is already running')
-		job.update(path=str(paths[0]), state='running', rc=None, stop=False, proc=None, queue=[str(x) for x in paths[1:]])
+		job.update(
+			path=str(paths[0]),
+			state='running',
+			rc=None,
+			stop=False,
+			proc=None,
+			queue=[str(x) for x in paths[1:]],
+		)
 	threading.Thread(target=worker, args=(paths,), daemon=True).start()
 	return {'ok': True, 'count': len(paths)}
 
 
 @app.post('/api/stop')
-def stop():
+def stop() -> dict:
 	"""Stop the running job: clear the queue and end nzbfix with everything it started (SIGTERM, SIGKILL after 10 s)."""
 	with lock:
 		if job['state'] != 'running':
@@ -551,7 +709,7 @@ def stop():
 		job['queue'] = []
 		p = job['proc']
 
-	def end(sig):
+	def end(sig: int) -> None:
 		try:
 			os.killpg(p.pid, sig)  # start_new_session made the group id the pid
 		except ProcessLookupError:
@@ -568,12 +726,17 @@ def hint(v: str) -> str:
 
 
 @app.get('/api/settings')
-def get_settings():
-	return {'input': str(ROOT), 'output': str(INGEST), 'min_cover': MIN_COVER, **{k + '_hint': hint(settings.get(k, '')) for k in KEYS}}
+def get_settings() -> dict:
+	return {
+		'input': str(ROOT),
+		'output': str(INGEST),
+		'min_cover': MIN_COVER,
+		**{k + '_hint': hint(settings.get(k, '')) for k in KEYS},
+	}
 
 
 @app.post('/api/settings')
-def set_settings(body: dict):
+def set_settings(body: dict) -> dict:
 	"""Blank key keeps the stored key; {clear_<key>: true} removes it."""
 	global ROOT, INGEST, MIN_COVER
 	if job['state'] == 'running':
@@ -606,12 +769,16 @@ def set_settings(body: dict):
 
 
 @app.get('/api/job')
-def get_job(since: int = 0):
-	return {**{k: job[k] for k in ('path', 'state', 'rc', 'queue')}, 'lines': job['lines'][since:], 'next': len(job['lines'])}
+def get_job(since: int = 0) -> dict:
+	return {
+		**{k: job[k] for k in ('path', 'state', 'rc', 'queue')},
+		'lines': job['lines'][since:],
+		'next': len(job['lines']),
+	}
 
 
 @app.post('/api/move')
-def move(body: dict):
+def move(body: dict) -> dict:
 	path = safe(body.get('path', ''))
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
@@ -621,7 +788,9 @@ def move(body: dict):
 	if s['status'] != 'fixed':
 		raise HTTPException(409, 'album is not fully fixed')
 	if any(i['level'] == 'ingest' for i in s['issues']):
-		raise HTTPException(409, 'cover is below the minimum size; replace it or lower the minimum in settings')
+		raise HTTPException(
+			409, 'cover is below the minimum size; replace it or lower the minimum in settings'
+		)
 	dest = INGEST / path.name
 	if dest.exists():
 		raise HTTPException(409, f'{dest} already exists')
@@ -636,14 +805,20 @@ def move(body: dict):
 
 # ---------- track editor: assign album files to a Discogs release ----------
 releases: dict[str, dict] = {}  # release id -> parsed tracklist (Discogs allows 60 requests/min)
-raw_releases: dict[str, dict] = {}  # release id -> the Discogs release JSON, for the tags written on apply
+raw_releases: dict[
+	str, dict
+] = {}  # release id -> the Discogs release JSON, for the tags written on apply
 
 
 def discogs_key() -> str:
 	if settings.get('discogs_api_key'):
 		return settings['discogs_api_key']
 	cfg = Path(os.environ.get('CONFIG_DIR', SCRIPTS)) / 'config.py'
-	m = re.search(r'^discogs_api_key\s*=\s*[\'"]([^\'"]+)', cfg.read_text(), re.M) if cfg.is_file() else None
+	m = (
+		re.search(r'^discogs_api_key\s*=\s*[\'"]([^\'"]+)', cfg.read_text(), re.M)
+		if cfg.is_file()
+		else None
+	)
 	return m.group(1) if m else ''
 
 
@@ -660,7 +835,7 @@ def discogs_wait() -> None:
 	time.sleep(max(0.0, DISCOGS_INTERVAL - (time.time() - discogs_last)))
 
 
-def discogs_done(headers) -> None:
+def discogs_done(headers: Mapping[str, str] | None) -> None:
 	global discogs_last
 	discogs_last = time.time()
 	remaining = headers.get('X-Discogs-Ratelimit-Remaining') if headers else None
@@ -668,17 +843,19 @@ def discogs_done(headers) -> None:
 		time.sleep(DISCOGS_LOW_PAUSE)
 
 
-def discogs(path: str, **params) -> dict:
+def discogs(path: str, **params: str | int) -> dict:
 	key = discogs_key()
 	if not key:
 		raise HTTPException(400, 'Discogs API key not set (Settings)')
 	url = 'https://api.discogs.com' + path + ('?' + urlencode(params) if params else '')
-	req = urllib.request.Request(url, headers={'User-Agent': 'Tagwright/0.2', 'Authorization': f'Discogs token={key}'})
+	req = urllib.request.Request(
+		url, headers={'User-Agent': 'Tagwright/0.2', 'Authorization': f'Discogs token={key}'}
+	)
 	with discogs_lock:
 		for attempt in range(DISCOGS_RETRIES + 1):
 			discogs_wait()
 			try:
-				with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
+				with urllib.request.urlopen(req, timeout=20) as r:
 					data = json.load(r)
 					discogs_done(r.headers)
 				return data
@@ -701,11 +878,14 @@ def discogs(path: str, **params) -> dict:
 
 def discogs_image(url: str) -> bytes:
 	"""Download a release image with the same pacing as API calls (one request at a time, 1.1 s apart)."""
-	req = urllib.request.Request(url, headers={'User-Agent': 'Tagwright/0.2', 'Authorization': f'Discogs token={discogs_key()}'})
+	req = urllib.request.Request(
+		url,
+		headers={'User-Agent': 'Tagwright/0.2', 'Authorization': f'Discogs token={discogs_key()}'},
+	)
 	with discogs_lock:
 		discogs_wait()
 		try:
-			with urllib.request.urlopen(req, timeout=30) as r:  # noqa: S310
+			with urllib.request.urlopen(req, timeout=30) as r:
 				data = r.read(20_000_001)
 				discogs_done(r.headers)
 		except (urllib.error.URLError, OSError) as e:
@@ -733,7 +913,15 @@ def seconds(d: str) -> int:
 		return 0
 
 
-WRITER_ROLES = ('written-by', 'written by', 'composed by', 'music by', 'songwriter', 'lyrics by', 'words by')
+WRITER_ROLES = (
+	'written-by',
+	'written by',
+	'composed by',
+	'music by',
+	'songwriter',
+	'lyrics by',
+	'words by',
+)
 COPYRIGHT_TYPES = ('copyright (c)', 'phonographic copyright (p)')
 
 
@@ -741,18 +929,30 @@ def clean_artist(name: str) -> str:
 	return re.sub(r'\s*\(\d+\)$', '', name.strip())
 
 
-def uniq(xs) -> list[str]:
+def uniq(xs: Iterable[str | None]) -> list[str]:
 	return list(dict.fromkeys(x for x in xs if x))
 
 
 def by_role(extra: list[dict], *roles: str) -> list[str]:
 	"""Names of the credits whose role contains one of the (lower-case) role words."""
-	return uniq(clean_artist(e.get('name', '')) for e in extra if any(w in (e.get('role') or '').lower() for w in roles))
+	return uniq(
+		clean_artist(e.get('name', ''))
+		for e in extra
+		if any(w in (e.get('role') or '').lower() for w in roles)
+	)
 
 
 def release_format(r: dict) -> str:
 	"""The medium of a Discogs release for ALBUM_FORMAT: the first format name, ignoring the wrappers Box Set and All Media."""
-	return next((f['name'].strip() for f in r.get('formats') or [] if (f.get('name') or '').strip() and f['name'].strip().lower() not in ('box set', 'all media')), '')
+	return next(
+		(
+			f['name'].strip()
+			for f in r.get('formats') or []
+			if (f.get('name') or '').strip()
+			and f['name'].strip().lower() not in ('box set', 'all media')
+		),
+		'',
+	)
 
 
 def release_tags(r: dict) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
@@ -761,41 +961,84 @@ def release_tags(r: dict) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
 	Player tags are the standard ones the tagger used to import (shown by Roon etc.); they are filled when missing.
 	DISCOGS_* tags are Discogs-owned and replaced on every assignment.
 	"""
-	extra, companies, labels = r.get('extraartists') or [], r.get('companies') or [], r.get('labels') or []
+	extra, companies, labels = (
+		r.get('extraartists') or [],
+		r.get('companies') or [],
+		r.get('labels') or [],
+	)
 	artists = r.get('artists') or []
 
 	def company(*types: str) -> list[str]:
-		return uniq(clean_artist(c.get('name', '')) for c in companies if (c.get('entity_type_name') or '').lower() in types)
+		return uniq(
+			clean_artist(c.get('name', ''))
+			for c in companies
+			if (c.get('entity_type_name') or '').lower() in types
+		)
 
 	fmts = ', '.join(
-		f['name'] + (f' ({",".join(f["descriptions"])})' if f.get('descriptions') else '') for f in r.get('formats') or [] if f.get('name')
+		f['name'] + (f' ({",".join(f["descriptions"])})' if f.get('descriptions') else '')
+		for f in r.get('formats') or []
+		if f.get('name')
 	)
-	catnos = uniq((lb.get('catno') or '').strip() for lb in labels if (lb.get('catno') or '').strip().lower() != 'none')
-	barcode = next((i['value'].strip() for i in r.get('identifiers') or [] if i.get('type') == 'Barcode' and i.get('value')), '')
-	copyright_ = [f'\u2117 {n}' for n in company('phonographic copyright (p)')] + [f'\u00a9 {n}' for n in company('copyright (c)')]
+	catnos = uniq(
+		(lb.get('catno') or '').strip()
+		for lb in labels
+		if (lb.get('catno') or '').strip().lower() != 'none'
+	)
+	barcode = next(
+		(
+			i['value'].strip()
+			for i in r.get('identifiers') or []
+			if i.get('type') == 'Barcode' and i.get('value')
+		),
+		'',
+	)
+	copyright_ = [f'\u2117 {n}' for n in company('phonographic copyright (p)')] + [
+		f'\u00a9 {n}' for n in company('copyright (c)')
+	]
 	player = {
 		'GENRE': uniq(r.get('genres') or []),
 		'MOOD': [', '.join(r.get('styles') or [])],  # the tagger put the Discogs styles here
 		'LABEL': uniq(clean_artist(lb.get('name', '')) for lb in labels),
-		'MEDIA': [fmts], 'COUNTRY': [r.get('country', '')], 'BARCODE': [barcode], 'CATALOG': catnos,
-		'COPYRIGHT': [', '.join(copyright_)], 'PUBLISHER': [', '.join(company('published by'))],
-		'PRODUCER': by_role(extra, 'producer'), 'ENGINEER': by_role(extra, 'engineer'),
-		'PERSONNEL': uniq(f'{clean_artist(e["name"])} - {e["role"]}' for e in extra if e.get('name') and e.get('role')),
+		'MEDIA': [fmts],
+		'COUNTRY': [r.get('country', '')],
+		'BARCODE': [barcode],
+		'CATALOG': catnos,
+		'COPYRIGHT': [', '.join(copyright_)],
+		'PUBLISHER': [', '.join(company('published by'))],
+		'PRODUCER': by_role(extra, 'producer'),
+		'ENGINEER': by_role(extra, 'engineer'),
+		'PERSONNEL': uniq(
+			f'{clean_artist(e["name"])} - {e["role"]}'
+			for e in extra
+			if e.get('name') and e.get('role')
+		),
 	}
 	rid = r['id']
 	artist_urls = [f'https://www.discogs.com/artist/{a["id"]}' for a in artists if a.get('id')]
 	discogs_tags = {
 		'DISCOGS_RELEASE_URL': [r.get('uri', '')],
 		'DISCOGS_MASTER_ID': [f'm{r["master_id"]}'] if r.get('master_id') else [],
-		'DISCOGS_MASTER_URL': [f'https://www.discogs.com/master/{r["master_id"]}'] if r.get('master_id') else [],
-		'DISCOGS_ARTIST_URL': artist_urls, 'DISCOGS_ALBUMARTIST_URL': artist_urls,
+		'DISCOGS_MASTER_URL': [f'https://www.discogs.com/master/{r["master_id"]}']
+		if r.get('master_id')
+		else [],
+		'DISCOGS_ARTIST_URL': artist_urls,
+		'DISCOGS_ALBUMARTIST_URL': artist_urls,
 		'DISCOGS_ARTIST_LIST': [', '.join(clean_artist(a.get('name', '')) for a in artists)],
-		'DISCOGS_LABEL_URL': [f'https://www.discogs.com/label/{lb["id"]}' for lb in labels if lb.get('id')],
+		'DISCOGS_LABEL_URL': [
+			f'https://www.discogs.com/label/{lb["id"]}' for lb in labels if lb.get('id')
+		],
 		'DISCOGS_ARTWORK_URL': [f'https://www.discogs.com/viewimages?release={rid}'],
-		'DISCOGS_CATALOG_NUMBER': uniq(f'{clean_artist(lb.get("name", ""))}: {lb["catno"]}' for lb in labels if lb.get('catno')),
+		'DISCOGS_CATALOG_NUMBER': uniq(
+			f'{clean_artist(lb.get("name", ""))}: {lb["catno"]}' for lb in labels if lb.get('catno')
+		),
 		'DISCOGS_ALBUM_RELEASECOUNTRY': [r.get('country', '')],
 		'DISCOGS_RELEASE_NOTES': [(r.get('notes') or '').strip()],
-		'DISCOGS_VIDEO_URL': uniq(f'{v.get("title", "").strip()}: {v["uri"]}' for v in r.get('videos') or [] if v.get('uri')),
+		'DISCOGS_VIDEO_URL': uniq(
+			f'{v.get("title", "").strip()}: {v["uri"]}'
+			for v in r.get('videos') or []
+			if v.get('uri')
+		),
 	}
 	for c in companies:  # Recorded At, Mixed At, Pressed By, ... one tag per role
 		role = (c.get('entity_type_name') or '').strip()
@@ -805,15 +1048,30 @@ def release_tags(r: dict) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
 			name = clean_artist(c.get('name', ''))
 			if name and name not in discogs_tags[key]:
 				discogs_tags[key].append(name)
-	for key in [k for k in discogs_tags if k.startswith('DISCOGS_') and k not in DISCOGS_FIXED_KEYS]:
+	for key in [
+		k for k in discogs_tags if k.startswith('DISCOGS_') and k not in DISCOGS_FIXED_KEYS
+	]:
 		discogs_tags[key] = [', '.join(discogs_tags[key])] if discogs_tags[key] else []
-	return ({k: [x for x in v if x] for k, v in player.items() if any(v)}, {k: [x for x in v if x] for k, v in discogs_tags.items() if any(v)})
+	return (
+		{k: [x for x in v if x] for k, v in player.items() if any(v)},
+		{k: [x for x in v if x] for k, v in discogs_tags.items() if any(v)},
+	)
 
 
 # DISCOGS_* tags that keep one value per entry instead of one joined value (the rest are per company role)
 DISCOGS_FIXED_KEYS = {
-	'DISCOGS_RELEASE_URL', 'DISCOGS_MASTER_ID', 'DISCOGS_MASTER_URL', 'DISCOGS_ARTIST_URL', 'DISCOGS_ALBUMARTIST_URL', 'DISCOGS_ARTIST_LIST',
-	'DISCOGS_LABEL_URL', 'DISCOGS_ARTWORK_URL', 'DISCOGS_CATALOG_NUMBER', 'DISCOGS_ALBUM_RELEASECOUNTRY', 'DISCOGS_RELEASE_NOTES', 'DISCOGS_VIDEO_URL',
+	'DISCOGS_RELEASE_URL',
+	'DISCOGS_MASTER_ID',
+	'DISCOGS_MASTER_URL',
+	'DISCOGS_ARTIST_URL',
+	'DISCOGS_ALBUMARTIST_URL',
+	'DISCOGS_ARTIST_LIST',
+	'DISCOGS_LABEL_URL',
+	'DISCOGS_ARTWORK_URL',
+	'DISCOGS_CATALOG_NUMBER',
+	'DISCOGS_ALBUM_RELEASECOUNTRY',
+	'DISCOGS_RELEASE_NOTES',
+	'DISCOGS_VIDEO_URL',
 }
 
 
@@ -835,21 +1093,35 @@ def release_tracks(rid: str) -> dict:
 		if not m and head and pos.isdigit():
 			m = (None, head, pos)
 		seq += 1
-		tracks.append({
-			'i': len(tracks), 'position': pos, 'disc': int(m[1]) if m else 1, 'track': int(m[2]) if m else seq,
-			'title': t.get('title', ''), 'duration': seconds(t.get('duration', '')),
-			'artist': artist_names(t.get('artists', [])) or album_artist,
-			'composers': by_role(t.get('extraartists') or [], *WRITER_ROLES),
-			'producers': by_role(t.get('extraartists') or [], 'producer'),
-			'engineers': by_role(t.get('extraartists') or [], 'engineer'),
-		})
+		tracks.append(
+			{
+				'i': len(tracks),
+				'position': pos,
+				'disc': int(m[1]) if m else 1,
+				'track': int(m[2]) if m else seq,
+				'title': t.get('title', ''),
+				'duration': seconds(t.get('duration', '')),
+				'artist': artist_names(t.get('artists', [])) or album_artist,
+				'composers': by_role(t.get('extraartists') or [], *WRITER_ROLES),
+				'producers': by_role(t.get('extraartists') or [], 'producer'),
+				'engineers': by_role(t.get('extraartists') or [], 'engineer'),
+			}
+		)
 	# Discogs' own 'none' counts: the tag must not be empty
 	catno = next((c for lb in r.get('labels', []) if (c := (lb.get('catno') or '').strip())), '')
 	images = r.get('images') or []
-	image = next((i for i in images if i.get('type') == 'primary'), images[0] if images else {}).get('uri', '')
+	image = next(
+		(i for i in images if i.get('type') == 'primary'), images[0] if images else {}
+	).get('uri', '')
 	out = {
-		'id': str(r['id']), 'title': r.get('title', ''), 'artist': album_artist, 'year': r.get('year', ''), 'catno': catno,
-		'master_id': r.get('master_id') or 0, 'image': image, 'tracks': tracks,
+		'id': str(r['id']),
+		'title': r.get('title', ''),
+		'artist': album_artist,
+		'year': r.get('year', ''),
+		'catno': catno,
+		'master_id': r.get('master_id') or 0,
+		'image': image,
+		'tracks': tracks,
 	}
 	releases[rid] = out
 	raw_releases[rid] = r
@@ -877,28 +1149,40 @@ def brief(r: dict) -> dict:
 	fmt = r.get('format') or [f['name'] for f in r.get('formats', [])]
 	label = r.get('label') or [lb['name'] for lb in r.get('labels', [])]
 	return {
-		'id': str(r['id']), 'title': title, 'year': r.get('year', ''), 'country': r.get('country', ''),
-		'format': ', '.join(fmt[:3]), 'label': ', '.join(label[:2]),
-		'catno': r.get('catno') or (r.get('labels') or [{}])[0].get('catno', ''), 'thumb': r.get('thumb', ''),
+		'id': str(r['id']),
+		'title': title,
+		'year': r.get('year', ''),
+		'country': r.get('country', ''),
+		'format': ', '.join(fmt[:3]),
+		'label': ', '.join(label[:2]),
+		'catno': r.get('catno') or (r.get('labels') or [{}])[0].get('catno', ''),
+		'thumb': r.get('thumb', ''),
 	}
 
 
 @app.get('/api/discogs/search')
-def discogs_search(q: str):
+def discogs_search(q: str) -> list[dict]:
 	q = q.strip()
 	if q.isdigit():
 		return [brief(discogs(f'/releases/{q}'))]
-	return [brief(r) for r in discogs('/database/search', type='release', q=q, per_page=20).get('results', [])]
+	return [
+		brief(r)
+		for r in discogs('/database/search', type='release', q=q, per_page=20).get('results', [])
+	]
 
 
 @app.get('/api/discogs/tracks')
-def discogs_tracks(id: str):
+def discogs_tracks(id: str) -> dict:
 	"""Track count of a release (cached with the parsed tracklist)."""
 	return {'count': len(release_tracks(id.strip())['tracks'])}
 
 
 def norm_title(s: str) -> str:
-	return re.sub(r'[^a-z0-9]+', ' ', unicodedata.normalize('NFD', s.lower()).encode('ascii', 'ignore').decode()).strip()
+	return re.sub(
+		r'[^a-z0-9]+',
+		' ',
+		unicodedata.normalize('NFD', s.lower()).encode('ascii', 'ignore').decode(),
+	).strip()
 
 
 def album_files(album: Path) -> list[dict]:
@@ -906,16 +1190,20 @@ def album_files(album: Path) -> list[dict]:
 	for f in flacs(album):
 		a = FLAC(f)
 		t = a.tags or {}
-		out.append({
-			'file': str(f.relative_to(album)), 'title': tag(t, 'TITLE') or f.stem, 'duration': round(a.info.length),
-			'disc': int(m[0]) if (m := re.match(r'\d+', tag(t, 'DISCNUMBER') or '1')) else 1,
-			'track': int(m[0]) if (m := re.match(r'\d+', tag(t, 'TRACKNUMBER'))) else 0,
-		})
+		out.append(
+			{
+				'file': str(f.relative_to(album)),
+				'title': tag(t, 'TITLE') or f.stem,
+				'duration': round(a.info.length),
+				'disc': int(m[0]) if (m := re.match(r'\d+', tag(t, 'DISCNUMBER') or '1')) else 1,
+				'track': int(m[0]) if (m := re.match(r'\d+', tag(t, 'TRACKNUMBER'))) else 0,
+			}
+		)
 	return sorted(out, key=lambda x: (x['disc'], x['track'], x['file']))
 
 
 @app.post('/api/tracks/propose')
-def tracks_propose(body: dict):
+def tracks_propose(body: dict) -> dict:
 	"""Release tracklist, album files and a suggested file -> release track assignment."""
 	album = safe(body.get('path', ''))
 	rel = release_tracks(str(body.get('release_id', '')).strip())
@@ -923,7 +1211,7 @@ def tracks_propose(body: dict):
 	pairs = []
 	for f in files:
 		for t in rel['tracks']:
-			s = SequenceMatcher(None, norm_title(f['title']), norm_title(t["title"])).ratio() * 0.6
+			s = SequenceMatcher(None, norm_title(f['title']), norm_title(t['title'])).ratio() * 0.6
 			if t['duration']:
 				s += max(0.0, 1 - abs(f['duration'] - t['duration']) / 8) * 0.25
 			if f['track'] and (f['disc'], f['track']) == (t['disc'], t['track']):
@@ -936,11 +1224,14 @@ def tracks_propose(body: dict):
 		if s >= 0.35 and assign[fn] is None and i not in used:
 			assign[fn], conf[fn] = i, round(s, 2)
 			used.add(i)
-	return {'release': rel, 'files': [{**f, 'rel': assign[f['file']], 'conf': conf.get(f['file'], 0)} for f in files]}
+	return {
+		'release': rel,
+		'files': [{**f, 'rel': assign[f['file']], 'conf': conf.get(f['file'], 0)} for f in files],
+	}
 
 
 @app.post('/api/tracks/apply')
-def tracks_apply(body: dict):
+def tracks_apply(body: dict) -> dict:
 	"""Write release id and per-track tags for the assigned files, then rename them (bliss pattern).
 
 	Tracks are renumbered 1..n per disc in release order, so a subset of the release gets no gaps.
@@ -965,7 +1256,10 @@ def tracks_apply(body: dict):
 		final[fn] = (discs.index(d) + 1, seen[d])
 	for a in asg:
 		try:
-			final[a['file']] = (int(a.get('disc') or final[a['file']][0]), int(a.get('track') or final[a['file']][1]))
+			final[a['file']] = (
+				int(a.get('disc') or final[a['file']][0]),
+				int(a.get('track') or final[a['file']][1]),
+			)
 		except (TypeError, ValueError) as e:
 			raise HTTPException(400, 'disc and track must be numbers') from e
 	per_disc: dict[int, int] = {}
@@ -1011,7 +1305,11 @@ def tracks_apply(body: dict):
 		fill(a, 'COMPOSER', t['composers'] or writers)  # track credits win over release credits
 		fill(a, 'PRODUCER', t['producers'] or player.get('PRODUCER', []))
 		fill(a, 'ENGINEER', t['engineers'] or player.get('ENGINEER', []))
-		for key in [k for k in a.tags.keys() if k.upper().startswith('DISCOGS_') and k.upper() != 'DISCOGS_RELEASE_ID']:
+		for key in [
+			k
+			for k in a.tags.keys()
+			if k.upper().startswith('DISCOGS_') and k.upper() != 'DISCOGS_RELEASE_ID'
+		]:
 			del a.tags[key]  # Discogs-owned: replaced by the data of this release
 		for key, values in discogs_tags.items():
 			a[key] = values
@@ -1030,7 +1328,10 @@ def tracks_apply(body: dict):
 		filled['cover'] = 1
 	log.append(f'Discogs-owned tags written: {len(discogs_tags) + 1} per file')
 	if filled:
-		log.append('filled from Discogs: ' + ', '.join(f'{k} x{v}' if v > 1 else k for k, v in filled.items()))
+		log.append(
+			'filled from Discogs: '
+			+ ', '.join(f'{k} x{v}' if v > 1 else k for k, v in filled.items())
+		)
 	log += rename_files(album)
 	return {'log': log, 'album': fresh_summary(album)}
 
@@ -1043,20 +1344,25 @@ def track_path(album: str, file: str) -> Path:
 
 
 @app.get('/api/audio')
-def audio(path: str, file: str):
+def audio(path: str, file: str) -> FileResponse:
 	return FileResponse(track_path(path, file), media_type='audio/flac')
 
 
 @app.get('/api/track')
-def get_track(path: str, file: str):
+def get_track(path: str, file: str) -> dict:
 	f = FLAC(track_path(path, file))
 	t = f.tags or {}
-	return {'title': tag(t, 'TITLE'), 'artist': tag(t, 'ARTIST'), 'album': tag(t, 'ALBUM'), 'lyrics': tag(t, 'LYRICS'),
-		'length': round(f.info.length) if f.info else 0}
+	return {
+		'title': tag(t, 'TITLE'),
+		'artist': tag(t, 'ARTIST'),
+		'album': tag(t, 'ALBUM'),
+		'lyrics': tag(t, 'LYRICS'),
+		'length': round(f.info.length) if f.info else 0,
+	}
 
 
 @app.post('/api/track')
-def set_track(body: dict):
+def set_track(body: dict) -> dict:
 	"""Edit the lyrics of one file (empty removes the tag). Title and artist are edited in the tag editor's Tracks tab."""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
@@ -1086,12 +1392,20 @@ UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
 # per file and only touched when the file's title matches exactly one track of the release (see mb_apply).
 # The names follow what the tagger (Yate) wrote into the library (MUSICBRAINZ_RELEASE_GROUPID, MUSICBRAINZ_ALBUM_URL, ...); the
 # Picard spelling MUSICBRAINZ_RELEASEGROUPID is removed as an alternative so the file has one value, not two.
-MB_ALBUM_KEYS = ('MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID', 'MUSICBRAINZ_RELEASE_GROUPID', 'MUSICBRAINZ_RELEASEGROUPID',
-	'MUSICBRAINZ_ALBUMARTISTID', 'MUSICBRAINZ_ALBUM_URL', 'MUSICBRAINZ_RELEASE_GROUP_URL', 'MUSICBRAINZ_ALBUMARTIST_URL')
+MB_ALBUM_KEYS = (
+	'MUSICBRAINZ_ALBUMID',
+	'MUSICBRAINZ ALBUM ID',
+	'MUSICBRAINZ_RELEASE_GROUPID',
+	'MUSICBRAINZ_RELEASEGROUPID',
+	'MUSICBRAINZ_ALBUMARTISTID',
+	'MUSICBRAINZ_ALBUM_URL',
+	'MUSICBRAINZ_RELEASE_GROUP_URL',
+	'MUSICBRAINZ_ALBUMARTIST_URL',
+)
 MB_TRACK_KEYS = ('MUSICBRAINZ_ARTISTID', 'MUSICBRAINZ_ARTIST_URL')
 
 
-def musicbrainz(path: str, **params) -> dict:
+def musicbrainz(path: str, **params: str | int) -> dict:
 	global mb_last
 	url = 'https://musicbrainz.org/ws/2' + path + '?' + urlencode({**params, 'fmt': 'json'})
 	req = urllib.request.Request(url, headers={'User-Agent': MB_UA, 'Accept': 'application/json'})
@@ -1099,7 +1413,7 @@ def musicbrainz(path: str, **params) -> dict:
 		for attempt in range(MB_RETRIES + 1):
 			time.sleep(max(0.0, MB_INTERVAL - (time.time() - mb_last)))
 			try:
-				with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
+				with urllib.request.urlopen(req, timeout=20) as r:
 					data = json.load(r)
 				mb_last = time.time()
 				return data
@@ -1112,7 +1426,9 @@ def musicbrainz(path: str, **params) -> dict:
 				err = HTTPException(429, 'MusicBrainz rate limit reached; try again in a minute')
 			except json.JSONDecodeError:
 				mb_last = time.time()
-				err = HTTPException(502, 'MusicBrainz sent an unreadable response; try again in a minute')
+				err = HTTPException(
+					502, 'MusicBrainz sent an unreadable response; try again in a minute'
+				)
 			except OSError as e:
 				mb_last = time.time()
 				raise HTTPException(502, f'MusicBrainz: {e}') from e
@@ -1126,7 +1442,7 @@ def mb_names(credit: list[dict] | None) -> str:
 	return ''.join(c.get('name', '') + c.get('joinphrase', '') for c in credit or [])
 
 
-def mb_unique(items) -> str:
+def mb_unique(items: Iterable[str | None]) -> str:
 	return ', '.join(dict.fromkeys(x for x in items if x))
 
 
@@ -1134,11 +1450,17 @@ def mb_brief(r: dict) -> dict:
 	"""Search hits and lookups share these fields (a lookup has no top-level track-count)."""
 	media, infos = r.get('media') or [], r.get('label-info') or []
 	return {
-		'id': r['id'], 'title': f'{mb_names(r.get("artist-credit"))} - {r.get("title", "")}', 'year': (r.get('date') or '')[:4],
-		'country': r.get('country') or '', 'format': mb_unique(m.get('format') for m in media),
-		'label': mb_unique((i.get('label') or {}).get('name') for i in infos), 'catno': mb_unique(i.get('catalog-number') for i in infos),
-		'barcode': r.get('barcode') or '', 'tracks': r.get('track-count') or sum(m.get('track-count', 0) for m in media),
-		'thumb': f'https://coverartarchive.org/release/{r["id"]}/front-250', 'match': '',
+		'id': r['id'],
+		'title': f'{mb_names(r.get("artist-credit"))} - {r.get("title", "")}',
+		'year': (r.get('date') or '')[:4],
+		'country': r.get('country') or '',
+		'format': mb_unique(m.get('format') for m in media),
+		'label': mb_unique((i.get('label') or {}).get('name') for i in infos),
+		'catno': mb_unique(i.get('catalog-number') for i in infos),
+		'barcode': r.get('barcode') or '',
+		'tracks': r.get('track-count') or sum(m.get('track-count', 0) for m in media),
+		'thumb': f'https://coverartarchive.org/release/{r["id"]}/front-250',
+		'match': '',
 	}
 
 
@@ -1152,7 +1474,7 @@ def mb_hits(query: str, limit: int, match: str, hits: dict) -> None:
 
 
 @app.get('/api/musicbrainz/search')
-def musicbrainz_search(q: str, path: str = ''):
+def musicbrainz_search(q: str, path: str = '') -> list[dict]:
 	"""Release search. With a Discogs ID on the album, releases with the same barcode or catalogue number come first."""
 	q = q.strip()
 	if UUID_RE.match(q):
@@ -1163,17 +1485,32 @@ def musicbrainz_search(q: str, path: str = ''):
 		try:
 			release_tracks(did)
 			d = raw_releases[did]
-			barcodes = [re.sub(r'\D', '', i.get('value', '')) for i in d.get('identifiers', []) if i.get('type') == 'Barcode']
-			catnos = [lb['catno'] for lb in d.get('labels', []) if lb.get('catno') and lb['catno'].lower() != 'none']
+			barcodes = [
+				re.sub(r'\D', '', i.get('value', ''))
+				for i in d.get('identifiers', [])
+				if i.get('type') == 'Barcode'
+			]
+			catnos = [
+				lb['catno']
+				for lb in d.get('labels', [])
+				if lb.get('catno') and lb['catno'].lower() != 'none'
+			]
 			for code in [b for b in barcodes if b][:1]:
 				mb_hits(f'barcode:{code}', 10, 'barcode', hits)
-			for catno in catnos[:2] if not hits else []:  # a barcode hit is exact; the slower catalogue-number search is the fallback
+			for catno in (
+				catnos[:2] if not hits else []
+			):  # a barcode hit is exact; the slower catalogue-number search is the fallback
 				mb_hits(f'catno:"{lucene(catno)}"', 10, 'catalog number', hits)
 		except HTTPException:
 			pass  # no Discogs key or Discogs unreachable: the plain search below still works
 	words = [w for w in re.split(r'\s+', q) if w]
 	if words:
-		mb_hits(' AND '.join(f'(release:{lucene(w)} OR artist:{lucene(w)})' for w in words), 20, '', hits)
+		mb_hits(
+			' AND '.join(f'(release:{lucene(w)} OR artist:{lucene(w)})' for w in words),
+			20,
+			'',
+			hits,
+		)
 	return list(hits.values())[:20]
 
 
@@ -1182,32 +1519,67 @@ def mb_release(mbid: str) -> dict:
 		return mb_releases[mbid]
 	if not UUID_RE.match(mbid):
 		raise HTTPException(400, 'not a MusicBrainz release ID')
-	r = musicbrainz(f'/release/{mbid}', inc='artists+artist-credits+labels+recordings+release-groups+media+url-rels')
-	people = lambda credit: [{'id': c['artist']['id'], 'name': c['artist']['name']} for c in credit or [] if c.get('artist')]  # noqa: E731
+	r = musicbrainz(
+		f'/release/{mbid}',
+		inc='artists+artist-credits+labels+recordings+release-groups+media+url-rels',
+	)
+
+	def people(credit: list[dict] | None) -> list[dict]:
+		return [
+			{'id': c['artist']['id'], 'name': c['artist']['name']}
+			for c in credit or []
+			if c.get('artist')
+		]
+
 	rg = r.get('release-group') or {}
 	tracks = [
-		{'disc': m.get('position', 1), 'position': t.get('number', ''), 'title': t.get('title', ''),
-		 'duration': round(t['length'] / 1000) if t.get('length') else 0, 'artist': mb_names(t.get('artist-credit')), 'artists': people(t.get('artist-credit'))}
-		for m in r.get('media', []) for t in m.get('tracks', [])
+		{
+			'disc': m.get('position', 1),
+			'position': t.get('number', ''),
+			'title': t.get('title', ''),
+			'duration': round(t['length'] / 1000) if t.get('length') else 0,
+			'artist': mb_names(t.get('artist-credit')),
+			'artists': people(t.get('artist-credit')),
+		}
+		for m in r.get('media', [])
+		for t in m.get('tracks', [])
 	]
 	types = [t for t in [rg.get('primary-type'), *(rg.get('secondary-types') or [])] if t]
-	out = {**mb_brief(r), 'artist': mb_names(r.get('artist-credit')), 'name': r.get('title', ''), 'artists': people(r.get('artist-credit')),
-		'asin': r.get('asin') or '', 'status': r.get('status') or '', 'disambiguation': r.get('disambiguation') or '', 'types': ','.join(types),
-		'group': {'id': rg.get('id', ''), 'title': rg.get('title', ''), 'type': rg.get('primary-type') or '', 'first': rg.get('first-release-date') or ''},
+	out = {
+		**mb_brief(r),
+		'artist': mb_names(r.get('artist-credit')),
+		'name': r.get('title', ''),
+		'artists': people(r.get('artist-credit')),
+		'asin': r.get('asin') or '',
+		'status': r.get('status') or '',
+		'disambiguation': r.get('disambiguation') or '',
+		'types': ','.join(types),
+		'group': {
+			'id': rg.get('id', ''),
+			'title': rg.get('title', ''),
+			'type': rg.get('primary-type') or '',
+			'first': rg.get('first-release-date') or '',
+		},
 		'tracks': tracks,
-		'discogs_ids': [m.group(1) for x in r.get('relations') or [] if x.get('type') == 'discogs' and (m := re.search(r'/release/(\d+)', (x.get('url') or {}).get('resource', '')))]}
+		'discogs_ids': [
+			m.group(1)
+			for x in r.get('relations') or []
+			if x.get('type') == 'discogs'
+			and (m := re.search(r'/release/(\d+)', (x.get('url') or {}).get('resource', '')))
+		],
+	}
 	mb_releases[mbid] = out
 	return out
 
 
 @app.get('/api/musicbrainz/release')
-def musicbrainz_release(id: str, path: str = ''):
+def musicbrainz_release(id: str, path: str = '') -> dict:
 	"""The parsed release; with a path also how many files the album has."""
 	return {**mb_release(id), 'files': len(flacs(safe(path))) if path else 0}
 
 
 @app.get('/api/musicbrainz/check')
-def musicbrainz_check(path: str):
+def musicbrainz_check(path: str) -> dict:
 	"""Non-consequential notes where the album's MusicBrainz release disagrees with its Discogs release.
 
 	Read-only and only for the selected album: it needs both IDs and one (cached) MusicBrainz lookup, which is too slow to do for a whole
@@ -1216,23 +1588,30 @@ def musicbrainz_check(path: str):
 	album = safe(path)
 	files = flacs(album)
 	t0 = FLAC(files[0]).tags if files else None
-	rid, mbid = tag(t0 or {}, 'DISCOGS_RELEASE_ID'), tag(t0 or {}, 'MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID')
+	rid, mbid = (
+		tag(t0 or {}, 'DISCOGS_RELEASE_ID'),
+		tag(t0 or {}, 'MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID'),
+	)
 	if not (rid and mbid and UUID_RE.match(mbid)):
 		return {'notes': []}
 	mb = mb_release(mbid)
 	notes = []
 	if mb['discogs_ids'] and rid not in mb['discogs_ids']:
-		notes.append(f'MusicBrainz links Discogs release {", ".join(mb["discogs_ids"])}, this album uses {rid}.')
+		notes.append(
+			f'MusicBrainz links Discogs release {", ".join(mb["discogs_ids"])}, this album uses {rid}.'
+		)
 	year = (tag(t0, 'ALBUM_RELEASE_YEAR', 'YEAR', 'DATE') or '')[:4]
 	if year and mb['year'] and year != mb['year']:
 		notes.append(f'Year: Discogs {year}, MusicBrainz {mb["year"]}.')
 	if mb['tracks'] and len(mb['tracks']) != len(files):
-		notes.append(f'The MusicBrainz release has {len(mb["tracks"])} tracks, this album has {len(files)} files.')
+		notes.append(
+			f'The MusicBrainz release has {len(mb["tracks"])} tracks, this album has {len(files)} files.'
+		)
 	return {'notes': notes}
 
 
 @app.post('/api/musicbrainz/apply')
-def musicbrainz_apply(body: dict):
+def musicbrainz_apply(body: dict) -> dict:
 	"""Write the release ID and its MusicBrainz links (release group, album artists) to every file of the album.
 
 	Per file the artist ID and link are written only when the file's TITLE equals exactly one release track.
@@ -1247,15 +1626,24 @@ def musicbrainz_apply(body: dict):
 	for t in rel['tracks']:
 		by_title.setdefault(norm_title(t['title']), []).append(t)
 	values = {
-		'MUSICBRAINZ_ALBUMID': [rel['id']], 'MUSICBRAINZ_ALBUM_URL': [f'{mb}/release/{rel["id"]}'],
+		'MUSICBRAINZ_ALBUMID': [rel['id']],
+		'MUSICBRAINZ_ALBUM_URL': [f'{mb}/release/{rel["id"]}'],
 		'MUSICBRAINZ_RELEASE_GROUPID': [group['id']] if group['id'] else [],
-		'MUSICBRAINZ_RELEASE_GROUP_URL': [f'{mb}/release-group/{group["id"]}'] if group['id'] else [],
+		'MUSICBRAINZ_RELEASE_GROUP_URL': [f'{mb}/release-group/{group["id"]}']
+		if group['id']
+		else [],
 		'MUSICBRAINZ_ALBUMARTISTID': [a['id'] for a in rel['artists']],
 		'MUSICBRAINZ_ALBUMARTIST_URL': [f'{mb}/artist/{a["id"]}' for a in rel['artists']],
 	}
 	# Filled only where the tag is empty (a Discogs assignment or the owner may have set them): player tags and the tagger's descriptive tags.
-	fill = {'BARCODE': rel['barcode'], 'ASIN': rel['asin'], 'MUSICBRAINZ_ALBUM_RELEASECOUNTRY': rel['country'], 'MUSICBRAINZ_ALBUMSTATUS': rel['status'],
-		'MUSICBRAINZ_ALBUMTYPE': rel['types'], 'MUSICBRAINZ_ALBUM_DISAMBIGUATION': rel['disambiguation']}
+	fill = {
+		'BARCODE': rel['barcode'],
+		'ASIN': rel['asin'],
+		'MUSICBRAINZ_ALBUM_RELEASECOUNTRY': rel['country'],
+		'MUSICBRAINZ_ALBUMSTATUS': rel['status'],
+		'MUSICBRAINZ_ALBUMTYPE': rel['types'],
+		'MUSICBRAINZ_ALBUM_DISAMBIGUATION': rel['disambiguation'],
+	}
 	filled: dict[str, int] = {}
 	log, per_file = [], 0
 	for f in flacs(album):
@@ -1279,52 +1667,96 @@ def musicbrainz_apply(body: dict):
 			a['MUSICBRAINZ_ARTIST_URL'] = [f'{mb}/artist/{x["id"]}' for x in match[0]['artists']]
 			per_file += 1
 		a.save()
-	log.append(f'MusicBrainz release {rel["id"]} ({rel["artist"]} - {rel["name"]}) written; release group, album artist links on every file, artist links on {per_file} files')
+	log.append(
+		f'MusicBrainz release {rel["id"]} ({rel["artist"]} - {rel["name"]}) written; release group, album artist links on every file, artist links on {per_file} files'
+	)
 	if filled:
-		log.append('filled from MusicBrainz (only where empty): ' + ', '.join(f'{k} x{v}' for k, v in filled.items()))
+		log.append(
+			'filled from MusicBrainz (only where empty): '
+			+ ', '.join(f'{k} x{v}' for k, v in filled.items())
+		)
 	return {'log': log, 'album': fresh_summary(album)}
 
 
 @app.get('/api/lrclib/search')
-def lrclib_search(title: str, artist: str = ''):
+def lrclib_search(title: str, artist: str = '') -> list[dict]:
 	"""Search lrclib.net for lyrics (read-only; nothing is written). Returns up to 20 results with their lyrics."""
 	if not title.strip():
 		raise HTTPException(400, 'enter a title to search for')
 	q = {'track_name': title.strip(), **({'artist_name': artist.strip()} if artist.strip() else {})}
-	req = urllib.request.Request('https://lrclib.net/api/search?' + urlencode(q),
-		headers={'User-Agent': 'Tagwright/0.2 (+https://github.com/koehntopp/tagwright)'})
+	req = urllib.request.Request(
+		'https://lrclib.net/api/search?' + urlencode(q),
+		headers={'User-Agent': 'Tagwright/0.2 (+https://github.com/koehntopp/tagwright)'},
+	)
 	try:
-		with urllib.request.urlopen(req, timeout=15) as r:  # noqa: S310
+		with urllib.request.urlopen(req, timeout=15) as r:
 			found = json.load(r)
 	except urllib.error.HTTPError as e:
 		raise HTTPException(502, f'lrclib.net answered HTTP {e.code}') from e
 	except (urllib.error.URLError, TimeoutError, ValueError) as e:
 		raise HTTPException(502, f'lrclib.net could not be reached: {e}') from e
-	return [{'artist': x.get('artistName') or '', 'title': x.get('trackName') or '', 'album': x.get('albumName') or '',
-		'duration': round(x.get('duration') or 0), 'instrumental': bool(x.get('instrumental')),
-		'synced': x.get('syncedLyrics') or '', 'plain': x.get('plainLyrics') or ''} for x in found[:20]]
+	return [
+		{
+			'artist': x.get('artistName') or '',
+			'title': x.get('trackName') or '',
+			'album': x.get('albumName') or '',
+			'duration': round(x.get('duration') or 0),
+			'instrumental': bool(x.get('instrumental')),
+			'synced': x.get('syncedLyrics') or '',
+			'plain': x.get('plainLyrics') or '',
+		}
+		for x in found[:20]
+	]
 
 
 # Album tags that fixtags reads as user input (it never overwrites them) and may therefore be edited here.
 # The override keys are also applied to ALBUMARTIST / ALBUM so the change shows before the next run.
 ALBUM_FIELDS = {
-	'ALBUM_ARTIST_OVERRIDE': ('ALBUMARTIST',), 'ALBUM_TITLE_OVERRIDE': ('ALBUM',), 'ALBUM_FORMAT': (), 'ALBUM_EDITION': (),
-	'CATALOGNUMBER': CATALOG_KEYS[1:], 'MUSICBRAINZ_ALBUMID': ('MUSICBRAINZ ALBUM ID',),
+	'ALBUM_ARTIST_OVERRIDE': ('ALBUMARTIST',),
+	'ALBUM_TITLE_OVERRIDE': ('ALBUM',),
+	'ALBUM_FORMAT': (),
+	'ALBUM_EDITION': (),
+	'CATALOGNUMBER': CATALOG_KEYS[1:],
+	'MUSICBRAINZ_ALBUMID': ('MUSICBRAINZ ALBUM ID',),
 }
 OVERRIDES = {'ALBUM_ARTIST_OVERRIDE': 'ALBUMARTIST', 'ALBUM_TITLE_OVERRIDE': 'ALBUM'}
 # Tags fixtags writes from the Discogs release (see discogs/fixtags.py); shown read-only.
 DISCOGS_FIXED = (
-	'DATE', 'YEAR', 'RELEASEDATE', 'ORIGINALDATE', 'ORIGINALRELEASEDATE', 'ORIGINAL DATE', 'ORIGINAL YEAR', 'ALBUM', 'VERSION',
-	'ALBUM_MASTER_TITLE', 'ALBUM_RELEASE_TITLE', 'ORIGINAL_TITLE', 'ALBUM_MASTER_YEAR', 'ALBUM_RELEASE_YEAR', 'ALBUM_MAX_RESOLUTION',
-	'ALBUM_RELEASE_COUNTRY', 'ALBUM_RELEASE_LABEL', 'ALBUM_RELEASE_LABELS', 'ALBUM_RELEASE_CATALOGNUMBERS', 'ALBUM_RELEASE_FORMAT',
-	'ALBUM_RELEASE_FORMAT_DESCRIPTIONS', 'ALBUM_RELEASE_FORMAT_TEXT', 'ALBUM_RELEASE_GENRES', 'ALBUM_RELEASE_STYLES',
-	'ALBUM_RELEASE_NOTES', 'ALBUM_RELEASE_DATE_FULL', 'ALBUM_RELEASE_DATA_QUALITY', 'ALBUM_RELEASE_SERIES', 'ALBUM_DR',
+	'DATE',
+	'YEAR',
+	'RELEASEDATE',
+	'ORIGINALDATE',
+	'ORIGINALRELEASEDATE',
+	'ORIGINAL DATE',
+	'ORIGINAL YEAR',
+	'ALBUM',
+	'VERSION',
+	'ALBUM_MASTER_TITLE',
+	'ALBUM_RELEASE_TITLE',
+	'ORIGINAL_TITLE',
+	'ALBUM_MASTER_YEAR',
+	'ALBUM_RELEASE_YEAR',
+	'ALBUM_MAX_RESOLUTION',
+	'ALBUM_RELEASE_COUNTRY',
+	'ALBUM_RELEASE_LABEL',
+	'ALBUM_RELEASE_LABELS',
+	'ALBUM_RELEASE_CATALOGNUMBERS',
+	'ALBUM_RELEASE_FORMAT',
+	'ALBUM_RELEASE_FORMAT_DESCRIPTIONS',
+	'ALBUM_RELEASE_FORMAT_TEXT',
+	'ALBUM_RELEASE_GENRES',
+	'ALBUM_RELEASE_STYLES',
+	'ALBUM_RELEASE_NOTES',
+	'ALBUM_RELEASE_DATE_FULL',
+	'ALBUM_RELEASE_DATA_QUALITY',
+	'ALBUM_RELEASE_SERIES',
+	'ALBUM_DR',
 )
 DISCOGS_PREFIXES = ('ALBUM_COMPANY_', 'ALBUM_CREDIT_', 'ALBUM_IDENT_', 'DISCOGS_')
 
 
 @app.get('/api/tags')
-def get_tags(path: str):
+def get_tags(path: str) -> dict:
 	album = safe(path)
 	files = flacs(album)
 	if not files:
@@ -1334,19 +1766,34 @@ def get_tags(path: str):
 	fixed = [k for k in DISCOGS_FIXED if k in keys]
 	extra = sorted(k for k in keys if k.startswith(DISCOGS_PREFIXES) and k != 'DISCOGS_RELEASE_ID')
 	# read-only MusicBrainz tags (written by the MusicBrainz apply, 0023); the release ID itself is an Album-tab field
-	mb = sorted(k for k in keys if k.startswith('MUSICBRAINZ') and k not in ('MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID'))
+	mb = sorted(
+		k
+		for k in keys
+		if k.startswith('MUSICBRAINZ') and k not in ('MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID')
+	)
 	mb += [k for k in ('BARCODE', 'ASIN') if k in keys]
 	tracks = []
 	for f in files:
 		t = FLAC(f).tags or {}
-		tracks.append({
-			'file': str(f.relative_to(album)), 'title': tag(t, 'TITLE'), 'artist': tag(t, 'ARTIST'),
-			'disc': tag(t, 'DISCNUMBER'), 'track': tag(t, 'TRACKNUMBER'), 'subtitle': tag(t, 'SET SUBTITLE'),
-		})
+		tracks.append(
+			{
+				'file': str(f.relative_to(album)),
+				'title': tag(t, 'TITLE'),
+				'artist': tag(t, 'ARTIST'),
+				'disc': tag(t, 'DISCNUMBER'),
+				'track': tag(t, 'TRACKNUMBER'),
+				'subtitle': tag(t, 'SET SUBTITLE'),
+			}
+		)
 	return {
-		'fields': {k: tag(t0, k) if k in OVERRIDES else tag(t0, k, *alts) for k, alts in ALBUM_FIELDS.items()},  # an override shows only when really set
+		'fields': {
+			k: tag(t0, k) if k in OVERRIDES else tag(t0, k, *alts)
+			for k, alts in ALBUM_FIELDS.items()
+		},  # an override shows only when really set
 		'discogs_id': tag(t0, 'DISCOGS_RELEASE_ID'),
-		'discogs': [{'key': k, 'value': ' / '.join(str(v) for v in t0[keys[k]])} for k in [*fixed, *extra]],
+		'discogs': [
+			{'key': k, 'value': ' / '.join(str(v) for v in t0[keys[k]])} for k in [*fixed, *extra]
+		],
 		'musicbrainz': [{'key': k, 'value': ' / '.join(str(v) for v in t0[keys[k]])} for k in mb],
 		'album_artist': tag(t0, 'ALBUMARTIST'),
 		'tracks': tracks,
@@ -1369,17 +1816,23 @@ def write_album_fields(album: Path, fields: dict) -> None:
 	"""Write album-level fields to every file; blank removes. Clearing an override that is set restores the Discogs value."""
 	files = flacs(album)
 	first = FLAC(files[0]).tags or {}
-	clearing = [k for k in OVERRIDES if k in fields and not str(fields[k]).strip() and tag(first, k)]
+	clearing = [
+		k for k in OVERRIDES if k in fields and not str(fields[k]).strip() and tag(first, k)
+	]
 	restore = {}
 	if clearing:
 		rid = tag(first, 'DISCOGS_RELEASE_ID')
 		if not rid:
-			raise HTTPException(400, 'cannot restore the Discogs value: the album has no Discogs release ID')
+			raise HTTPException(
+				400, 'cannot restore the Discogs value: the album has no Discogs release ID'
+			)
 		restore = discogs_defaults(rid)  # before touching any file: a failed lookup changes nothing
 	# VERSION (year, DR, format, edition, catalogue number) and the folder name derive from these; fixtags rewrites it on
 	# the next run, and a missing VERSION reopens the Tags step (ADR 0006), so a changed value shows up as Ready again
 	stale = bool(tag(first, 'DISCOGS_RELEASE_ID')) and any(
-		k in fields and str(fields[k]).strip() != tag(first, k, *ALBUM_FIELDS[k]) for k in ('ALBUM_EDITION', 'ALBUM_FORMAT', 'CATALOGNUMBER'))
+		k in fields and str(fields[k]).strip() != tag(first, k, *ALBUM_FIELDS[k])
+		for k in ('ALBUM_EDITION', 'ALBUM_FORMAT', 'CATALOGNUMBER')
+	)
 	for f in files:
 		a = FLAC(f)
 		if a.tags is None:
@@ -1405,7 +1858,7 @@ def write_album_fields(album: Path, fields: dict) -> None:
 
 
 @app.post('/api/tags')
-def set_tags(body: dict):
+def set_tags(body: dict) -> dict:
 	"""Write edited album fields to every file and edited per-track fields to the listed files; rename to match titles."""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
@@ -1445,21 +1898,25 @@ def set_tags(body: dict):
 
 
 @app.post('/api/overrides')
-def set_overrides(body: dict):
+def set_overrides(body: dict) -> dict:
 	"""Album artist / title overrides only (the pencil dialog); same effect as the Tag Editor fields."""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	album = safe(body.get('path', ''))
-	write_album_fields(album, {'ALBUM_ARTIST_OVERRIDE': body.get('artist', ''), 'ALBUM_TITLE_OVERRIDE': body.get('title', '')})
+	write_album_fields(
+		album,
+		{
+			'ALBUM_ARTIST_OVERRIDE': body.get('artist', ''),
+			'ALBUM_TITLE_OVERRIDE': body.get('title', ''),
+		},
+	)
 	return fresh_summary(album)
-
-
 
 
 class Static(StaticFiles):
 	"""Static files revalidated on every load, so a rebuilt frontend is never served stale from the browser cache."""
 
-	async def get_response(self, path, scope):
+	async def get_response(self, path: str, scope: Scope) -> Response:
 		r = await super().get_response(path, scope)
 		r.headers['Cache-Control'] = 'no-cache'
 		return r
@@ -1469,9 +1926,9 @@ app.mount('/static', Static(directory=Path(__file__).parent / 'static'), name='s
 
 
 @app.get('/')
-def index():
+def index() -> FileResponse:
 	return FileResponse(Path(__file__).parent / 'static' / 'ui' / 'index.html')
 
 
 if __name__ == '__main__':
-	uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', '8080')))  # noqa: S104
+	uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', '8080')))
