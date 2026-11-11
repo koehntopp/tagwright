@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,9 +42,16 @@ function Results({ rows, sort, setSort, count, pick }: { rows: any[]; sort: Sort
 }
 
 // ---- Discogs: search a release, assign album files to its tracks ----
+/** Spinner over a dialog's result area while a request runs (a Discogs or MusicBrainz call takes seconds). */
+const Busy = ({ text }: { text: string }) => (
+	<div role="status" aria-live="polite" className="absolute inset-0 z-10 grid place-items-start justify-center pt-10">
+		<span className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow"><RefreshCw className="size-4 animate-spin" />{text}</span>
+	</div>
+)
+
 export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: () => void; done: (path: string) => void }) {
 	const [q, setQ] = useState(''), [rows, setRows] = useState<any[] | null>(null), [sort, setSort] = useState<Sort>({ key: '', dir: 1 })
-	const [rel, setRel] = useState<any>(null), [rid, setRid] = useState(''), [files, setFiles] = useState<any[]>([]), [busy, setBusy] = useState(false), [err, setErr] = useState('')
+	const [rel, setRel] = useState<any>(null), [rid, setRid] = useState(''), [files, setFiles] = useState<any[]>([]), [busy, setBusy] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState('')
 	const token = useRef<object>({})
 	useEffect(() => {
 		if (!a) return
@@ -52,7 +60,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 	}, [a?.path])  // eslint-disable-line react-hooks/exhaustive-deps
 	if (!a) return null
 	async function pick(id: string) {
-		setBusy(true); setErr('')
+		setBusy(true); setWhat('Loading the release from Discogs…'); setErr('')
 		try {
 			const d = await post('/api/tracks/propose', { path: a!.path, release_id: id })
 			setRid(id); setRel(d.release); setFiles(d.files)
@@ -62,7 +70,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 	async function search(e: React.FormEvent) {
 		e.preventDefault()
 		if (!q.trim()) return
-		setBusy(true); setErr('')
+		setBusy(true); setWhat('Searching Discogs…'); setErr('')
 		try {
 			const rs: any[] = await api('/api/discogs/search?q=' + encodeURIComponent(q.trim()))
 			setRel(null); setRows(rs); setBusy(false); counts(rs)
@@ -88,7 +96,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 	const dup = Object.values(used).some(n => n > 1), n = Object.keys(used).length
 	const upd = (k: number, p: any) => setFiles(files.map((f, i) => (i === k ? { ...f, ...p } : f)))
 	const apply = async () => {
-		setBusy(true)
+		setBusy(true); setWhat('Assigning the tracks…')
 		try {
 			await post('/api/tracks/apply', { path: a.path, release_id: rid, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at })) })
 			toast.success('Tracks assigned'); onClose(); done(a.path)
@@ -99,8 +107,10 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 			save={apply} saveLabel={rel ? `Apply (${n} of ${files.length})` : 'Apply'} saveDisabled={!rel || dup || n === 0}>
 			<form className="flex gap-2" onSubmit={search}>
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a Discogs release ID" />
-				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit">Search Discogs</Button>
+				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search Discogs</Button>
 			</form>
+			<div className="relative">
+			{busy && <Busy text={what} />}
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>
 				{rel ? (
 					<>
@@ -129,6 +139,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 					</>
 				) : rows && <Results rows={rows} sort={sort} setSort={setSort} pick={pick} count={r => (r.n == null ? '…' : r.n < 0 ? '?' : r.n + ' tracks')} />}
 			</div>
+			</div>
 		</Shell>
 	)
 }
@@ -138,7 +149,7 @@ const L = ({ kind, id, text }: { kind: string; id: string; text: string }) => <a
 
 export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () => void; done: (path: string) => void }) {
 	const [q, setQ] = useState(''), [rows, setRows] = useState<any[] | null>(null), [sort, setSort] = useState<Sort>({ key: '', dir: 1 })
-	const [rel, setRel] = useState<any>(null), [busy, setBusy] = useState(false), [err, setErr] = useState('')
+	const [rel, setRel] = useState<any>(null), [busy, setBusy] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState('')
 	useEffect(() => {
 		if (!a) return
 		setRows(null); setRel(null); setErr(''); setQ(a.mbid || [a.artist, a.album].filter(Boolean).join(' '))
@@ -146,19 +157,19 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 	}, [a?.path])  // eslint-disable-line react-hooks/exhaustive-deps
 	if (!a) return null
 	async function pick(id: string) {
-		setBusy(true); setErr('')
+		setBusy(true); setWhat('Loading the release from MusicBrainz…'); setErr('')
 		try { setRel(await api(`/api/musicbrainz/release?id=${encodeURIComponent(id)}&path=${encodeURIComponent(a!.path)}`)) } catch (e: any) { setErr(e.message) }
 		setBusy(false)
 	}
 	async function search(e: React.FormEvent) {
 		e.preventDefault()
 		if (!q.trim()) return
-		setBusy(true); setErr('')
+		setBusy(true); setWhat('Searching MusicBrainz…'); setErr('')
 		try { setRel(null); setRows(await api(`/api/musicbrainz/search?q=${encodeURIComponent(q.trim())}&path=${encodeURIComponent(a!.path)}`)) } catch (e: any) { setErr(e.message) }
 		setBusy(false)
 	}
 	const apply = async () => {
-		setBusy(true)
+		setBusy(true); setWhat('Writing the MusicBrainz tags…')
 		try { await post('/api/musicbrainz/apply', { path: a.path, id: rel.id }); toast.success('MusicBrainz release applied'); onClose(); done(a.path) }
 		catch (e: any) { setErr(e.message); setBusy(false) }
 	}
@@ -167,8 +178,10 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 		<Shell open onClose={onClose} wide="sm:max-w-[64rem]" title="Choose a MusicBrainz release" err={err} save={apply} saveDisabled={!rel}>
 			<form className="flex gap-2" onSubmit={search}>
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a MusicBrainz release ID" />
-				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit">Search MusicBrainz</Button>
+				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search MusicBrainz</Button>
 			</form>
+			<div className="relative">
+			{busy && <Busy text={what} />}
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>
 				{rel ? (
 					<>
@@ -185,6 +198,7 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 						<div className="mt-3 text-xs text-slate-500">Apply writes the release ID, the release group and album artist IDs and links to every file, and the artist ID and link to each file whose title matches a release track. Barcode, ASIN, release country, status, type and disambiguation are filled only where the file has none yet. Titles, track numbers and everything else stay as they are.</div>
 					</>
 				) : rows && <Results rows={rows} sort={sort} setSort={setSort} pick={pick} />}
+			</div>
 			</div>
 		</Shell>
 	)
