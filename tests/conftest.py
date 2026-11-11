@@ -79,11 +79,11 @@ def client() -> TestClient:
 
 @pytest.fixture
 def make_flac() -> MakeFlac:
-	"""make_flac(path, **tags) writes a 0.2 s silent FLAC with the given tags and returns the path."""
+	"""make_flac(path, rate=44100, **tags) writes a 0.2 s silent FLAC with the given tags and returns the path."""
 
-	def make(path: Path, **tags: str) -> Path:
+	def make(path: Path, rate: int = 44100, **tags: str) -> Path:
 		path.parent.mkdir(parents=True, exist_ok=True)
-		sf.write(path, np.zeros(8820, dtype='int16'), 44100, format='FLAC')
+		sf.write(path, np.zeros(rate // 5, dtype='int16'), rate, format='FLAC')
 		audio = FLAC(path)
 		if audio.tags is None:  # soundfile may already write an empty Vorbis comment
 			audio.add_tags()

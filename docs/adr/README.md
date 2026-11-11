@@ -39,6 +39,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0033](0033-pipeline-tag-steps-run-in-sequence.md) | Dynamic range, ReplayGain and fingerprints run in sequence (discogs repository change) | Accepted |
 | [0034](0034-python-formatting-and-linting-with-ruff.md) | Python formatting and linting with ruff | Accepted |
 | [0035](0035-automated-tests-with-pytest.md) | Automated tests with pytest on synthetic albums | Accepted |
+| [0036](0036-standalone-pipeline-package.md) | A standalone pipeline package; the discogs repository is no longer needed | Accepted (rollout in stages) |
 
 ## Which ADR covers what
 
@@ -50,6 +51,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | backend dependencies | 0005 |
 | Python formatting, linting, annotations, `pyproject.toml` | 0034 |
 | tests, fixtures, the `test` dependency group | 0035, 0018 |
+| the `pipeline/` package, API clients, Discogs tags, `drcalc` | 0036, 0014, 0013 |
 | frontend stack, `ui/`, building `static/ui/` | 0029 |
 | statuses, steps, lyrics rules, scan cache | 0006 |
 | paths, endpoints, secrets, access | 0007 |
