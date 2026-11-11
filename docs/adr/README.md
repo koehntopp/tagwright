@@ -8,7 +8,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0002](0002-purpose-scope-and-use-cases.md) | Purpose, scope and use cases (UC-1 to UC-11) | Accepted |
 | [0003](0003-deployment-web-app-in-docker.md) | Deployment: a web app in Docker on a Linux server | Accepted |
 | [0004](0004-pipeline-engine-reuses-discogs-scripts.md) | The pipeline engine is the unchanged discogs scripts | Accepted |
-| [0005](0005-technology-stack-and-conventions.md) | Technology stack and code conventions | Accepted (frontend parts superseded by 0029) |
+| [0005](0005-technology-stack-and-conventions.md) | Technology stack and code conventions | Accepted (frontend parts superseded by 0029, Style bullet by 0034) |
 | [0006](0006-status-model-and-pipeline-steps.md) | Status comes from FLAC tags; six pipeline steps | Accepted |
 | [0007](0007-trust-boundary-and-secrets.md) | Trust boundary, no authentication, secrets | Accepted |
 | [0008](0008-job-model.md) | Job model: one job at a time, queue, polling, write lock | Accepted |
@@ -37,6 +37,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0031](0031-top-bar-again.md) | Top bar again, no sidebar, no Artists list | Accepted |
 | [0032](0032-parallel-tag-writes-reopen-before-save.md) | Parallel pipeline scripts reopen a file before saving (discogs repository change) | Accepted |
 | [0033](0033-pipeline-tag-steps-run-in-sequence.md) | Dynamic range, ReplayGain and fingerprints run in sequence (discogs repository change) | Accepted |
+| [0034](0034-python-formatting-and-linting-with-ruff.md) | Python formatting and linting with ruff | Accepted |
 
 ## Which ADR covers what
 
@@ -45,7 +46,8 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | what the app is for, a new feature | 0002 |
 | Docker, environment variables, mounts | 0003 |
 | running `nzbfix`, anything about the discogs scripts | 0004, 0012 |
-| backend dependencies, code style | 0005 |
+| backend dependencies | 0005 |
+| Python formatting, linting, annotations, `pyproject.toml` | 0034 |
 | frontend stack, `ui/`, building `static/ui/` | 0029 |
 | statuses, steps, lyrics rules, scan cache | 0006 |
 | paths, endpoints, secrets, access | 0007 |

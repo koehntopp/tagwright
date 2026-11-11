@@ -25,7 +25,7 @@ Tagwright is a self-hosted web app (FastAPI + one-file frontend) around the disc
 - **File names** (0010): `clean()` stays identical to discogs `bliss.clean()`; Tagwright never renames album folders.
 - **Ingest** (0011): move only `fixed` albums; never overwrite or merge into an existing destination.
 - **Status model** (0006, 0016): changing what makes a step done or partial is an ADR change.
-- **Stack** (0005, 0029): single-file backend `app.py` (PEP 723 deps); frontend in `ui/` (Next.js static export, shadcn/ui). Tabs, single quotes. No new framework or build step without an ADR. Any change under `ui/` means `cd ui && npm run build` and committing the resulting `static/ui/`.
+- **Stack** (0005, 0029, 0034): single-file backend `app.py` (PEP 723 deps); frontend in `ui/` (Next.js static export, shadcn/ui). Tabs, single quotes. No new framework or build step without an ADR. Any change under `ui/` means `cd ui && npm run build` and committing the resulting `static/ui/`.
 - **UI** (0030, 0031): colours keep their meaning; do not add a stats bar or filter tabs; the top bar navigation is the only filter; follow the dialog widths and fixed-width badge columns.
 
 ## 4. Verification (ADR 0018)
@@ -34,14 +34,82 @@ Tagwright is a self-hosted web app (FastAPI + one-file frontend) around the disc
 - Check API behaviour with `curl`, tags and pictures on disk with `metaflac`, and the UI in a browser at 1440 px with a clean console. Report what you did **not** verify.
 - Do not claim a feature works until you ran it. If something failed or was skipped, say so.
 
-## 5. Git (ADR 0020)
+## 5. Related code
+
+- Tag-management scripts live in `../discogs`; changes there must be confirmed against that project's ADRs.
+- Use the `drcalc` binary from `../drcalc` as a replacement for `drmeter`.
+
+## 6. Python
+
+### Setup
+
+- Python 3.14, modern syntax.
+- Dependencies with `uv`: PEP 723 inline declaration and the `uv` shebang.
+- Use the latest stable version of every dependency; check and update regularly.
+
+### Tooling
+
+- Ruff is the only linter and formatter. Do not install or run Black, isort or flake8.
+- Always run Ruff through uv: `uv run ruff ...`.
+- Config lives in `pyproject.toml`; the decision and its rules are in [ADR 0034](docs/adr/0034-python-formatting-and-linting-with-ruff.md). Do not modify `[tool.ruff]` unless the task is about tooling.
+- If a lint rule seems wrong for the codebase, say so in your summary instead of disabling it.
+
+### Workflow
+
+After editing any Python file, run these in order on the files you changed:
+
+1. `uv run ruff check --fix <changed files>`
+2. `uv run ruff format <changed files>`
+3. `uv run ruff check <changed files>` (must report zero errors)
+
+- Format only the files you changed. Never run `uv run ruff format .` on the whole repo unless explicitly asked, because unrelated reformatting pollutes the diff.
+- Do not use `--unsafe-fixes` unless asked.
+- Never hand-format code to "look nicer". The formatter's output is final.
+
+### Before marking done
+
+- `uv run ruff check .` passes.
+- `uv run ruff format --check .` passes (read-only; it does not rewrite files).
+
+### Style
+
+- Tabs, single quotes, line length 100: set in `pyproject.toml` ([ADR 0034](docs/adr/0034-python-formatting-and-linting-with-ruff.md)).
+- Imports: stdlib, third-party, local, separated by blank lines. Ruff sorts them (rule set `I`); do not reorder by hand.
+- No unused imports.
+- f-strings, not `.format()` or `%`.
+- Walrus operator (`:=`) only to bind a match result in a condition, e.g. `if m := re.match(...)`.
+
+### Type annotations
+
+Required for:
+
+- all function signatures (every parameter and the return type)
+- class attributes
+- module-level variables, unless they are obvious primitives
+
+Avoid `Any`. If it is genuinely necessary, add a comment saying why.
+
+### Anti-patterns
+
+- No bare `except:`. Catch specific errors: `except ValueError:` or `except (A, B):`.
+- No `from module import *`.
+- No `print()` for debug output. Use `logging.getLogger(__name__)`.
+- No hardcoded credentials or connection strings. Use environment variables.
+- No mutable default arguments: `def f(x: list = [])` is wrong; use `None` and create the list inside the function.
+
+### Suppressions
+
+- Do not add `# noqa`, `# fmt: off` or `# type: ignore` to silence a warning. Fix the underlying issue.
+- If suppression is truly required, use the narrowest form (`# noqa: B008`, `# type: ignore[arg-type]`, never bare) and add a one-line reason.
+
+## 7. Git (ADR 0020)
 
 - **Never create a branch.** Work and commit directly on `main`, then push to `origin main`. `main` is the only branch; if any other exists, tell the owner. Do not tag unless asked.
 - Never commit `data/`, `node_modules/`, `__pycache__/`, keys or music files.
 - Keep commits focused, with a message that says what and why. Verify first ([ADR 0018](docs/adr/0018-verification.md)); there is no branch to catch a bad change.
 - Never force-push or rewrite history.
 
-## 6. Before you say "done"
+## 8. Before you say "done"
 
 Check each item and say which you checked:
 
@@ -50,3 +118,4 @@ Check each item and say which you checked:
 - [ ] `static/ui/` rebuilt (`cd ui && npm run build`) if anything under `ui/` changed.
 - [ ] Verified on a copy, not on real data; what was not verified is stated.
 - [ ] No secrets in code, logs, commits or output.
+- [ ] Python changed: `uv run ruff check .` and `uv run ruff format --check .` pass, or the failures are listed.
