@@ -5,7 +5,7 @@
 # ///
 """Tagwright: web UI and the fix pipeline for FLAC albums (the pipeline is the package pipeline/).
 
-Env: ROOT (base dir, default /staging), INGEST_DIR (default /flac/ingest),
+Env: STAGING_FOLDER (default /staging), LIBRARY_FOLDER (default /flac/ingest),
 DATA_DIR (settings, default ./data), PORT (8080). The pipeline is the package pipeline/ (ADR 0036).
 """
 
@@ -62,8 +62,8 @@ def env_path(name: str, default: str) -> Path:
 	return p.resolve()
 
 
-ROOT = env_path('ROOT', '/staging')
-INGEST = env_path('INGEST_DIR', '/flac/ingest')
+ROOT = env_path('STAGING_FOLDER', '/staging')
+INGEST = env_path('LIBRARY_FOLDER', '/flac/ingest')
 DATA = env_path(
 	'DATA_DIR', str(Path(__file__).parent / 'data')
 )  # settings.json and generated config overlay
@@ -853,6 +853,16 @@ def preview_library(body: dict) -> dict:
 	return library.preview(template, body.get('album'))
 
 
+def nfs_source(fields: list[str]) -> str:
+	"""`host:/export` of an NFS mount; a Docker NFS volume has the host in the `addr=` option only."""
+	device = fields[1]
+	if device.startswith(':') and (
+		m := re.search(r'(?:^|,)addr=([^,]+)', fields[2] if len(fields) > 2 else '')
+	):
+		return m[1] + device
+	return device
+
+
 def mount_source(path: Path, mountinfo: Path = Path('/proc/self/mountinfo')) -> str:
 	"""Where a folder comes from on the host, as the container sees it: the NFS export of the mount
 	holding it (`host:/export`) or the bind mount's host path. '' when unknown (not Linux, a layer)."""
@@ -869,7 +879,10 @@ def mount_source(path: Path, mountinfo: Path = Path('/proc/self/mountinfo')) -> 
 		point = f[4].replace('\\040', ' ')
 		if (path == Path(point) or Path(point) in path.parents) and len(point) >= len(best[0]):
 			root = f[3].replace('\\040', ' ')
-			best = (point, r[1] if r[0].startswith('nfs') else ('' if root == '/' else root))
+			best = (
+				point,
+				nfs_source(r) if r[0].startswith('nfs') else ('' if root == '/' else root),
+			)
 	return best[1]
 
 

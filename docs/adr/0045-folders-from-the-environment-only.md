@@ -6,14 +6,14 @@
 
 ## Context
 
-In the Docker deployment ([0003](0003-deployment-web-app-in-docker.md)) the folders are fixed by the mounts (`/staging`, `/flac/ingest`). Editable fields in Settings could only break that, and a value saved in `settings.json` silently overrode `ROOT` and `INGEST_DIR`.
+In the Docker deployment ([0003](0003-deployment-web-app-in-docker.md)) the folders are fixed by the mounts (`/staging`, `/flac/ingest`). Editable fields in Settings could only break that, and a value saved in `settings.json` silently overrode the environment.
 
 ## Decision
 
-- `ROOT` (staging) and `INGEST_DIR` (library) are read from the environment at start-up, with the defaults `/staging` and `/flac/ingest`. `settings.json` no longer holds them; `input` and `output` in it are ignored and dropped on the next save. `POST /api/settings` ignores `input` and `output` in the body.
-- Settings shows both folders read-only. Under each it shows where the folder comes from on the host, read from `/proc/self/mountinfo`: the NFS export of the mount (`host:/export`) or the bind mount's host path. Where that is unknown (not Linux, or the folder is in the container's own layer) nothing is shown.
+- `STAGING_FOLDER` and `LIBRARY_FOLDER` are read from the environment at start-up, with the defaults `/staging` and `/flac/ingest`. `settings.json` no longer holds them; `input` and `output` in it are ignored and dropped on the next save. `POST /api/settings` ignores `input` and `output` in the body.
+- Settings shows both folders read-only, as host paths, not as the container's mount points: the NFS export of the mount (`host:/export`, the host from the `addr=` option) or the bind mount's host path, read from `/proc/self/mountinfo`. Where that is unknown (not Linux, or the folder is in the container's own layer) the folder's own path is shown.
 
 ## Consequences
 
-- Running outside Docker means setting `ROOT` and `INGEST_DIR` in the start command; moving to another folder needs a restart.
+- Running outside Docker means setting `STAGING_FOLDER` and `LIBRARY_FOLDER` in the start command; moving to another folder needs a restart.
 - The mount source is what the container sees; for a bind mount on a filesystem with subvolumes it can differ from the path on the host.

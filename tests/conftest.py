@@ -1,6 +1,6 @@
 """Fixtures for the Tagwright tests (ADR 0035).
 
-Everything runs on synthetic FLAC files in pytest's tmp_path; ROOT, INGEST_DIR and DATA_DIR
+Everything runs on synthetic FLAC files in pytest's tmp_path; STAGING_FOLDER, LIBRARY_FOLDER and DATA_DIR
 never point at a real library (ADR 0018). The environment is set before app.py is imported, because app.py
 reads it at import time (and would otherwise read data/settings.json of the real instance).
 """
@@ -14,8 +14,8 @@ _BOOT = Path(tempfile.mkdtemp(prefix='tagwright-test-'))
 for _name in ('root', 'ingest', 'data'):
 	(_BOOT / _name).mkdir()
 os.environ.update(
-	ROOT=str(_BOOT / 'root'),
-	INGEST_DIR=str(_BOOT / 'ingest'),
+	STAGING_FOLDER=str(_BOOT / 'root'),
+	LIBRARY_FOLDER=str(_BOOT / 'ingest'),
 	DATA_DIR=str(_BOOT / 'data'),
 )
 

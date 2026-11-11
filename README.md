@@ -83,19 +83,19 @@ Settings, tab *Library*, defines the layout by dragging tags into rows: one row 
 Requirements: Python 3.14, [`uv`](https://docs.astral.sh/uv/), and on `PATH`: `drcalc`, `rsgain`, `fpcalc`.
 
 ```bash
-ROOT=/path/to/staging INGEST_DIR=/path/to/library DATA_DIR=./data ./app.py
+STAGING_FOLDER=/path/to/staging LIBRARY_FOLDER=/path/to/library DATA_DIR=./data ./app.py
 ```
 
 Open <http://localhost:8080>. In Settings enter your **Discogs API key** (required for the Discogs step). It lives in `DATA_DIR/settings.json` and is never logged or returned by the API. lrclib.net needs no key: Tagwright identifies itself with its registered application ID.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `ROOT` | `/staging` | Staging folder |
-| `INGEST_DIR` | `/flac/ingest` | Library folder |
+| `STAGING_FOLDER` | `/staging` | Staging folder |
+| `LIBRARY_FOLDER` | `/flac/ingest` | Library folder |
 | `DATA_DIR` | `./data` | Settings, library index, MusicBrainz cache |
 | `PORT` | `8080` | HTTP port |
 
-Paths must be absolute. Staging, library and every path the API accepts are checked against these two folders. They are not editable in Settings, which shows them read-only together with where they come from on the host (the bind-mounted path or the NFS export).
+Paths must be absolute. Staging, library and every path the API accepts are checked against these two folders. They are not editable in Settings, which shows them read-only, as host paths (the bind-mounted path or the NFS export) when it can tell.
 
 ### Docker
 

@@ -172,7 +172,8 @@ def test_mount_source_names_the_nfs_export_or_the_bind_mount_path(tmp_path: Path
 	info = tmp_path / 'mountinfo'
 	info.write_text(
 		'1 0 0:1 / / rw - overlay overlay rw\n'
-		'2 1 0:2 / /staging rw - nfs 192.0.2.10:/volume1/staging rw\n'
+		'2 1 0:2 / /staging rw - nfs :/volume1/staging rw,vers=3,addr=192.0.2.10,hard\n'
+		'5 1 0:3 / /plain rw - nfs 10.0.0.5:/export rw,vers=3\n'
 		'3 1 259:1 /srv/flac/ingest /flac/ingest rw - ext4 /dev/nvme0n1p2 rw\n'
 		'4 1 259:1 /srv/with\\040space /data rw - ext4 /dev/nvme0n1p2 rw\n'
 	)
@@ -180,6 +181,7 @@ def test_mount_source_names_the_nfs_export_or_the_bind_mount_path(tmp_path: Path
 		tagwright.mount_source(Path('/staging/Artist/Album'), info)
 		== '192.0.2.10:/volume1/staging'
 	)
+	assert tagwright.mount_source(Path('/plain'), info) == '10.0.0.5:/export'
 	assert tagwright.mount_source(Path('/flac/ingest'), info) == '/srv/flac/ingest'
 	assert tagwright.mount_source(Path('/data'), info) == '/srv/with space'
 	assert tagwright.mount_source(Path('/elsewhere'), info) == ''  # only the overlay root: unknown

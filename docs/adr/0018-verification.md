@@ -9,7 +9,7 @@ The app edits and moves real music files. There is no automated test suite; chan
 
 ## Decision
 
-- **Never test against the real library or the real ingest folder.** Copy a small album to a scratch directory outside the library, point `ROOT`, `INGEST_DIR` and `DATA_DIR` at scratch paths, and use a port other than the one the real instance uses.
+- **Never test against the real library or the real ingest folder.** Copy a small album to a scratch directory outside the library, point `STAGING_FOLDER`, `LIBRARY_FOLDER` and `DATA_DIR` at scratch paths, and use a port other than the one the real instance uses.
 - Verify behaviour at the API with `curl` and on disk with `metaflac` (tags, pictures), and the UI in a browser at 1440 px width. Confirm the browser console shows no errors.
 - A change that alters tag output of the pipeline (DR, fingerprints, ReplayGain) is verified by comparing tags before and after on the same copy; they must be identical.
 - Remove scratch data afterwards. Stop test servers.

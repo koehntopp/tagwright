@@ -12,8 +12,8 @@ The first idea was a native macOS app. The pipeline needs `rsgain`, Python tools
 - Tagwright is a **web app served by a Linux server**, packaged as a Docker image (`Dockerfile`, `compose.yaml`). The browser is the only client.
 - The image holds Python 3.14, `uv`, `chromaprint-tools` (`fpcalc`), `drcalc` (release binary for the build architecture, SHA256 checked) and `rsgain` (built from source in a build stage; no package exists; only its runtime libraries are installed in the final image). Nothing is expected in the build context.
 - Mounts: input folder at `/staging`, ingest folder at `/flac/ingest`, and `./data` at `/data` for settings.
-- The same code runs directly on macOS for development: `ROOT=... INGEST_DIR=... ./app.py` (shebang `uv run`).
-- Environment: `ROOT`, `INGEST_DIR`, `DATA_DIR`, `PORT` (default 8080). Paths must be absolute; `~` is expanded by the app but a relative path is a startup error.
+- The same code runs directly on macOS for development: `STAGING_FOLDER=... LIBRARY_FOLDER=... ./app.py` (shebang `uv run`).
+- Environment: `STAGING_FOLDER`, `LIBRARY_FOLDER`, `DATA_DIR`, `PORT` (default 8080). Paths must be absolute; `~` is expanded by the app but a relative path is a startup error.
 
 ## Consequences
 

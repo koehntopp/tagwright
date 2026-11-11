@@ -94,8 +94,8 @@ export function SettingsDialog({ open, onClose, saved }: { open: boolean; onClos
 			header={<Tabs value={tab} onValueChange={setTab} className="ml-auto mr-8"><TabsList><TabsTrigger value="general">General</TabsTrigger><TabsTrigger value="library">Library</TabsTrigger></TabsList></Tabs>}>
 			{s && tab === 'general' && (
 				<div className="space-y-3">
-					<Field label="Staging folder" help={'Albums to fix are read from here.' + (s.input_source ? ` On the host: ${s.input_source}` : '') + ' Set with ROOT or the container mount.'}><div className="rounded-md border bg-muted/40 px-3 py-2 font-mono text-sm">{s.input}</div></Field>
-					<Field label="Library folder" help={'Fixed albums are placed here in the library layout, and a watcher keeps this folder in that layout (see the Library tab).' + (s.output_source ? ` On the host: ${s.output_source}` : '') + ' Set with INGEST_DIR or the container mount.'}><div className="rounded-md border bg-muted/40 px-3 py-2 font-mono text-sm">{s.output}</div></Field>
+					<Field label="Staging folder" help="Albums to fix are read from here. Set with STAGING_FOLDER."><div className="rounded-md border bg-muted/40 px-3 py-2 font-mono text-sm">{s.input_source || s.input}</div></Field>
+					<Field label="Library folder" help="Fixed albums are placed here in the library layout, and a watcher keeps this folder in that layout (see the Library tab). Set with LIBRARY_FOLDER."><div className="rounded-md border bg-muted/40 px-3 py-2 font-mono text-sm">{s.output_source || s.output}</div></Field>
 					<Field label="Minimum cover size (pixels)" help="An album whose cover is smaller than this on either side, or has none, cannot be moved to the library. 0 turns the check off."><Input type="number" min={0} max={20000} step={50} className="w-40 font-mono" value={f.min_cover} onChange={set('min_cover')} /></Field>
 					<Field label="Discogs API key" help="Leave blank to keep the stored key."><Input type="password" className="font-mono" placeholder={s.discogs_api_key_hint || 'Not set'} value={f.discogs_api_key} onChange={set('discogs_api_key')} /></Field>
 				</div>

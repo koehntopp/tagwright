@@ -3,6 +3,9 @@ services:
     build: .
     restart: unless-stopped
     ports: ["8080:8080"]
+    environment:
+      - STAGING_FOLDER=/staging
+      - LIBRARY_FOLDER=/flac/ingest
     volumes:
       - /path/to/staging:/staging          # the staging folder
       - /srv/flac/ingest:/flac/ingest   # the library folder (the watcher keeps it in the layout)
