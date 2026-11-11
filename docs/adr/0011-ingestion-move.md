@@ -1,6 +1,6 @@
 # ADR 0011: Moving fixed albums to the ingest folder
 
-- **Status**: Accepted
+- **Status**: Accepted (the flat target is superseded by [0037](0037-library-watcher-and-layout.md): an album is placed in the library layout; the other rules stand)
 - **Date**: 2026-11-08
 
 ## Context

@@ -1,6 +1,6 @@
 # ADR 0010: Bliss file naming after fixes and edits
 
-- **Status**: Accepted
+- **Status**: Accepted (album folders of the output folder are laid out by the watcher of [0037](0037-library-watcher-and-layout.md); the other rules stand)
 - **Date**: 2026-11-08
 
 ## Context

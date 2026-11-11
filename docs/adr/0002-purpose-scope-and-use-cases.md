@@ -26,6 +26,9 @@ Tagwright is a single-user, self-hosted web app that lets one person work throug
 | UC-9 | See the cover's pixel size, be warned when it is small, replace it by uploading or dropping an image, delete the embedded cover, open cover searches on external sites. | [0016](0016-cover-art.md) |
 | UC-10 | Rename files to the bliss pattern automatically after fixes and after edits. | [0010](0010-bliss-file-naming.md) |
 | UC-11 | Choose the MusicBrainz release of an album (search, using the album's Discogs release to find the same release) and write its ID and links (release group, album artist, artist). | [0023](0023-musicbrainz-release-search.md) |
+| UC-12 | Keep the output folder in the canonical artist/album/disc/file layout automatically (a watcher with a cooldown). | [0037](0037-library-watcher-and-layout.md) |
+| UC-13 | Configure that layout in Settings with drag and drop and preview it on a real album. | [0037](0037-library-watcher-and-layout.md) |
+| UC-14 | See the library's state in the top bar (album artists, albums, tracks, activity, unplaced files) and re-analyse it by hand. | [0037](0037-library-watcher-and-layout.md) |
 
 ### Out of scope
 

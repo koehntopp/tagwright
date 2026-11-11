@@ -5,7 +5,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | ADR | Title | Status |
 |-----|-------|--------|
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
-| [0002](0002-purpose-scope-and-use-cases.md) | Purpose, scope and use cases (UC-1 to UC-11) | Accepted |
+| [0002](0002-purpose-scope-and-use-cases.md) | Purpose, scope and use cases (UC-1 to UC-14) | Accepted |
 | [0003](0003-deployment-web-app-in-docker.md) | Deployment: a web app in Docker on a Linux server | Accepted |
 | [0004](0004-pipeline-engine-reuses-discogs-scripts.md) | The pipeline engine is the unchanged discogs scripts | Superseded by 0036 |
 | [0005](0005-technology-stack-and-conventions.md) | Technology stack and code conventions | Accepted (frontend parts superseded by 0029, Style bullet by 0034, one-file backend by 0036) |
@@ -13,8 +13,8 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0007](0007-trust-boundary-and-secrets.md) | Trust boundary, no authentication, secrets | Accepted |
 | [0008](0008-job-model.md) | Job model: one job at a time, queue, polling, write lock | Accepted |
 | [0009](0009-settings-and-api-keys.md) | Settings and API keys | Accepted |
-| [0010](0010-bliss-file-naming.md) | Bliss file naming after fixes and edits | Accepted |
-| [0011](0011-ingestion-move.md) | Moving fixed albums to the ingest folder | Accepted |
+| [0010](0010-bliss-file-naming.md) | Bliss file naming after fixes and edits | Accepted (output folder layout: 0037) |
+| [0011](0011-ingestion-move.md) | Moving fixed albums to the ingest folder | Accepted (flat target superseded by 0037) |
 | [0012](0012-language-and-performance.md) | Stay in Python; speed up compute inside the discogs scripts | Superseded by 0036 |
 | [0013](0013-discogs-track-assignment.md) | Discogs release search and track assignment | Accepted |
 | [0014](0014-internal-tag-editor.md) | Internal tag editor; what is editable and what is Discogs-owned | Accepted |
@@ -40,6 +40,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0034](0034-python-formatting-and-linting-with-ruff.md) | Python formatting and linting with ruff | Accepted |
 | [0035](0035-automated-tests-with-pytest.md) | Automated tests with pytest on synthetic albums | Accepted |
 | [0036](0036-standalone-pipeline-package.md) | A standalone pipeline package; the discogs repository is no longer needed | Accepted |
+| [0037](0037-library-watcher-and-layout.md) | The library folder: layout template, watcher, status | Accepted |
 
 ## Which ADR covers what
 
@@ -52,6 +53,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | Python formatting, linting, annotations, `pyproject.toml` | 0034 |
 | tests, fixtures, the `test` dependency group | 0035, 0018 |
 | the `pipeline/` package, API clients, Discogs tags, `drcalc` | 0036, 0014, 0013 |
+| the output folder layout, the watcher, the Library tab, the status indicator, Move to library | 0037, 0010, 0011 |
 | frontend stack, `ui/`, building `static/ui/` | 0029 |
 | statuses, steps, lyrics rules, scan cache | 0006 |
 | paths, endpoints, secrets, access | 0007 |
