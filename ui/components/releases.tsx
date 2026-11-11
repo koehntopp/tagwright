@@ -44,7 +44,7 @@ function Results({ rows, sort, setSort, count, pick }: { rows: any[]; sort: Sort
 // ---- Discogs: search a release, assign album files to its tracks ----
 /** Spinner over a dialog's result area while a request runs (a Discogs or MusicBrainz call takes seconds). */
 const Busy = ({ text }: { text: string }) => (
-	<div role="status" aria-live="polite" className="absolute inset-0 z-10 grid place-items-start justify-center pt-10">
+	<div role="status" aria-live="polite" className="absolute inset-0 z-10 grid place-items-center">
 		<span className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow"><RefreshCw className="size-4 animate-spin" />{text}</span>
 	</div>
 )
@@ -109,7 +109,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a Discogs release ID" />
 				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search Discogs</Button>
 			</form>
-			<div className="relative">
+			<div className="relative min-h-48">
 			{busy && <Busy text={what} />}
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>
 				{rel ? (
@@ -180,7 +180,7 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a MusicBrainz release ID" />
 				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search MusicBrainz</Button>
 			</form>
-			<div className="relative">
+			<div className="relative min-h-48">
 			{busy && <Busy text={what} />}
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>
 				{rel ? (
