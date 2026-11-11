@@ -41,6 +41,7 @@ from library.template import default as default_template
 from library.template import validate as validate_template
 from library.watcher import Library
 from library.watcher import Settings as LibrarySettings
+from pipeline import covers
 from pipeline import discogs as discogs_api
 from pipeline import musicbrainz as mb_api
 from pipeline.config import Config
@@ -533,7 +534,8 @@ def album(path: str) -> dict:
 
 
 def make_picture(data: bytes) -> Picture:
-	"""Front-cover Picture from image bytes; JPEG and PNG are kept, anything else becomes JPEG (400 if unreadable)."""
+	"""Front-cover Picture from image bytes: JPEG and PNG are kept, anything else becomes JPEG, and an image larger
+	than the cover limit (1500 px) is scaled down (400 if unreadable)."""
 	try:
 		with Image.open(io.BytesIO(data)) as im:
 			fmt, w, h, mode = im.format, im.width, im.height, im.mode
@@ -553,7 +555,8 @@ def make_picture(data: bytes) -> Picture:
 		data,
 	)
 	pic.depth = {'1': 1, 'L': 8, 'P': 8, 'RGB': 24, 'RGBA': 32}.get(mode, 24)
-	return pic
+	# a large image is scaled at once, to the limit the pipeline uses (ADR 0016), so it never sits in the files oversized
+	return covers.resized(pic, Config(data_dir=DATA).cover_max_size, Path('cover'))
 
 
 def embed_cover(album: Path, pic: Picture, only_missing: bool = False) -> None:

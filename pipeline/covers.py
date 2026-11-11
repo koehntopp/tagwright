@@ -32,7 +32,7 @@ def resize_covers(album: Path, max_size: int) -> int:
 			changed = False
 			pictures = []
 			for pic in audio.pictures:
-				new = _resized(pic, max_size, flac_path)
+				new = resized(pic, max_size, flac_path)
 				changed = changed or new is not pic
 				pictures.append(new)
 			if changed:
@@ -47,7 +47,9 @@ def resize_covers(album: Path, max_size: int) -> int:
 	return rewritten
 
 
-def _resized(pic: Picture, max_size: int, path: Path) -> Picture:
+def resized(pic: Picture, max_size: int, path: Path) -> Picture:
+	"""The picture itself when it is small enough (or not a JPEG/PNG it can decode), else a JPEG at most
+	max_size on either side."""
 	if (
 		pic.mime not in ('image/jpeg', 'image/png')
 		or not pic.data

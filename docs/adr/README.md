@@ -45,6 +45,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0039](0039-incomplete-and-what-is-missing.md) | "Incomplete" instead of "Ready", and showing what is missing | Accepted |
 | [0040](0040-channel-badges.md) | Channel badges (Mono, Stereo, 5.1, 7.1) on tracks | Accepted |
 | [0041](0041-wider-inspector.md) | A wider inspector on wide screens | Accepted |
+| [0042](0042-covers-are-scaled-on-upload.md) | A dropped or fetched cover is scaled to the limit at once | Accepted |
 
 ## Which ADR covers what
 

@@ -1,6 +1,6 @@
 # ADR 0016: Cover art: display, size warning, replacement
 
-- **Status**: Accepted
+- **Status**: Accepted (an uploaded cover is scaled at once: [0042](0042-covers-are-scaled-on-upload.md))
 - **Date**: 2026-11-08
 
 ## Context
@@ -21,5 +21,5 @@ UC-9. Library quality needs a cover of at least 1400x1400. Covers are embedded i
 
 ## Consequences
 
-- `fixtags.py` resizes covers on a later run to its `cover_max_size` (default 1500 px); an uploaded cover larger than that is reduced then.
+- `fixtags.py` resizes covers on a later run to its `cover_max_size` (default 1500 px); an uploaded cover larger than that is reduced then. **Since [0042](0042-covers-are-scaled-on-upload.md) an uploaded or Discogs cover is scaled to that limit at once.**
 - A folder image is embedded only by uploading a cover; the pipeline does not embed it.
