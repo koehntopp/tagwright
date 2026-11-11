@@ -174,11 +174,6 @@ export default function Page() {
 					{/* eslint-disable-next-line @next/next/no-img-element */}
 					<img src="/static/icon.svg" alt="" className="size-8 shrink-0" />
 				</div>
-				<div role="tablist" aria-label="Folder" className="mr-2 flex shrink-0 rounded-full bg-slate-300/50 p-0.5 text-sm font-medium">
-					{(['staging', 'library'] as const).map(k => (
-						<button key={k} role="tab" aria-selected={area === k} onClick={() => switchArea(k)} title={k === 'staging' ? 'Albums that are being fixed' : 'Albums already in the library'} className={`rounded-full px-3 py-1 ${area === k ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>{k === 'staging' ? 'Staging' : 'Library'}</button>
-					))}
-				</div>
 				<nav className="flex shrink-0 items-center gap-1">
 					{FILTERS.map(f => (
 						<button key={f.id} onClick={() => (filter === f.id ? cycleSort() : setFilter(f.id))} title={filter === f.id ? `Sorted by ${SORT_NAMES[sort]}; click again to change` : undefined} className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-[17px] font-medium ${filter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>
@@ -187,7 +182,14 @@ export default function Page() {
 				))}
 				</nav>
 				<button onClick={async () => { await load(); toast.success('Rescanned') }} title="Rescan folder" aria-label="Rescan folder" className="rounded-full p-2 text-slate-600 hover:bg-white/60"><RefreshCw className="size-4" /></button>
-				<div className="relative ml-auto w-72 min-w-24 shrink">
+				<button role="switch" aria-checked={area === 'library'} aria-label="Folder: staging or library" onClick={() => switchArea(area === 'library' ? 'staging' : 'library')} title={area === 'library' ? 'Showing the library; click for the staging folder' : 'Showing the staging folder; click for the library'} className="ml-auto flex h-9 w-44 shrink-0 items-center justify-between gap-2 rounded-full border border-slate-300 bg-white px-3.5 text-[13px] font-medium">
+					<span className={area === 'staging' ? 'text-slate-900' : 'text-slate-400'}>Staging</span>
+					<span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${area === 'library' ? 'bg-slate-700' : 'bg-slate-300'}`}>
+						<span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${area === 'library' ? 'left-[1.125rem]' : 'left-0.5'}`} />
+					</span>
+					<span className={area === 'library' ? 'text-slate-900' : 'text-slate-400'}>Library</span>
+				</button>
+				<div className="relative w-72 min-w-20 shrink">
 					<Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
 					<Input ref={searchRef} type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search" title="Search albums, artists, IDs (⌘K)" className="h-9 rounded-full border-slate-300 bg-white pl-9 pr-12" />
 					<kbd className="absolute right-3 top-2 hidden rounded bg-slate-100 px-1.5 text-xs text-slate-500 min-[1600px]:block">⌘K</kbd>
