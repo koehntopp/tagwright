@@ -53,7 +53,7 @@ export function CoverDelete({ open, onClose, onOk, err }: { open: boolean; onClo
 
 export function AlbumEdit({ a, onClose, done }: { a: Album | null; onClose: () => void; done: (path: string) => void }) {
 	const [artist, setArtist] = useState(''), [name, setName] = useState(''), [err, setErr] = useState('')
-	useEffect(() => { if (a) { setArtist(a.artist_override || a.artist); setName(a.title_override || a.album); setErr('') } }, [a])
+	useEffect(() => { if (a) { setArtist(a.artist_override || a.artist); setName(a.title_override || a.album); setErr('') } }, [a?.path])  // eslint-disable-line react-hooks/exhaustive-deps  -- by path: a refresh of the album must not overwrite what is being typed
 	if (!a) return null
 	const save = async () => {
 		const ar = artist.trim(), ti = name.trim()
@@ -114,7 +114,7 @@ export function LyricsEdit({ target, onClose, done }: { target: { path: string; 
 		if (!target) return
 		setRes(null); setUsed(-1); setErr('')
 		api(`/api/track?path=${encodeURIComponent(target.path)}&file=${encodeURIComponent(target.file)}`).then(r => { setT(r); setTitle(r.title); setArtist(r.artist); setText(r.lyrics) }, e => { toast.error(e.message); onClose() })
-	}, [target])  // eslint-disable-line react-hooks/exhaustive-deps
+	}, [target?.path, target?.file])  // eslint-disable-line react-hooks/exhaustive-deps  -- by value: the parent builds a new target object on every render (the library status polls every 3 s)
 	if (!target || !t) return null
 	const synced = /^\s*\[\d+:\d+(\.\d+)?\]/m.test(text), n = text.trim() ? text.replace(/\n+$/, '').split('\n').length : 0
 	const near = (x: any) => Math.abs(x.duration - t.length)
