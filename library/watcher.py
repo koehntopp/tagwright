@@ -18,7 +18,7 @@ from library.executor import Executor
 from library.index import Index
 from library.planner import Item, Problem
 from library.scanner import Reader, read_tags, scan
-from library.template import Template, default, target, validate
+from library.template import Template, default, validate
 
 log = logging.getLogger(__name__)
 
@@ -269,35 +269,48 @@ class Library:
 
 	# --- helpers for the web layer
 	def preview(self, template: Template, album: str | None = None) -> dict:
-		"""What the template would do with one album of the library (nothing is changed)."""
+		"""What the template would do with one album of the library (nothing is changed): the album folder the
+		files get and each file's name below it. Without `album` the first folder that has a placeable file is used."""
 		errors, warnings = validate(template)
-		out: dict = {'errors': errors, 'warnings': warnings, 'album': '', 'files': []}
+		out: dict = {
+			'errors': errors,
+			'warnings': warnings,
+			'album': '',
+			'album_dir': '',
+			'files': [],
+		}
 		if errors or self._index is None:
 			return out
-		items = self._index.items()
 		by_dir: dict[str, list[Item]] = {}
-		for i in items:
+		for i in self._index.items():
 			by_dir.setdefault(str(i.path.parent), []).append(i)
-		choice = (
-			album
-			if album in by_dir
-			else next((d for d, v in sorted(by_dir.items()) if len(v) > 1), next(iter(by_dir), ''))
-		)
-		sample = by_dir.get(choice, [])
-		plan = planner.plan(sample, template)
-		wanted = {str(m.src): str(m.dst) for m in plan.moves}
+		candidates = [album] if album in by_dir else sorted(by_dir)
+		choice, plan = '', planner.Plan()
+		for d in candidates:
+			p = planner.plan(by_dir[d], template)
+			if p.moves or p.in_place:
+				choice, plan = d, p
+				break
+		else:
+			choice = candidates[0] if candidates else ''
+			plan = planner.plan(by_dir.get(choice, []), template)
+		wanted = {str(m.src): m.dst for m in plan.moves}
 		problems = {str(p.path): p.reason for p in [*plan.unplaced, *plan.skipped]}
+		depth = len(template.folders)
+		sample = by_dir.get(choice, [])
+		files = []
+		for i in sample[:30]:
+			dst = wanted.get(str(i.path), i.path if str(i.path) not in problems else None)
+			files.append(
+				{
+					'from': str(i.path),
+					'to': str(dst) if dst else '',
+					'name': '/'.join(dst.parts[depth:]) if dst else '',
+					'problem': problems.get(str(i.path), ''),
+				}
+			)
+		placed = next((f for f in files if f['to']), None)
 		out['album'] = choice
-		out['files'] = [
-			{
-				'from': str(i.path),
-				'to': wanted.get(str(i.path), str(i.path) if str(i.path) not in problems else ''),
-				'problem': problems.get(str(i.path), ''),
-			}
-			for i in sample[:30]
-		]
+		out['album_dir'] = '/'.join(PurePosixPath(placed['to']).parts[:depth]) if placed else ''
+		out['files'] = files
 		return out
-
-	def target_of(self, tags: dict[str, str], template: Template) -> PurePosixPath:
-		t = target(template, tags)
-		return PurePosixPath(*t.album_dir, t.filename)

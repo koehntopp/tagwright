@@ -199,13 +199,25 @@ export function LibraryTab({ lib, setLib }: { lib: any; setLib: (l: any) => void
 
 			{prev && (
 				<div className="rounded-lg border border-slate-200 p-2 text-xs">
-					<div className="mb-1 font-medium">Preview{prev.album ? <span className="font-normal text-slate-500"> · {prev.album}</span> : null}</div>
+					<div className="mb-1 font-medium">Preview{prev.album && prev.album !== '.' ? <span className="font-normal text-slate-500"> · from {prev.album}</span> : null}</div>
 					{prev.errors?.map((e: string) => <p key={e} className="text-rose-600">{e}</p>)}
 					{prev.warnings?.map((e: string) => <p key={e} className="text-amber-600">{e}</p>)}
-					<ul className="mt-1 max-h-40 space-y-0.5 overflow-y-auto font-mono">
-						{prev.files?.slice(0, 12).map((f: any) => <li key={f.from} className="truncate" title={f.from}>{f.problem ? <span className="text-amber-600">{f.from.split('/').pop()}: {f.problem}</span> : <>→ {f.to}</>}</li>)}
-						{!prev.files?.length && !prev.errors?.length && <li className="text-slate-400">No albums in the library yet.</li>}
-					</ul>
+					{prev.album_dir && (
+						<div className="mt-1 grid grid-cols-[5.5rem_1fr] gap-x-2 gap-y-0.5">
+							<span className="text-slate-500">Album folder</span>
+							<span className="break-all font-mono">{prev.album_dir}/</span>
+							<span className="text-slate-500">File names</span>
+							<ul className="max-h-40 space-y-0.5 overflow-y-auto font-mono">
+								{prev.files?.filter((f: any) => f.name).slice(0, 12).map((f: any) => <li key={f.from} className="truncate" title={f.to}>{f.name}</li>)}
+							</ul>
+						</div>
+					)}
+					{prev.files?.some((f: any) => f.problem) && (
+						<ul className="mt-1 space-y-0.5 font-mono text-amber-600">
+							{prev.files.filter((f: any) => f.problem).slice(0, 4).map((f: any) => <li key={f.from} className="truncate" title={f.from}>{f.from.split('/').pop()}: {f.problem}</li>)}
+						</ul>
+					)}
+					{!prev.files?.length && !prev.errors?.length && <p className="text-slate-400">No albums in the library yet.</p>}
 				</div>
 			)}
 		</div>

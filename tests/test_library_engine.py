@@ -460,11 +460,31 @@ class TestWatcher:
 		lib.cycle()
 		p = lib.preview(default())
 		assert p['album'] == 'dump'
+		assert p['album_dir'] == 'Artist/Album_2020_CD'
+		assert [f['name'] for f in p['files']] == ['01_01_Song_1.flac', '01_02_Song_2.flac']
 		assert [(f['from'], f['to']) for f in p['files']] == [
 			('dump/a.flac', 'Artist/Album_2020_CD/01_01_Song_1.flac'),
 			('dump/b.flac', 'Artist/Album_2020_CD/01_02_Song_2.flac'),
 		]
 		assert lib.preview(Template(folders=(), filename=()))['errors']
+
+	def test_the_preview_picks_a_folder_with_placeable_files_and_shows_disc_folders(
+		self, make_flac: MakeFlac, lib_root: Path, tmp_path: Path
+	) -> None:
+		song(
+			make_flac, lib_root / 'a_unplaced' / 'x.flac', TITLE=''
+		)  # sorts first but cannot be placed
+		song(make_flac, lib_root / 'b' / '01.flac', DISCNUMBER='1')
+		song(make_flac, lib_root / 'b' / '02.flac', 2, DISCNUMBER='2')
+		lib = library(lib_root, tmp_path, Clock(), apply=False)
+		lib.cycle()
+		p = lib.preview(default())
+		assert p['album'] == 'b'
+		assert p['album_dir'] == 'Artist/Album'
+		assert [f['name'] for f in p['files']] == [
+			'Disc 1/01_01_Song_1.flac',
+			'Disc 2/02_02_Song_2.flac',
+		]
 
 	def test_the_plan_agrees_with_the_planner_module(
 		self, make_flac: MakeFlac, lib_root: Path, tmp_path: Path
