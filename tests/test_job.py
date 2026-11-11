@@ -371,3 +371,40 @@ def test_move_refuses_a_small_cover(
 ) -> None:
 	monkeypatch.setattr(tagwright, 'MIN_COVER', 1400)
 	assert client.post('/api/move', json={'path': str(album)}).status_code == 409
+
+
+def test_move_preview_says_what_would_happen_without_doing_it(
+	client: TestClient, album: Path
+) -> None:
+	p = client.get('/api/move/preview', params={'path': str(album)}).json()
+	assert p['library'] == str(tagwright.INGEST)
+	assert p['album_dir'] == 'Test_Artist/Test_Album_2020_DR10_CD_TST_001'
+	assert [f['name'] for f in p['files']] == ['01_01_One.flac', '01_02_Two.flac']
+	assert (p['can_move'], p['problems']) == (True, [])
+	assert 'Only the FLAC files move' in p['stays']
+	assert len(tagwright.flacs(album)) == 2  # nothing moved
+	assert not (tagwright.INGEST / 'Test_Artist').exists()
+
+
+def test_move_preview_lists_every_reason_the_move_is_refused(
+	client: TestClient, album: Path
+) -> None:
+	where = tagwright.INGEST / 'Test_Artist' / 'Test_Album_2020_DR10_CD_TST_001'
+	where.mkdir(parents=True)
+	(where / '01_01_One.flac').write_bytes(b'x')
+	p = client.get('/api/move/preview', params={'path': str(album)}).json()
+	assert p['can_move'] is False
+	assert any('already exists' in x for x in p['problems'])
+	assert [f['exists'] for f in p['files']] == [True, False]
+	assert client.post('/api/move', json={'path': str(album)}).status_code == 409
+
+
+def test_move_preview_for_an_album_that_is_not_fixed(
+	client: TestClient, make_flac: MakeFlac
+) -> None:
+	p = client.get('/api/move/preview', params={'path': str(open_album(make_flac))}).json()
+	assert (p['can_move'], 'not fully fixed' in ' '.join(p['problems'])) == (False, True)
+
+
+def test_move_preview_outside_the_root_is_refused(client: TestClient, tmp_path: Path) -> None:
+	assert client.get('/api/move/preview', params={'path': str(tmp_path)}).status_code == 400

@@ -818,27 +818,24 @@ def get_job(since: int = 0) -> dict:
 	}
 
 
-@app.post('/api/move')
-def move(body: dict) -> dict:
-	"""Place a fixed album in the library: each FLAC goes straight to its path in the layout (ADR 0037)."""
-	path = safe(body.get('path', ''))
-	if job['state'] == 'running':
-		raise HTTPException(409, 'a job is running')
-	if path == ROOT or not path.is_dir():
-		raise HTTPException(400, 'not an album folder')
+def move_plan(path: Path) -> tuple[dict, list[lib_planner.Move]]:
+	"""What "Move to library" would do with an album, and why it cannot (`problems`); nothing is changed."""
+	items, problems, files = [], [], []
 	s = get_summary(path)
+	if job['state'] == 'running':
+		problems.append('a job is running')
 	if s['status'] != 'fixed':
-		raise HTTPException(409, 'album is not fully fixed')
+		problems.append('the album is not fully fixed')
 	if any(i['level'] == 'ingest' for i in s['issues']):
-		raise HTTPException(
-			409, 'cover is below the minimum size; replace it or lower the minimum in settings'
+		problems.append(
+			'the cover is below the minimum size; replace it or lower the minimum in settings'
 		)
-	items = []
 	for f in flacs(path):
 		tags, error = read_tags(f)
 		if error:
-			raise HTTPException(409, f'{f.name} cannot be read: {error}')
-		items.append(lib_planner.Item(PurePosixPath(str(f)), tags))
+			problems.append(f'{f.name} cannot be read: {error}')
+		else:
+			items.append(lib_planner.Item(PurePosixPath(str(f)), tags))
 	template = library_settings().template
 
 	def has_disc_dirs(album_dir: tuple[str, ...]) -> bool:
@@ -846,18 +843,51 @@ def move(body: dict) -> dict:
 		return d.is_dir() and any(is_disc_dir(x.name) for x in d.iterdir() if x.is_dir())
 
 	plan = lib_planner.plan(items, template, has_disc_dirs)
-	if problems := [*plan.unplaced, *plan.skipped]:
-		raise HTTPException(409, f'{problems[0].path.name}: {problems[0].reason}')
+	problems += [f'{p.path.name}: {p.reason}' for p in [*plan.unplaced, *plan.skipped]]
+	depth = len(template.folders)
+	album_dir = ''
 	for m in plan.moves:
-		if (INGEST / m.dst).exists():
-			raise HTTPException(409, f'{INGEST / m.dst} already exists')
+		album_dir = album_dir or '/'.join(m.dst.parts[:depth])
+		exists = (INGEST / m.dst).exists()
+		if exists:
+			problems.append(f'{m.dst} already exists in the library; nothing is overwritten')
+		files.append({'from': m.src.name, 'name': '/'.join(m.dst.parts[depth:]), 'exists': exists})
+	info = {
+		'library': str(INGEST),
+		'album_dir': album_dir,
+		'files': files,
+		'problems': problems,
+		'can_move': bool(plan.moves) and not problems,
+		'stays': 'Only the FLAC files move. Other files in the album folder (images, logs) stay in the input folder.',
+	}
+	return info, plan.moves
+
+
+@app.get('/api/move/preview')
+def move_preview(path: str) -> dict:
+	"""What Move to library will do with this album: the library folder, the album folder and each file name."""
+	album = safe(path)
+	if album == ROOT or not album.is_dir():
+		raise HTTPException(400, 'not an album folder')
+	return move_plan(album)[0]
+
+
+@app.post('/api/move')
+def move(body: dict) -> dict:
+	"""Place a fixed album in the library: each FLAC goes straight to its path in the layout (ADR 0037)."""
+	path = safe(body.get('path', ''))
+	if path == ROOT or not path.is_dir():
+		raise HTTPException(400, 'not an album folder')
+	info, moves = move_plan(path)
+	if not info['can_move']:
+		raise HTTPException(409, info['problems'][0] if info['problems'] else 'nothing to move')
 	with library.exclusive:
-		for m in plan.moves:
+		for m in moves:
 			dst = INGEST / m.dst
 			dst.parent.mkdir(parents=True, exist_ok=True)
 			shutil.move(str(m.src), dst)
 	library.poke()
-	return {'moved_to': str(INGEST.joinpath(*plan.moves[0].dst.parts[: len(template.folders)]))}
+	return {'moved_to': str(INGEST / info['album_dir'])}
 
 
 # ---------- track editor: assign album files to a Discogs release ----------

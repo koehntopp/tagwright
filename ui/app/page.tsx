@@ -10,7 +10,7 @@ import { AlbumEdit, CoverDelete, LyricsEdit, SettingsDialog, Shell, TagEditor } 
 import { CopyBtn, CoverImg, IdBadge, Inspector } from '@/components/inspector'
 import { LibraryDialog, LibraryIndicator, useLibrary } from '@/components/library'
 import { DiscogsDialog, MbDialog } from '@/components/releases'
-import { Album, Job, LogLine, STATUS, TrackFile, api, post, title } from '@/lib/api'
+import { Album, Job, LogLine, MovePreview, STATUS, TrackFile, api, post, title } from '@/lib/api'
 
 const player = typeof Audio !== 'undefined' ? new Audio() : (null as unknown as HTMLAudioElement)
 
@@ -43,6 +43,7 @@ export default function Page() {
 	const [selected, setSelected] = useState<string | null>(null)
 	const [job, setJob] = useState<Job>({ state: 'idle', path: null, queue: [] })
 	const lib = useLibrary()
+	const [mv, setMv] = useState<MovePreview | null>(null)
 	const [log, setLog] = useState<LogLine[]>([])
 	const [dlg, setDlg] = useState<{ kind: string; tab?: string; file?: string; path?: string } | null>(null)
 	const [tagTab, setTagTab] = useState<string | null>(null)
@@ -146,6 +147,12 @@ export default function Page() {
 	}
 	const done = async (path: string) => { await refreshOne(path); setKreload(n => n + 1) }
 	const dk = dlg?.kind
+	useEffect(() => {
+		if (dk !== 'move' || !a) { setMv(null); return }
+		let live = true
+		api<MovePreview>('/api/move/preview?path=' + encodeURIComponent(a.path)).then(r => live && setMv(r), e => live && setCerr(e.message))
+		return () => { live = false }
+	}, [dk, a?.path])  // eslint-disable-line react-hooks/exhaustive-deps
 
 	return (
 		<div className="flex h-screen flex-col overflow-hidden bg-[#f1f4f9] text-[14px] text-slate-900">
@@ -236,8 +243,22 @@ export default function Page() {
 			<TagEditor a={tagTab ? a : null} tab={tagTab || 'album'} reload={kreload} onClose={() => setTagTab(null)} done={done}
 				openLyrics={(path, file) => setDlg({ kind: 'lyrics', path, file })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })} />
 			<LyricsEdit target={dk === 'lyrics' && dlg?.path ? { path: dlg.path, file: dlg.file! } : null} onClose={() => setDlg(null)} done={refreshOne} />
-			<Shell open={dk === 'move'} onClose={() => setDlg(null)} title="Move to the library?" wide="sm:max-w-[24rem]" err={cerr} save={move} saveLabel="Move">
-				<p className="text-sm">&ldquo;{a ? title(a) : ''}&rdquo; is placed in the library folder, each track in its folder and under its name from the layout.</p>
+			<Shell open={dk === 'move'} onClose={() => setDlg(null)} title="Move to the library?" wide="sm:max-w-[40rem]" err={cerr} save={move} saveLabel="Move" saveDisabled={!mv?.can_move}>
+				{!mv ? <p className="text-sm text-slate-500">Checking…</p> : (
+					<div className="space-y-2 text-sm">
+						<p>&ldquo;{a ? title(a) : ''}&rdquo; moves {mv.files.length} track{mv.files.length === 1 ? '' : 's'} into the library, each to its place from the layout in Settings.</p>
+						<div className="grid grid-cols-[5.5rem_1fr] gap-x-2 gap-y-1 text-xs">
+							<span className="text-slate-500">Library</span><span className="break-all font-mono">{mv.library}/</span>
+							<span className="text-slate-500">Album folder</span><span className="break-all font-mono">{mv.album_dir || '—'}/</span>
+							<span className="text-slate-500">File names</span>
+							<ul className="max-h-48 space-y-0.5 overflow-y-auto font-mono">
+								{mv.files.map(f => <li key={f.from} className={`break-all ${f.exists ? 'text-rose-600' : ''}`}>{f.name}{f.exists ? '  (already exists)' : ''}</li>)}
+							</ul>
+						</div>
+						<p className="text-xs text-slate-500">{mv.stays}</p>
+						{mv.problems.length > 0 && <ul className="space-y-0.5 text-xs text-rose-600">{mv.problems.map(x => <li key={x} className="break-all">{x}</li>)}</ul>}
+					</div>
+				)}
 			</Shell>
 			<DiscogsDialog a={dk === 'discogs' ? a : null} onClose={() => setDlg(null)} done={done} />
 			<MbDialog a={dk === 'mb' ? a : null} onClose={() => setDlg(null)} done={done} />
