@@ -23,12 +23,12 @@ os.environ.update(
 )
 
 import numpy as np  # noqa: E402  # after the environment is set, see the module docstring
-import pytest  # noqa: E402
-import soundfile as sf  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-from mutagen.flac import FLAC  # noqa: E402
+import pytest  # noqa: E402  # same reason
+import soundfile as sf  # noqa: E402  # same reason
+from fastapi.testclient import TestClient  # noqa: E402  # same reason
+from mutagen.flac import FLAC  # noqa: E402  # same reason
 
-import app as tagwright  # noqa: E402
+import app as tagwright  # noqa: E402  # same reason
 
 MakeFlac = Callable[..., Path]
 
