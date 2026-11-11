@@ -9,7 +9,7 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 
-from pipeline import dr, fingerprint, fixtags, replaygain
+from pipeline import dr, fingerprint, fixtags, lyrics, replaygain
 from pipeline.http import ApiError
 from pipeline.tools import Context, StepError, Stopped
 
@@ -36,6 +36,7 @@ STEPS: list[tuple[str, StepFn]] = [
 	('ReplayGain', replaygain.run),
 	('Fingerprints', fingerprint.run),
 	('Discogs tags', discogs_tags),
+	('Lyrics', lyrics.run),
 ]
 
 

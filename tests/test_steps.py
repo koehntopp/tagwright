@@ -363,6 +363,7 @@ class TestRun:
 			'ReplayGain',
 			'Fingerprints',
 			'Discogs tags',
+			'Lyrics',
 		]
 
 
