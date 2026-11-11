@@ -14,3 +14,23 @@ select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
 [tool.ruff.format]
 quote-style = "single"
 indent-style = "tab"
+
+[dependency-groups]
+# What `uv run --group test pytest` needs: the dependencies of app.py (its PEP 723 header) plus the test tools.
+test = [
+    "pytest",
+    "httpx",
+    "numpy",
+    "soundfile",
+    "fastapi",
+    "uvicorn",
+    "mutagen",
+    "python-slugify",
+    "unidecode",
+    "pathvalidate",
+    "pillow",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

@@ -33,6 +33,7 @@ Tagwright is a self-hosted web app (FastAPI + one-file frontend) around the disc
 - Never run tests, servers or edits against `/path/to/staging`, the real ingest folder or any real library. Copy one album to a scratch directory, set `ROOT`, `INGEST_DIR` and `DATA_DIR` there, use a free port, and clean up afterwards.
 - Check API behaviour with `curl`, tags and pictures on disk with `metaflac`, and the UI in a browser at 1440 px with a clean console. Report what you did **not** verify.
 - Do not claim a feature works until you ran it. If something failed or was skipped, say so.
+- Automated tests ([ADR 0035](docs/adr/0035-automated-tests-with-pytest.md)): `uv run --group test pytest`. They use synthetic albums in a temp directory and a fake `nzbfix`, never real data. A change to status, naming, job or move behaviour comes with a test that fails without it.
 
 ## 5. Related code
 
@@ -118,4 +119,5 @@ Check each item and say which you checked:
 - [ ] `static/ui/` rebuilt (`cd ui && npm run build`) if anything under `ui/` changed.
 - [ ] Verified on a copy, not on real data; what was not verified is stated.
 - [ ] No secrets in code, logs, commits or output.
+- [ ] `uv run --group test pytest` passes, or the failures are listed.
 - [ ] Python changed: `uv run ruff check .` and `uv run ruff format --check .` pass, or the failures are listed.

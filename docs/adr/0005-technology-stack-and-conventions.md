@@ -21,4 +21,4 @@ The tool is small, single-user and edited by agents. The discogs repository it w
 ## Consequences
 
 - Single files stay readable only while small; if `app.py` outgrows a single screen of concerns, split by ADR, not by habit.
-- No test framework is in place ([0018](0018-verification.md)).
+- Automated tests: [0035](0035-automated-tests-with-pytest.md); the UI and the real pipeline are verified by hand ([0018](0018-verification.md)).
