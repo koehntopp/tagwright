@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { GripVertical, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ChannelBadge } from '@/components/inspector'
 
-export type Row = { file: string; title: string; artist: string; disc: string; track: string; subtitle: string }
+export type Row = { channels?: number; file: string; title: string; artist: string; disc: string; track: string; subtitle: string }
 const COLS: [keyof Row, string, string][] = [['disc', 'Disc', 'w-14'], ['track', 'Track', 'w-14'], ['title', 'Title', 'min-w-40'], ['artist', 'Artist', 'min-w-32'], ['subtitle', 'Disc subtitle', 'min-w-28']]
 const SETTABLE: [keyof Row, string][] = [['disc', 'Disc'], ['subtitle', 'Disc subtitle'], ['artist', 'Artist'], ['track', 'Track']]
 
@@ -76,6 +77,7 @@ export function TrackTable({ rows, setRows, openLyrics }: { rows: Row[]; setRows
 						<th className="w-6" />
 						<th className="w-6 pb-1"><input type="checkbox" className="accent-slate-800" checked={all} onChange={() => setSel(all ? new Set() : new Set(rows.map(r => r.file)))} title="Select all" /></th>
 						{COLS.map(c => <th key={c[0]} className="pb-1 font-medium">{c[1]}</th>)}
+						<th className="pb-1 font-medium">Channels</th>
 						<th />
 					</tr>
 				</thead>
@@ -92,6 +94,7 @@ export function TrackTable({ rows, setRows, openLyrics }: { rows: Row[]; setRows
 							{COLS.map(([k, , w]) => (
 								<td key={k} className="pb-1 pr-2"><Input className={`h-7 text-xs ${w}`} value={r[k] ?? ''} onChange={e => edit(r.file, k, e.target.value)} /></td>
 							))}
+							<td className="pr-2"><ChannelBadge n={r.channels} /></td>
 							<td><button className="rounded-full p-1 hover:bg-slate-100" title="Edit lyrics" onClick={() => openLyrics(r.file)}><Pencil className="size-3" /></button></td>
 						</tr>
 					))}

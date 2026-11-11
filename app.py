@@ -49,7 +49,7 @@ from pipeline.http import ApiError
 from pipeline.layout import album_dirs, flacs, is_disc_dir
 from pipeline.naming import bliss_album, rename_files
 from pipeline.run import run_album
-from pipeline.tagio import Tags, tag
+from pipeline.tagio import Tags, channels_from_title, tag
 from pipeline.tools import Context, Stopped
 
 
@@ -170,11 +170,16 @@ def track_dr_mean(tags: list[Tags]) -> str:
 
 
 def track_files(
-	album: Path, files: list[Path], tags: list[Tags], lengths: list[float], has_discogs: bool
+	album: Path,
+	files: list[Path],
+	tags: list[Tags],
+	lengths: list[float],
+	channels: list[int],
+	has_discogs: bool,
 ) -> list[dict]:
 	"""Per-track rows; checks[i] answers pipeline step i (same order as steps in summarize)."""
 	out = []
-	for f, t, length in zip(files, tags, lengths, strict=False):
+	for f, t, length, ch in zip(files, tags, lengths, channels, strict=False):
 		kind = lyric_kind(t)
 		tags_ok = (
 			has_discogs
@@ -186,6 +191,7 @@ def track_files(
 			{
 				'name': f.name,
 				'length': round(length),
+				'channels': ch,
 				'file': str(f.relative_to(album)),
 				'disc': tag(t, 'DISCNUMBER'),
 				'track': tag(t, 'TRACKNUMBER'),
@@ -315,7 +321,14 @@ def summarize(album: Path) -> dict:
 	]
 	out.update(
 		dr=tag(t0, 'ALBUM_DR') or track_dr_mean(tags),
-		files=track_files(album, files, tags, [a.info.length for a in audio], bool(did)),
+		files=track_files(
+			album,
+			files,
+			tags,
+			[a.info.length for a in audio],
+			[a.info.channels for a in audio],
+			bool(did),
+		),
 		lyrics={'synced': syn, 'plain': pla, 'instrumental': ins, 'missing': mis},
 		# partial = done but worth a look (yellow, still counts as done): some lyrics are plain text only, or the cover is small
 		steps=[
@@ -1192,6 +1205,7 @@ def release_tracks(rid: str) -> dict:
 				'disc': int(m[1]) if m else 1,
 				'track': int(m[2]) if m else seq,
 				'title': t.get('title', ''),
+				'channels': channels_from_title(t.get('title', '')),
 				'duration': seconds(t.get('duration', '')),
 				'artist': artist_names(t.get('artists', [])) or album_artist,
 				'composers': by_role(t.get('extraartists') or [], *WRITER_ROLES),
@@ -1287,6 +1301,7 @@ def album_files(album: Path) -> list[dict]:
 				'file': str(f.relative_to(album)),
 				'title': tag(t, 'TITLE') or f.stem,
 				'duration': round(a.info.length),
+				'channels': a.info.channels,
 				'disc': int(m[0]) if (m := re.match(r'\d+', tag(t, 'DISCNUMBER') or '1')) else 1,
 				'track': int(m[0]) if (m := re.match(r'\d+', tag(t, 'TRACKNUMBER'))) else 0,
 			}
@@ -1600,6 +1615,7 @@ def mb_release(mbid: str) -> dict:
 			'disc': m.get('position', 1),
 			'position': t.get('number', ''),
 			'title': t.get('title', ''),
+			'channels': channels_from_title(t.get('title', '')),
 			'duration': round(t['length'] / 1000) if t.get('length') else 0,
 			'artist': mb_names(t.get('artist-credit')),
 			'artists': people(t.get('artist-credit')),
@@ -1837,10 +1853,12 @@ def get_tags(path: str) -> dict:
 	mb += [k for k in ('BARCODE', 'ASIN') if k in keys]
 	tracks = []
 	for f in files:
-		t = FLAC(f).tags or {}
+		audio = FLAC(f)
+		t = audio.tags or {}
 		tracks.append(
 			{
 				'file': str(f.relative_to(album)),
+				'channels': audio.info.channels,
 				'title': tag(t, 'TITLE'),
 				'artist': tag(t, 'ARTIST'),
 				'disc': tag(t, 'DISCNUMBER'),

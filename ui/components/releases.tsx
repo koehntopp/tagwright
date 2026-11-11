@@ -5,7 +5,8 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Album, api, mmss, post } from '@/lib/api'
+import { Album, api, channelLabel, mmss, post } from '@/lib/api'
+import { ChannelBadge } from '@/components/inspector'
 import { Shell } from '@/components/dialogs'
 
 type Sort = { key: '' | 'year' | 'tracks'; dir: 1 | -1 }
@@ -109,13 +110,13 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 							<tbody>
 								{files.map((f, k) => (
 									<tr key={f.file} className="border-t">
-										<td className="w-1/2 py-1"><div className="max-w-xs truncate" title={f.file}>{f.title}</div><div className="text-xs text-slate-500">{f.file} · {mmss(f.duration)}</div></td>
+										<td className="w-1/2 py-1"><div className="flex items-center gap-2"><span className="max-w-xs truncate" title={f.file}>{f.title}</span><ChannelBadge n={f.channels} /></div><div className="text-xs text-slate-500">{f.file} · {mmss(f.duration)}</div></td>
 										<td>{f.rel !== null && <Input type="number" min={1} className="h-7 w-14 text-xs" value={f.d ?? f.ad} onChange={e => upd(k, { d: e.target.value === '' ? null : +e.target.value })} />}</td>
 										<td>{f.rel !== null && <Input type="number" min={1} className="h-7 w-14 text-xs" value={f.t ?? f.at} onChange={e => upd(k, { t: e.target.value === '' ? null : +e.target.value })} />}</td>
 										<td>
 											<select className={`h-8 w-full rounded-md border bg-white px-2 text-sm ${f.rel !== null && used[f.rel] > 1 ? 'border-rose-500' : ''}`} value={f.rel ?? ''} onChange={e => upd(k, { rel: e.target.value === '' ? null : +e.target.value, conf: 1, d: null, t: null })}>
 												<option value="">Skip (leave as is)</option>
-												{rel.tracks.map((t: any) => <option key={t.i} value={t.i}>{t.position || t.i + 1}  {t.title}{t.duration ? ` (${mmss(t.duration)})` : ''}</option>)}
+												{rel.tracks.map((t: any) => <option key={t.i} value={t.i}>{t.position || t.i + 1}  {t.title}{t.duration ? ` (${mmss(t.duration)})` : ''}{t.channels ? ` · ${channelLabel(t.channels)}` : ''}</option>)}
 											</select>
 										</td>
 										<td className="w-16 text-right">{f.rel === null ? <Badge variant="secondary">skip</Badge> : f.conf >= 0.6 ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">match</Badge> : <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">check</Badge>}</td>
@@ -178,8 +179,8 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 							<tr><td className="py-1 text-slate-500">Album artist</td><td>{rel.artists.length ? commas(rel.artists) : <span className="text-slate-500">none</span>}</td></tr>
 						</tbody></table>
 						<table className="w-full text-sm">
-							<thead><tr className="text-left text-xs text-slate-500"><th className="w-16">Disc</th><th className="w-16">Track</th><th>Title</th><th>Artist</th><th className="w-16 text-right">Length</th></tr></thead>
-							<tbody>{rel.tracks.map((t: any, i: number) => <tr key={i} className="border-t"><td>{t.disc}</td><td>{t.position}</td><td>{t.title}</td><td className="text-slate-700">{commas(t.artists)}</td><td className="text-right text-slate-500">{mmss(t.duration)}</td></tr>)}</tbody>
+							<thead><tr className="text-left text-xs text-slate-500"><th className="w-16">Disc</th><th className="w-16">Track</th><th>Title</th><th>Artist</th><th className="w-16 text-right">Length</th><th className="w-16 pl-2">Channels</th></tr></thead>
+							<tbody>{rel.tracks.map((t: any, i: number) => <tr key={i} className="border-t"><td>{t.disc}</td><td>{t.position}</td><td>{t.title}</td><td className="text-slate-700">{commas(t.artists)}</td><td className="text-right text-slate-500">{mmss(t.duration)}</td><td className="pl-2"><ChannelBadge n={t.channels} hint /></td></tr>)}</tbody>
 						</table>
 						<div className="mt-3 text-xs text-slate-500">Apply writes the release ID, the release group and album artist IDs and links to every file, and the artist ID and link to each file whose title matches a release track. Barcode, ASIN, release country, status, type and disambiguation are filled only where the file has none yet. Titles, track numbers and everything else stay as they are.</div>
 					</>

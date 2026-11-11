@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Alert } from '@/components/ui/alert'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Album, Job, LogLine, TrackFile, api, coverUrl, fmtBytes, mmss, title } from '@/lib/api'
+import { Album, Job, LogLine, TrackFile, api, channelLabel, coverUrl, fmtBytes, mmss, title } from '@/lib/api'
 
 export function copy(text: string) {
 	navigator.clipboard.writeText(text).then(() => toast.success('Copied'), () => toast.error('Copy failed'))
@@ -32,6 +32,12 @@ const LY = {
 const Pill = ({ className = '', ...p }: React.ComponentProps<'span'>) => (
 	<span {...p} className={`inline-flex h-5 items-center justify-center rounded-full px-2 text-[11px] font-medium ${className}`} />
 )
+
+/** Channel layout of a track: Mono and Stereo neutral, multichannel violet (ADR 0040). `hint`: taken from a title. */
+export function ChannelBadge({ n, hint }: { n?: number; hint?: boolean }) {
+	if (!n) return null
+	return <span title={hint ? `The title says ${channelLabel(n)}` : `${n} channel${n > 1 ? 's' : ''}`} className={`inline-flex h-5 w-[3.25rem] shrink-0 items-center justify-center rounded-full text-[11px] font-medium ${n > 2 ? 'bg-violet-100 text-violet-800' : 'bg-slate-200 text-slate-700'} ${hint ? 'opacity-70' : ''}`}>{channelLabel(n)}</span>
+}
 
 export const IdBadge = ({ l, v, full }: { l: 'D' | 'MB'; v: string; full?: boolean }) => {
 	const icon = l === 'D' ? '/static/discogs.png' : '/static/musicbrainz.ico'
@@ -248,6 +254,7 @@ export function Inspector(p: Props) {
 									<span className="w-6 shrink-0 tabular-nums text-slate-400">{String(f.track).split('/')[0].padStart(2, '0')}</span>
 									<span className="flex-1 truncate" title={f.name}>{f.title}</span>
 									<span className="w-10 shrink-0 text-right tabular-nums text-slate-500">{mmss(f.length)}</span>
+									<ChannelBadge n={f.channels} />
 									{stepSel !== null && (f.checks[stepSel]
 										? <span className={`font-semibold ${f.lyrics === 'txt' && a.steps[stepSel].name === 'Lyrics' ? 'text-amber-500' : 'text-emerald-600'}`}>✓</span>
 										: <span className="font-semibold text-rose-600">✗</span>)}

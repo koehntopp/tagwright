@@ -1,5 +1,6 @@
 export type Step = { name: string; done: boolean; partial: boolean; note: string }
 export type TrackFile = {
+	channels?: number
 	name: string
 	file: string
 	title: string
@@ -49,6 +50,8 @@ export async function api<T = any>(u: string, o?: RequestInit): Promise<T> {
 export const post = <T = any>(u: string, b: unknown) =>
 	api<T>(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) })
 
+const CHANNELS: Record<number, string> = { 1: 'Mono', 2: 'Stereo', 3: '3.0', 4: '4.0', 5: '5.0', 6: '5.1', 7: '6.1', 8: '7.1' }
+export const channelLabel = (n?: number) => (n ? CHANNELS[n] || `${n} ch` : '')
 export const title = (a: Album) => a.album || a.name
 export const mmss = (n: number) => (n ? Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0') : '')
 export const fmtBytes = (n: number) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB')

@@ -43,6 +43,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0037](0037-library-watcher-and-layout.md) | The library folder: layout template, watcher, status | Accepted |
 | [0038](0038-staging-and-library-views.md) | Staging and Library views; one name for each folder | Accepted |
 | [0039](0039-incomplete-and-what-is-missing.md) | "Incomplete" instead of "Ready", and showing what is missing | Accepted |
+| [0040](0040-channel-badges.md) | Channel badges (Mono, Stereo, 5.1, 7.1) on tracks | Accepted |
 
 ## Which ADR covers what
 
@@ -58,6 +59,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | the output folder layout, the watcher, the Library tab, the status indicator, Move to library | 0037, 0010, 0011 |
 | the Staging / Library switch, folder names, which folders the UI may read | 0038, 0007 |
 | status names, the Missing box, the missing badges on cards | 0039, 0006 |
+| track rows and the badges on them (channels) | 0040, 0015 |
 | frontend stack, `ui/`, building `static/ui/` | 0029 |
 | statuses, steps, lyrics rules, scan cache | 0006 |
 | paths, endpoints, secrets, access | 0007 |

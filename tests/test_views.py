@@ -181,3 +181,59 @@ def test_the_summary_says_where_an_album_is_now(album: Path, make_flac: MakeFlac
 		tagwright.summarize(library_album(make_flac))['folder']
 		== 'Test_Artist/Test_Album_2020_DR10_CD_TST_001'
 	)
+
+
+class TestChannels:
+	@pytest.mark.parametrize(
+		('title', 'channels'),
+		[
+			('Song (5.1 Mix)', 6),
+			('Song [7.1 Atmos mix]', 8),
+			('Song - Mono', 1),
+			('Song (Stereo Version)', 2),
+			('Song', 0),
+			('Monologue', 0),
+			('Track 15.1', 0),
+			('The 5.10 Blues', 0),
+			('Song (5.1) (Stereo)', 6),
+		],
+	)
+	def test_a_release_track_title_can_name_the_channels(self, title: str, channels: int) -> None:
+		from pipeline.tagio import channels_from_title
+
+		assert channels_from_title(title) == channels
+
+	def test_every_file_row_carries_its_channel_count(
+		self, client: TestClient, make_flac: MakeFlac, album: Path
+	) -> None:
+		import numpy as np
+		import soundfile as sf
+
+		surround = album / '01_03_Surround.flac'
+		sf.write(surround, np.zeros((2205, 6), dtype='int16'), 44100, format='FLAC')
+		audio = FLAC(surround)
+		for k, v in {
+			'TITLE': 'Surround',
+			'TRACKNUMBER': '3',
+			'DISCNUMBER': '1',
+			**COMPLETE,
+		}.items():
+			audio[k] = [v]
+		audio.save()
+		s = client.get('/api/album', params={'path': str(album)}).json()
+		assert {f['title']: f['channels'] for f in s['files']} == {
+			'One': 1,
+			'Two': 1,
+			'Surround': 6,
+		}
+		tags = client.get('/api/tags', params={'path': str(album)}).json()
+		assert {t['title']: t['channels'] for t in tags['tracks']} == {
+			'One': 1,
+			'Two': 1,
+			'Surround': 6,
+		}
+		assert {f['title']: f['channels'] for f in tagwright.album_files(album)} == {
+			'One': 1,
+			'Two': 1,
+			'Surround': 6,
+		}
