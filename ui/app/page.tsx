@@ -218,7 +218,7 @@ export default function Page() {
 				{shown.length ? (
 					<div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] items-start gap-5">
 						{shown.map(x => {
-							const ly = x.lyrics
+							const ly = x.lyrics ?? { synced: 0, plain: 0, instrumental: 0, missing: 0 }
 							return (
 								<div key={x.path} onClick={() => setSelected(x.path)} className={`cursor-pointer overflow-hidden rounded-2xl border transition hover:-translate-y-0.5 hover:shadow-md ${TONE[x.status]} ${x.path === selected ? 'ring-2 ring-slate-800' : ''}`}>
 									<div className="relative aspect-square">

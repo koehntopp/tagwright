@@ -501,22 +501,43 @@ def dirs(path: str = '') -> dict:
 	return {'path': str(p), 'root': str(ROOT), 'dirs': subs}
 
 
+def unreadable_summary(a: Path, error: str) -> dict:
+	"""The summary of an album that could not be read, with every field the UI uses, so one bad file does not break
+	the board: a red card whose inspector says what failed."""
+	return {
+		'path': str(a),
+		'name': a.name,
+		'folder': folder_of(a),
+		'artist': '',
+		'artist_is_albumartist': False,
+		'artist_override': '',
+		'title_override': '',
+		'album': '',
+		'new_title': '',
+		'year': '',
+		'edition': '',
+		'discogs': '',
+		'mbid': '',
+		'dr': '',
+		'mtime': 0,
+		'tracks': 0,
+		'cover': None,
+		'lyrics': {'synced': 0, 'plain': 0, 'instrumental': 0, 'missing': 0},
+		'files': [],
+		'steps': [{'name': n, 'done': False, 'partial': False, 'note': ''} for n in MISSING_LABEL],
+		'steps_done': 0,
+		'issues': [{'text': f'This album cannot be read: {error}', 'action': '', 'level': 'error'}],
+		'missing': [],
+		'status': 'needs',
+		'error': error,
+	}
+
+
 def safe_summary(a: Path) -> dict:
 	try:
 		return get_summary(a)
 	except Exception as e:  # one unreadable album must not break the list
-		return {
-			'path': str(a),
-			'name': a.name,
-			'discogs': '',
-			'mbid': '',
-			'status': 'needs',
-			'steps_done': 0,
-			'steps': [],
-			'tracks': 0,
-			'mtime': 0,
-			'error': str(e),
-		}
+		return unreadable_summary(a, str(e) or type(e).__name__)
 
 
 @app.get('/api/albums')

@@ -237,3 +237,53 @@ class TestChannels:
 			'Two': 1,
 			'Surround': 6,
 		}
+
+
+class TestUnreadableAlbum:
+	def test_the_board_gets_a_complete_summary_for_an_album_that_cannot_be_read(
+		self, client: TestClient, album: Path, monkeypatch: pytest.MonkeyPatch
+	) -> None:
+		real = tagwright.get_summary
+
+		def broken(a: Path) -> dict:
+			if a == album:
+				raise OSError(9, 'Bad file descriptor')
+			return real(a)
+
+		monkeypatch.setattr(tagwright, 'get_summary', broken)
+		row = client.get('/api/albums').json()['albums'][0]
+		assert row['status'] == 'needs'
+		assert 'Bad file descriptor' in row['error']
+		# every field the card and the inspector read is there, so the page does not crash on it
+		for key in (
+			'lyrics',
+			'steps',
+			'files',
+			'issues',
+			'missing',
+			'cover',
+			'folder',
+			'artist',
+			'dr',
+			'tracks',
+		):
+			assert key in row
+		assert row['lyrics'] == {'synced': 0, 'plain': 0, 'instrumental': 0, 'missing': 0}
+		assert [s['name'] for s in row['steps']] == list(tagwright.MISSING_LABEL)
+		assert row['issues'][0]['level'] == 'error'
+		assert 'cannot be read' in row['issues'][0]['text']
+
+	def test_a_readable_album_next_to_it_is_unaffected(
+		self, client: TestClient, album: Path, make_flac: MakeFlac, monkeypatch: pytest.MonkeyPatch
+	) -> None:
+		other = tagwright.ROOT / 'Other'
+		make_flac(other / '01.flac', TITLE='x')
+		real = tagwright.get_summary
+		monkeypatch.setattr(
+			tagwright,
+			'get_summary',
+			lambda a: (_ for _ in ()).throw(OSError('boom')) if a == album else real(a),
+		)
+		rows = {r['name']: r for r in client.get('/api/albums').json()['albums']}
+		assert rows[album.name]['error'] == 'boom'
+		assert 'error' not in rows['Other']
