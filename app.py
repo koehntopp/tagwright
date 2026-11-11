@@ -1980,7 +1980,11 @@ app.mount('/static', Static(directory=Path(__file__).parent / 'static'), name='s
 
 @app.get('/')
 def index() -> FileResponse:
-	return FileResponse(Path(__file__).parent / 'static' / 'ui' / 'index.html')
+	# no-cache like the static files: after a rebuild the page must not point at chunks that are gone
+	return FileResponse(
+		Path(__file__).parent / 'static' / 'ui' / 'index.html',
+		headers={'Cache-Control': 'no-cache'},
+	)
 
 
 if __name__ == '__main__':

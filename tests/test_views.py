@@ -165,3 +165,9 @@ def test_the_settings_use_the_two_folder_names(client: TestClient, tmp_path: Pat
 	assert 'Staging folder' in r.json()['detail']
 	r = client.post('/api/settings', json={'input': str(tagwright.ROOT), 'output': 'relative'})
 	assert 'Library folder' in r.json()['detail']
+
+
+def test_the_page_itself_is_never_cached(client: TestClient) -> None:
+	r = client.get('/')
+	assert r.status_code == 200
+	assert r.headers['cache-control'] == 'no-cache'
