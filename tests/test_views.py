@@ -160,11 +160,30 @@ class TestRefresh:
 		)  # unknown, so it is listed again; the row stays for the scanner
 
 
-def test_the_settings_use_the_two_folder_names(client: TestClient, tmp_path: Path) -> None:
-	r = client.post('/api/settings', json={'input': 'relative', 'output': str(tagwright.INGEST)})
-	assert 'Staging folder' in r.json()['detail']
-	r = client.post('/api/settings', json={'input': str(tagwright.ROOT), 'output': 'relative'})
-	assert 'Library folder' in r.json()['detail']
+def test_the_folders_are_not_settings(client: TestClient, tmp_path: Path) -> None:
+	before = (tagwright.ROOT, tagwright.INGEST)
+	r = client.post('/api/settings', json={'input': str(tmp_path), 'output': str(tmp_path)})
+	assert r.status_code == 200
+	assert (tagwright.ROOT, tagwright.INGEST) == before
+	assert 'input' not in tagwright.settings and 'output' not in tagwright.settings
+
+
+def test_mount_source_names_the_nfs_export_or_the_bind_mount_path(tmp_path: Path) -> None:
+	info = tmp_path / 'mountinfo'
+	info.write_text(
+		'1 0 0:1 / / rw - overlay overlay rw\n'
+		'2 1 0:2 / /staging rw - nfs 192.0.2.10:/volume1/staging rw\n'
+		'3 1 259:1 /srv/flac/ingest /flac/ingest rw - ext4 /dev/nvme0n1p2 rw\n'
+		'4 1 259:1 /srv/with\\040space /data rw - ext4 /dev/nvme0n1p2 rw\n'
+	)
+	assert (
+		tagwright.mount_source(Path('/staging/Artist/Album'), info)
+		== '192.0.2.10:/volume1/staging'
+	)
+	assert tagwright.mount_source(Path('/flac/ingest'), info) == '/srv/flac/ingest'
+	assert tagwright.mount_source(Path('/data'), info) == '/srv/with space'
+	assert tagwright.mount_source(Path('/elsewhere'), info) == ''  # only the overlay root: unknown
+	assert tagwright.mount_source(Path('/staging'), tmp_path / 'missing') == ''
 
 
 def test_the_page_itself_is_never_cached(client: TestClient) -> None:

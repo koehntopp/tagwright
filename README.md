@@ -95,7 +95,7 @@ Open <http://localhost:8080>. In Settings enter your **Discogs API key** (requir
 | `DATA_DIR` | `./data` | Settings, library index, MusicBrainz cache |
 | `PORT` | `8080` | HTTP port |
 
-Paths must be absolute. Staging, library and every path the API accepts are checked against these two folders.
+Paths must be absolute. Staging, library and every path the API accepts are checked against these two folders. They are not editable in Settings, which shows them read-only together with where they come from on the host (the bind-mounted path or the NFS export).
 
 ### Docker
 

@@ -72,8 +72,6 @@ KEYS = ('discogs_api_key',)
 settings: dict = {}
 if SETTINGS_FILE.is_file():
 	settings = json.loads(SETTINGS_FILE.read_text())
-	ROOT = Path(settings.get('input') or ROOT)
-	INGEST = Path(settings.get('output') or INGEST)
 CATALOG_KEYS = (
 	'CATALOGNUMBER',
 	'CATALOG NUMBER',
@@ -855,11 +853,33 @@ def preview_library(body: dict) -> dict:
 	return library.preview(template, body.get('album'))
 
 
+def mount_source(path: Path, mountinfo: Path = Path('/proc/self/mountinfo')) -> str:
+	"""Where a folder comes from on the host, as the container sees it: the NFS export of the mount
+	holding it (`host:/export`) or the bind mount's host path. '' when unknown (not Linux, a layer)."""
+	try:
+		lines = mountinfo.read_text().splitlines()
+	except OSError:
+		return ''
+	best = ('', '')  # (mount point, source)
+	for line in lines:
+		left, _, right = line.partition(' - ')
+		f, r = left.split(' '), right.split(' ')
+		if len(f) < 5 or len(r) < 2:
+			continue
+		point = f[4].replace('\\040', ' ')
+		if (path == Path(point) or Path(point) in path.parents) and len(point) >= len(best[0]):
+			root = f[3].replace('\\040', ' ')
+			best = (point, r[1] if r[0].startswith('nfs') else ('' if root == '/' else root))
+	return best[1]
+
+
 @app.get('/api/settings')
 def get_settings() -> dict:
 	return {
 		'input': str(ROOT),
 		'output': str(INGEST),
+		'input_source': mount_source(ROOT),
+		'output_source': mount_source(INGEST),
 		'min_cover': MIN_COVER,
 		'library': library_json(),
 		**{k + '_hint': hint(settings.get(k, '')) for k in KEYS},
@@ -868,8 +888,9 @@ def get_settings() -> dict:
 
 @app.post('/api/settings')
 def set_settings(body: dict) -> dict:
-	"""Blank key keeps the stored key; {clear_<key>: true} removes it."""
-	global ROOT, INGEST, MIN_COVER
+	"""Blank key keeps the stored key; {clear_<key>: true} removes it. The folders come from the
+	environment only (ADR 0045); `input` and `output` in the body are ignored."""
+	global MIN_COVER
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	try:
@@ -878,18 +899,13 @@ def set_settings(body: dict) -> dict:
 		raise HTTPException(400, 'Minimum cover size must be a whole number of pixels') from e
 	if not 0 <= new_min <= 20000:
 		raise HTTPException(400, 'Minimum cover size must be between 0 and 20000 pixels')
-	new_in = Path(str(body.get('input') or ROOT)).expanduser()
-	new_out = Path(str(body.get('output') or INGEST)).expanduser()
-	for label, p in (('Staging folder', new_in), ('Library folder', new_out)):
-		if not p.is_absolute():
-			raise HTTPException(400, f'{label} must be an absolute path')
-	if not new_in.is_dir():
-		raise HTTPException(400, 'Staging folder does not exist')
 	new_library = parse_library(body['library']) if isinstance(body.get('library'), dict) else None
 	template_changed = new_library is not None and new_library.get('template') != (
 		settings.get('library') or {}
 	).get('template')
-	settings.update(input=str(new_in.resolve()), output=str(new_out.resolve()), min_cover=new_min)
+	settings.update(min_cover=new_min)
+	settings.pop('input', None)  # ADR 0045: the folders are no longer settings
+	settings.pop('output', None)
 	if new_library is not None:
 		settings['library'] = new_library
 	for k in KEYS:
@@ -901,7 +917,7 @@ def set_settings(body: dict) -> dict:
 	DATA.mkdir(parents=True, exist_ok=True)
 	SETTINGS_FILE.write_text(json.dumps(settings, indent=2))
 	SETTINGS_FILE.chmod(0o600)
-	ROOT, INGEST, MIN_COVER = Path(settings['input']), Path(settings['output']), new_min
+	MIN_COVER = new_min
 	cache.clear()
 	if template_changed:
 		library.rescan()  # a new layout applies to everything
