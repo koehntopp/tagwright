@@ -178,6 +178,22 @@ export function Inspector(p: Props) {
 				))}
 			</div>
 
+			{!!a.missing?.length && (
+				<div className="rounded-xl border border-rose-200 bg-rose-50 p-2 text-[13px] text-rose-900">
+					<div className="mb-1 text-xs font-medium uppercase tracking-wider text-rose-700">Missing</div>
+					<ul className="space-y-1">
+						{a.missing.map(m => (
+							<li key={m.step}>
+								<button className="w-full text-left hover:underline" title="Mark these tracks in the track list" onClick={() => { setStep(a.steps.findIndex(s => s.name === m.step)); setTracksOpen(true) }}>
+									<span className="font-medium">{m.label}</span> on {m.count === m.of ? `all ${m.of} tracks` : `${m.count} of ${m.of} tracks`}
+									<span className="block truncate text-xs text-rose-800/70">{m.tracks.slice(0, 4).join(' · ')}{m.tracks.length > 4 ? ' …' : ''}</span>
+								</button>
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
+
 			{mbNotes.length > 0 && (
 				<div className="space-y-2">
 					{mbNotes.map(n => (

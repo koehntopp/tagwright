@@ -1,6 +1,6 @@
 # ADR 0006: Status comes from FLAC tags; six pipeline steps
 
-- **Status**: Accepted
+- **Status**: Accepted (the label "Ready" is now "Incomplete": [0039](0039-incomplete-and-what-is-missing.md))
 - **Date**: 2026-11-08
 
 ## Context

@@ -142,3 +142,34 @@ def test_album_without_flac_is_404() -> None:
 	empty.mkdir()
 	with pytest.raises(Exception, match='404'):
 		tagwright.summarize(empty)
+
+
+def test_a_complete_album_misses_nothing(album: Path) -> None:
+	assert tagwright.summarize(album)['missing'] == []
+
+
+def test_missing_names_the_open_steps_and_the_tracks_that_fail_them(album: Path) -> None:
+	set_tag(album, 'LYRICS', None, only_first=True)
+	for f in tagwright.flacs(album):
+		audio = FLAC(f)
+		audio.pop('DYNAMIC_RANGE', None)
+		audio.save()
+	missing = {m['step']: m for m in tagwright.summarize(album)['missing']}
+	assert set(missing) == {'Lyrics', 'Dynamic range'}
+	assert (missing['Lyrics']['label'], missing['Lyrics']['count'], missing['Lyrics']['of']) == (
+		'No lyrics',
+		1,
+		2,
+	)
+	assert missing['Lyrics']['tracks'] == ['One']
+	assert (missing['Dynamic range']['label'], missing['Dynamic range']['count']) == ('No DR', 2)
+
+
+def test_missing_covers_every_step_label() -> None:
+	assert set(tagwright.MISSING_LABEL) == set(STEPS)
+
+
+def test_a_wrong_file_name_is_a_missing_item_too(album: Path) -> None:
+	first = tagwright.flacs(album)[0]
+	first.rename(first.with_name('renamed.flac'))
+	assert [m['label'] for m in tagwright.summarize(album)['missing']] == ['Names differ']

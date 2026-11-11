@@ -1,6 +1,6 @@
 # ADR 0026: The Ready filter returns to the top bar
 
-- **Status**: Accepted (the Ready filter is in the top bar again, [0031](0031-top-bar-again.md))
+- **Status**: Accepted (the label "Ready" is now "Incomplete": [0039](0039-incomplete-and-what-is-missing.md)) (the Ready filter is in the top bar again, [0031](0031-top-bar-again.md))
 - **Date**: 2026-11-09
 - **Supersedes**: the statement in [0022](0022-top-bar-instead-of-sidebar.md) that there is no Ready filter (the rest of 0022 stands)
 

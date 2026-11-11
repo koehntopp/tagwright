@@ -33,8 +33,10 @@ export type Album = {
 	steps: Step[]
 	steps_done: number
 	issues: Issue[]
+	missing?: Missing[]
 	status: 'needs' | 'ready' | 'fixed'
 }
+export type Missing = { step: string; label: string; count: number; of: number; tracks: string[] }
 export type Job = { state: string; path: string | null; queue: string[]; step?: string }
 export type LogLine = { t: string; k: string; m: string }
 
@@ -50,7 +52,7 @@ export const title = (a: Album) => a.album || a.name
 export const mmss = (n: number) => (n ? Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0') : '')
 export const fmtBytes = (n: number) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB')
 export const coverUrl = (a: Album) => `/api/cover?path=${encodeURIComponent(a.path)}&v=${a.mtime}`
-export const STATUS = { needs: 'Needs input', ready: 'Ready', fixed: 'Fixed' }
+export const STATUS = { needs: 'Needs input', ready: 'Incomplete', fixed: 'Fixed' }
 
 export type MovePreview = { library: string; album_dir: string; files: { from: string; name: string; exists: boolean }[]; problems: string[]; can_move: boolean; stays: string }
 export type Chip = { tag?: string; text?: string; fmt?: string; pad?: number; fallback?: string }

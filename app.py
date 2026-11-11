@@ -228,6 +228,34 @@ def cover_info(a: FLAC, album: Path) -> dict | None:
 	return None
 
 
+MISSING_LABEL = {
+	'Dynamic range': 'No DR',
+	'ReplayGain': 'No ReplayGain',
+	'Fingerprints': 'No fingerprints',
+	'Tags and cover': 'Tags incomplete',
+	'Lyrics': 'No lyrics',
+	'Filenames': 'Names differ',
+}
+
+
+def missing_steps(files: list[dict], steps: list[dict]) -> list[dict]:
+	"""What exactly is open: per open step the tracks that fail it, with a short label for badges (ADR 0039)."""
+	out = []
+	for i, step in enumerate(steps):
+		bad = [f for f in files if not f['checks'][i]]
+		if bad:
+			out.append(
+				{
+					'step': step['name'],
+					'label': MISSING_LABEL.get(step['name'], step['name']),
+					'count': len(bad),
+					'of': len(files),
+					'tracks': [f['title'] or f['file'] for f in bad[:12]],
+				}
+			)
+	return out
+
+
 def summarize(album: Path) -> dict:
 	files = flacs(album)
 	if not files:
@@ -293,6 +321,7 @@ def summarize(album: Path) -> dict:
 		tags_ok=req,
 		steps_done=sum(1 for _, ok in steps if ok),
 	)
+	out['missing'] = missing_steps(out['files'], out['steps'])
 	out['issues'] = album_issues(out, tags, small_cover)
 	out['status'] = status(out)
 	return out
