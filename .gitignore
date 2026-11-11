@@ -6,3 +6,4 @@ ui/node_modules/
 ui/.next/
 ui/out/
 ui/*.tsbuildinfo
+*.tar
