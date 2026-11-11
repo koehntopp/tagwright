@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
+import { Skeleton } from '@/components/ui/skeleton'
 import { AlbumEdit, CoverDelete, LyricsEdit, SettingsDialog, Shell, TagEditor } from '@/components/dialogs'
 import { CopyBtn, CoverImg, IdBadge, Inspector } from '@/components/inspector'
 import { LibraryDialog, LibraryIndicator, useLibrary } from '@/components/library'
@@ -37,6 +38,7 @@ const Pill = ({ className = '', ...p }: React.ComponentProps<'span'>) => (
 
 export default function Page() {
 	const [albums, setAlbums] = useState<Album[]>([])
+	const [loading, setLoading] = useState(true)
 	const [area, setArea] = useState<'staging' | 'library'>('staging')
 	const areaRef = useRef<'staging' | 'library'>('staging'), libPath = useRef('')
 	const [filter, setFilter] = useState('all')
@@ -57,9 +59,12 @@ export default function Page() {
 	const a = albums.find(x => x.path === selected) || null
 	const load = useCallback(async (path = '') => {
 		if (!path && areaRef.current === 'library') path = libPath.current
-		const r = await api('/api/albums' + (path ? '?path=' + encodeURIComponent(path) : ''))
-		setAlbums(r.albums)
-		return r.albums as Album[]
+		setLoading(true)
+		try {
+			const r = await api('/api/albums' + (path ? '?path=' + encodeURIComponent(path) : ''))
+			setAlbums(r.albums)
+			return r.albums as Album[]
+		} finally { setLoading(false) }
 	}, [])
 	const switchArea = async (next: 'staging' | 'library') => {
 		if (next === areaRef.current) return
@@ -246,6 +251,22 @@ export default function Page() {
 								</div>
 							)
 						})}
+					</div>
+				) : loading ? (
+					<div aria-busy="true">
+						<p className="mb-5 flex items-center gap-2 text-slate-500"><RefreshCw className="size-4 animate-spin" />Scanning albums…</p>
+						<div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] items-start gap-5">
+							{Array.from({ length: 6 }, (_, i) => (
+								<div key={i} className="overflow-hidden rounded-2xl border border-slate-200 bg-white/60">
+									<Skeleton className="aspect-square rounded-none bg-slate-200/80" />
+									<div className="space-y-2 p-3">
+										<Skeleton className="h-4 w-3/4 bg-slate-200/80" />
+										<Skeleton className="h-3 w-1/2 bg-slate-200/80" />
+										<Skeleton className="h-3 w-2/3 bg-slate-200/80" />
+									</div>
+								</div>
+							))}
+						</div>
 					</div>
 				) : <div className="py-16 text-center text-slate-500">No albums match.</div>}
 			</main>
