@@ -40,10 +40,10 @@ function describe(st: LibraryStatus) {
 }
 
 export function LibraryIndicator({ st, open }: { st: LibraryStatus | null; open: () => void }) {
-	if (!st) return <div className="flex-1 text-xs text-slate-400">Library…</div>
+	if (!st) return <div className="flex-1 text-slate-400">Library…</div>
 	const d = describe(st)
 	return (
-		<button onClick={open} title="Library status" className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left text-xs hover:bg-white/60">
+		<button onClick={open} title="Library status" className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left hover:bg-white/60">
 			<span className={`size-2 shrink-0 rounded-full ${d.dot}`} />
 			<div className="min-w-0 flex-1 leading-tight">
 				<div className="truncate font-medium">{plural(st.artists, 'artist')} · {plural(st.albums, 'album')} · {plural(st.tracks, 'track')}</div>

@@ -176,13 +176,13 @@ export default function Page() {
 				</div>
 				<nav className="flex shrink-0 items-center gap-1">
 					{FILTERS.map(f => (
-						<button key={f.id} onClick={() => (filter === f.id ? cycleSort() : setFilter(f.id))} title={filter === f.id ? `Sorted by ${SORT_NAMES[sort]}; click again to change` : undefined} className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-[17px] font-medium ${filter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>
-						{f.label}<span className="text-sm font-normal text-slate-400">{count(f.id)}</span>
+						<button key={f.id} onClick={() => (filter === f.id ? cycleSort() : setFilter(f.id))} title={filter === f.id ? `Sorted by ${SORT_NAMES[sort]}; click again to change` : undefined} className={`flex h-9 items-center gap-2 rounded-full px-4 text-[15px] font-medium ${filter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>
+						{f.label}<span className="font-normal text-slate-400">{count(f.id)}</span>
 					</button>
 				))}
 				</nav>
-				<button onClick={async () => { await load(); toast.success('Rescanned') }} title="Rescan folder" aria-label="Rescan folder" className="rounded-full p-2 text-slate-600 hover:bg-white/60"><RefreshCw className="size-4" /></button>
-				<button role="switch" aria-checked={area === 'library'} aria-label="Folder: staging or library" onClick={() => switchArea(area === 'library' ? 'staging' : 'library')} title={area === 'library' ? 'Showing the library; click for the staging folder' : 'Showing the staging folder; click for the library'} className="ml-auto flex h-9 w-44 shrink-0 items-center justify-between gap-2 rounded-full border border-slate-300 bg-white px-3.5 text-[13px] font-medium">
+				<button onClick={async () => { await load(); toast.success('Rescanned') }} title="Rescan folder" aria-label="Rescan folder" className="grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-white/60"><RefreshCw className="size-4" /></button>
+				<button role="switch" aria-checked={area === 'library'} aria-label="Folder: staging or library" onClick={() => switchArea(area === 'library' ? 'staging' : 'library')} title={area === 'library' ? 'Showing the library; click for the staging folder' : 'Showing the staging folder; click for the library'} className="ml-auto flex h-9 w-48 shrink-0 items-center justify-between gap-2 rounded-full border border-slate-300 bg-white px-4 text-[15px] font-medium">
 					<span className={area === 'staging' ? 'text-slate-900' : 'text-slate-400'}>Staging</span>
 					<span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${area === 'library' ? 'bg-slate-700' : 'bg-slate-300'}`}>
 						<span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${area === 'library' ? 'left-[1.125rem]' : 'left-0.5'}`} />
@@ -194,8 +194,8 @@ export default function Page() {
 					<Input ref={searchRef} type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search" title="Search albums, artists, IDs (⌘K)" className="h-9 rounded-full border-slate-300 bg-white pl-9 pr-12" />
 					<kbd className="absolute right-3 top-2 hidden rounded bg-slate-100 px-1.5 text-xs text-slate-500 min-[1600px]:block">⌘K</kbd>
 				</div>
-				<button onClick={() => setDlg({ kind: 'settings' })} title="Settings" aria-label="Settings" className="mr-3 shrink-0 rounded-full p-2 text-slate-600 hover:bg-white/60"><Settings className="size-5" /></button>
-				<div className="ml-2 flex h-full w-[600px] shrink-0 items-center gap-2 border-l px-4 text-xs">
+				<button onClick={() => setDlg({ kind: 'settings' })} title="Settings" aria-label="Settings" className="mr-3 grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-white/60"><Settings className="size-5" /></button>
+				<div className="ml-2 flex h-full w-[600px] shrink-0 items-center gap-2 border-l px-4 text-[15px]">
 					<LibraryIndicator st={lib.st} open={() => setDlg({ kind: 'library' })} />
 					<div className="h-8 w-px shrink-0 bg-slate-300" />
 					<span className={`size-2 shrink-0 rounded-full ${job.state === 'running' ? 'animate-pulse bg-sky-500' : job.state === 'failed' ? 'bg-rose-500' : job.state === 'stopped' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
@@ -205,7 +205,7 @@ export default function Page() {
 							{job.state === 'running' ? `Running: ${title(albums.find(x => x.path === job.path) || ({ name: '…' } as Album))}${job.queue.length ? ` (+${job.queue.length} queued)` : ''}` : job.state === 'failed' ? 'Last run failed' : job.state === 'stopped' ? 'Last run stopped' : 'Idle'}
 						</div>
 					</div>
-					{job.state === 'running' && <Button size="xs" variant="outline" className="border-rose-300 text-rose-600" onClick={async () => { try { await post('/api/stop', {}); toast.warning('Stopping…') } catch (e: any) { toast.error(e.message) } }}>Stop</Button>}
+					{job.state === 'running' && <Button variant="outline" className="h-9 rounded-full border-rose-300 px-4 text-[15px] text-rose-600" onClick={async () => { try { await post('/api/stop', {}); toast.warning('Stopping…') } catch (e: any) { toast.error(e.message) } }}>Stop</Button>}
 				</div>
 			</header>
 			<div className="flex min-h-0 flex-1">
