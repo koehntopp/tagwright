@@ -8,6 +8,8 @@ from mutagen import MutagenError
 from mutagen.flac import FLAC, Picture
 from PIL import Image, ImageFile
 
+from pipeline.layout import flacs
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True  # a cut-off download is better resized than skipped
 
 log = logging.getLogger(__name__)
@@ -22,7 +24,7 @@ def resize_covers(album: Path, max_size: int) -> int:
 	Returns the number of files that were rewritten.
 	"""
 	rewritten = 0
-	for flac_path in sorted(album.rglob('*.flac')):
+	for flac_path in flacs(album):
 		try:
 			audio = FLAC(flac_path)
 			if not audio.pictures:

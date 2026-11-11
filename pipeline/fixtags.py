@@ -33,6 +33,7 @@ from mutagen.flac import FLAC
 from pipeline import covers, discogs, languages
 from pipeline.config import Config
 from pipeline.http import ApiError
+from pipeline.layout import flacs
 from pipeline.tagio import touch, upper_tags
 
 log = logging.getLogger(__name__)
@@ -345,7 +346,7 @@ def fix_album(
 	Skips the album (silently, as a result with `skipped`) when it has no FLAC files, the first file is
 	unreadable, or DISCOGS_RELEASE_ID is missing or not a number. A Discogs failure raises ApiError.
 	"""
-	files = sorted(album.rglob('*.flac'))
+	files = flacs(album)
 	if not files:
 		return FixResult(0, skipped='no flac files')
 	try:

@@ -9,6 +9,7 @@ from mutagen import MutagenError
 from mutagen.flac import FLAC
 
 from pipeline.config import Config
+from pipeline.layout import flacs
 from pipeline.tools import Context, StepError, tail, tool
 
 log = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ def preset(cfg: Config) -> str:
 
 def has_album_gain(album: Path) -> bool:
 	"""True when every FLAC carries REPLAYGAIN_ALBUM_GAIN (track gain alone is not enough, ADR 0028)."""
-	files = sorted(album.rglob('*.flac'))
+	files = flacs(album)
 	try:
 		return bool(files) and all((FLAC(f).tags or {}).get('REPLAYGAIN_ALBUM_GAIN') for f in files)
 	except MutagenError, OSError:

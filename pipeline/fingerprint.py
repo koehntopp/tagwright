@@ -13,6 +13,7 @@ from pathlib import Path
 from mutagen import MutagenError
 from mutagen.flac import FLAC
 
+from pipeline.layout import flacs
 from pipeline.tagio import touch
 from pipeline.tools import Context, StepError, tail, tool
 
@@ -51,7 +52,7 @@ def fingerprint(path: Path, ctx: Context, binary: str) -> str:
 
 
 def run(album: Path, ctx: Context) -> None:
-	paths = sorted(album.rglob('*.flac'))
+	paths = flacs(album)
 	log.info('Starting AcoustID fingerprint generation in %s', album)
 
 	def needs_fp(path: Path) -> bool:

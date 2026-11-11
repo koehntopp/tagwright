@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
 import app as tagwright
 
@@ -40,3 +41,26 @@ def test_safe_rejects_paths_outside_root(bad: str, tmp_path: Path) -> None:
 	with pytest.raises(HTTPException) as err:
 		tagwright.safe(str(tmp_path / bad) if not bad.startswith('/') else bad)
 	assert err.value.status_code == 400
+
+
+def test_hidden_folders_and_files_are_not_albums_or_tracks(make_flac: MakeFlac) -> None:
+	root = tagwright.ROOT
+	make_flac(root / 'Real Album' / '01.flac')
+	make_flac(root / 'Real Album' / '._01.flac')  # AppleDouble litter
+	make_flac(
+		root / '.slskd-incomplete' / 'user' / 'Half Album' / '01.flac'
+	)  # a download in progress
+	make_flac(root / 'Real Album' / '.cache' / '02.flac')
+	assert tagwright.album_dirs(root) == [root / 'Real Album']
+	assert tagwright.flacs(root / 'Real Album') == [root / 'Real Album' / '01.flac']
+
+
+def test_a_dotted_root_is_still_scanned(make_flac: MakeFlac, tmp_path: Path) -> None:
+	base = tmp_path / '.library'
+	make_flac(base / 'A' / '01.flac')
+	assert tagwright.album_dirs(base) == [base / 'A']
+
+
+def test_the_board_does_not_list_hidden_folders(client: TestClient, make_flac: MakeFlac) -> None:
+	make_flac(tagwright.ROOT / '.slskd-incomplete' / 'x' / '01.flac', TITLE='t')
+	assert client.get('/api/albums').json()['albums'] == []
