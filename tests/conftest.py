@@ -1,25 +1,22 @@
 """Fixtures for the Tagwright tests (ADR 0035).
 
-Everything runs on synthetic FLAC files in pytest's tmp_path; ROOT, INGEST_DIR, DATA_DIR and DISCOGS_DIR
+Everything runs on synthetic FLAC files in pytest's tmp_path; ROOT, INGEST_DIR and DATA_DIR
 never point at a real library (ADR 0018). The environment is set before app.py is imported, because app.py
 reads it at import time (and would otherwise read data/settings.json of the real instance).
 """
 
 import os
-import stat
-import sys
 import tempfile
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
 _BOOT = Path(tempfile.mkdtemp(prefix='tagwright-test-'))
-for _name in ('root', 'ingest', 'data', 'scripts'):
+for _name in ('root', 'ingest', 'data'):
 	(_BOOT / _name).mkdir()
 os.environ.update(
 	ROOT=str(_BOOT / 'root'),
 	INGEST_DIR=str(_BOOT / 'ingest'),
 	DATA_DIR=str(_BOOT / 'data'),
-	DISCOGS_DIR=str(_BOOT / 'scripts'),
 )
 
 import numpy as np  # noqa: E402  # after the environment is set, see the module docstring
@@ -52,24 +49,21 @@ COMPLETE: dict[str, str] = {
 
 @pytest.fixture(autouse=True)
 def sandbox(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-	"""Fresh ROOT, INGEST and SCRIPTS per test, empty job state, no cover minimum (the fixtures have no art)."""
-	root, ingest, scripts = tmp_path / 'root', tmp_path / 'ingest', tmp_path / 'scripts'
-	for d in (root, ingest, scripts):
+	"""Fresh ROOT and INGEST per test, empty job state, no cover minimum (the fixtures have no art)."""
+	root, ingest = tmp_path / 'root', tmp_path / 'ingest'
+	for d in (root, ingest):
 		d.mkdir()
 	monkeypatch.setattr(tagwright, 'ROOT', root)
 	monkeypatch.setattr(tagwright, 'INGEST', ingest)
-	monkeypatch.setattr(tagwright, 'SCRIPTS', scripts)
 	monkeypatch.setattr(tagwright, 'MIN_COVER', 0)
 	monkeypatch.setattr(tagwright, 'settings', {})
 	tagwright.cache.clear()
-	tagwright.job.update(
-		path=None, state='idle', lines=[], rc=None, queue=[], stop=False, proc=None
-	)
+	tagwright.job.update(path=None, state='idle', lines=[], rc=None, queue=[], stop=False, ctx=None)
 	assert root.is_relative_to(tmp_path)  # ADR 0018: never a real library
 	yield
-	proc = tagwright.job.get('proc')
-	if proc is not None and proc.poll() is None:  # a test left nzbfix running
-		proc.kill()
+	ctx = tagwright.job.get('ctx')
+	if ctx is not None:  # a test left a job running
+		ctx.kill()
 
 
 @pytest.fixture
@@ -108,16 +102,3 @@ def album(make_flac: MakeFlac) -> Path:
 			**COMPLETE,
 		)
 	return folder
-
-
-@pytest.fixture
-def fake_nzbfix() -> Callable[[str], Path]:
-	"""fake_nzbfix(body) installs an executable nzbfix.py (Python) in SCRIPTS; body runs with argv[1] = album."""
-
-	def install(body: str) -> Path:
-		script = tagwright.SCRIPTS / 'nzbfix.py'
-		script.write_text(f'#!{sys.executable}\nimport sys\nalbum = sys.argv[1]\n{body}\n')
-		script.chmod(script.stat().st_mode | stat.S_IXUSR)
-		return script
-
-	return install

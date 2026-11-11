@@ -1,40 +1,41 @@
-"""Naming and lyrics rules that mirror the discogs scripts (ADR 0006, 0010)."""
+"""Bliss file names (pipeline/naming.py) and the lyrics kinds of the status model (ADR 0006, 0010)."""
 
 from pathlib import Path
 
 import pytest
 
 import app as tagwright
+from pipeline import naming
 
 from .conftest import MakeFlac
 
 
 def test_clean_matches_the_bliss_rule() -> None:
-	assert tagwright.clean('Beyoncé: Lemonade?') == 'Beyonce_Lemonade'
-	assert tagwright.clean('AC/DC') == 'AC_DC'
+	assert naming.clean('Beyoncé: Lemonade?') == 'Beyonce_Lemonade'
+	assert naming.clean('AC/DC') == 'AC_DC'
 
 
 def test_bliss_name_pads_disc_and_track() -> None:
 	t = {'TITLE': ['Hello World'], 'TRACKNUMBER': ['3/12'], 'DISCNUMBER': ['1/2']}
-	assert tagwright.bliss_name(t) == '01_03_Hello_World.flac'
+	assert naming.bliss_name(t) == '01_03_Hello_World.flac'
 
 
 @pytest.mark.parametrize('missing', ['TITLE', 'TRACKNUMBER', 'DISCNUMBER'])
 def test_bliss_name_is_none_while_a_tag_is_empty(missing: str) -> None:
 	t = {'TITLE': ['x'], 'TRACKNUMBER': ['1'], 'DISCNUMBER': ['1']}
 	del t[missing]
-	assert tagwright.bliss_name(t) is None
+	assert naming.bliss_name(t) is None
 
 
 def test_bliss_album_appends_version_once() -> None:
 	t = {'ALBUMARTIST': ['The Band'], 'ALBUM': ['Record'], 'VERSION': ['2020 DR10 CD']}
-	assert tagwright.bliss_album(t) == 'The_Band/Record_2020_DR10_CD'
+	assert naming.bliss_album(t) == 'The_Band/Record_2020_DR10_CD'
 	t['ALBUM'] = ['Record 2020 DR10 CD']
-	assert tagwright.bliss_album(t) == 'The_Band/Record_2020_DR10_CD'
+	assert naming.bliss_album(t) == 'The_Band/Record_2020_DR10_CD'
 
 
 def test_bliss_album_is_empty_without_album_artist() -> None:
-	assert tagwright.bliss_album({'ALBUM': ['x'], 'ARTIST': ['y']}) == ''
+	assert naming.bliss_album({'ALBUM': ['x'], 'ARTIST': ['y']}) == ''
 
 
 @pytest.mark.parametrize(
@@ -58,7 +59,7 @@ def test_lyric_kind_order(tags: dict[str, list[str]], kind: str) -> None:
 def test_rename_files_uses_the_bliss_name(tmp_path: Path, make_flac: MakeFlac) -> None:
 	folder = tagwright.ROOT / 'album'
 	f = make_flac(folder / 'track.flac', TITLE='Hello', TRACKNUMBER='2', DISCNUMBER='1')
-	log = tagwright.rename_files(folder)
+	log = naming.rename_files(folder)
 	assert (folder / '01_02_Hello.flac').is_file()
 	assert not f.exists()
 	assert log
@@ -67,5 +68,5 @@ def test_rename_files_uses_the_bliss_name(tmp_path: Path, make_flac: MakeFlac) -
 def test_rename_files_leaves_unready_files_alone(make_flac: MakeFlac) -> None:
 	folder = tagwright.ROOT / 'album'
 	f = make_flac(folder / 'track.flac', TITLE='Hello')  # no track or disc number
-	tagwright.rename_files(folder)
+	naming.rename_files(folder)
 	assert f.is_file()

@@ -22,7 +22,7 @@ from mutagen import MutagenError
 from mutagen.flac import FLAC
 
 from pipeline import lrclib
-from pipeline.layout import album_flacs
+from pipeline.layout import flacs
 from pipeline.lrc_format import (
 	apply_headers,
 	capitalize_lrc,
@@ -217,7 +217,7 @@ def fetch_one(path: Path, lookup: Lookup) -> Result:
 def collect_tracks(album: Path) -> list[Path]:
 	"""Every FLAC of the folders whose first file has a numeric DISCOGS_RELEASE_ID (each folder is judged by itself)."""
 	by_dir: dict[Path, list[Path]] = {}
-	for f in album_flacs(album):
+	for f in flacs(album):
 		by_dir.setdefault(f.parent, []).append(f)
 	tracks: list[Path] = []
 	for files in by_dir.values():

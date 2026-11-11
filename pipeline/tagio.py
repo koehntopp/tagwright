@@ -2,11 +2,25 @@
 
 import logging
 import os
+from collections.abc import Mapping
 from pathlib import Path
 
 from mutagen.flac import FLAC
 
 log = logging.getLogger(__name__)
+
+type Tags = Mapping[
+	str, list[str]
+]  # what mutagen gives for a FLAC file (an empty dict without tags)
+
+
+def tag(t: Tags, *keys: str) -> str:
+	"""The first non-empty value of the keys, in order ('' if none)."""
+	for k in keys:
+		v = t.get(k)
+		if v:
+			return v[0]
+	return ''
 
 
 def upper_tags(audio: FLAC) -> dict[str, list[str]]:

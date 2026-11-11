@@ -1,6 +1,6 @@
 # ADR 0012: Stay in Python; speed up compute inside the discogs scripts
 
-- **Status**: Accepted
+- **Status**: Superseded by [0036](0036-standalone-pipeline-package.md) (Tagwright stays Python; the dynamic-range step is now the Rust binary drcalc)
 - **Date**: 2026-11-08
 
 ## Context

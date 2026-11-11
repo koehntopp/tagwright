@@ -1,6 +1,6 @@
 # ADR 0005: Technology stack and code conventions
 
-- **Status**: Accepted (the Frontend, CSS build and Static assets bullets are superseded by [0029](0029-nextjs-frontend-static-export.md) and the Style bullet by [0034](0034-python-formatting-and-linting-with-ruff.md); the backend, FLAC, Discogs and Errors bullets stand)
+- **Status**: Accepted (the Frontend, CSS build and Static assets bullets are superseded by [0029](0029-nextjs-frontend-static-export.md) and the Style bullet by [0034](0034-python-formatting-and-linting-with-ruff.md) and the one-file Backend rule by [0036](0036-standalone-pipeline-package.md) (`app.py` plus the `pipeline/` package); the backend, FLAC, Discogs and Errors bullets stand)
 - **Date**: 2026-11-08
 
 ## Context

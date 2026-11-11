@@ -1,6 +1,6 @@
 # ADR 0032: Parallel pipeline scripts reopen a file before saving (discogs repository change)
 
-- **Status**: Accepted (the three tools no longer run in parallel since [0033](0033-pipeline-tag-steps-run-in-sequence.md); the reopen stays as a second safeguard)
+- **Status**: Accepted (the three tools no longer run in parallel since [0033](0033-pipeline-tag-steps-run-in-sequence.md); the reopen stays as a second safeguard; history since [0036](0036-standalone-pipeline-package.md): the discogs repository is no longer used)
 - **Date**: 2026-11-10
 
 ## Context

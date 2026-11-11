@@ -3,25 +3,23 @@
 # requires-python = ">=3.14"
 # dependencies = ["fastapi", "uvicorn", "mutagen", "python-slugify", "unidecode", "pathvalidate", "pillow"]
 # ///
-"""Tagwright: web UI over the discogs nzbfix pipeline.
+"""Tagwright: web UI and the fix pipeline for FLAC albums (the pipeline is the package pipeline/).
 
 Env: ROOT (base dir, default /staging), INGEST_DIR (default /flac/ingest),
-DISCOGS_DIR (dir holding nzbfix.py, default /opt/discogs), PORT (8080).
+DATA_DIR (settings, default ./data), PORT (8080). The pipeline is the package pipeline/ (ADR 0036).
 """
 
 import io
 import json
+import logging
 import os
 import re
 import shutil
-import signal
-import subprocess
 import threading
-import time
 import unicodedata
 import urllib.error
 import urllib.request
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -32,12 +30,19 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from mutagen.flac import FLAC, Picture
-from pathvalidate import sanitize_filename
 from PIL import Image, UnidentifiedImageError
-from slugify import slugify
 from starlette.types import Scope
 
-type Tags = Mapping[str, list[str]]  # what mutagen gives for a FLAC file (empty dict without tags)
+from pipeline import discogs as discogs_api
+from pipeline import musicbrainz as mb_api
+from pipeline.config import Config
+from pipeline.fixtags import DISCOGS_TAG_PREFIXES
+from pipeline.http import ApiError
+from pipeline.layout import album_dirs, flacs
+from pipeline.naming import bliss_album, bliss_name, rename_files
+from pipeline.run import run_album
+from pipeline.tagio import Tags, tag
+from pipeline.tools import Context, Stopped
 
 
 def env_path(name: str, default: str) -> Path:
@@ -50,7 +55,6 @@ def env_path(name: str, default: str) -> Path:
 
 ROOT = env_path('ROOT', '/staging')
 INGEST = env_path('INGEST_DIR', '/flac/ingest')
-SCRIPTS = env_path('DISCOGS_DIR', '/opt/discogs')
 DATA = env_path(
 	'DATA_DIR', str(Path(__file__).parent / 'data')
 )  # settings.json and generated config overlay
@@ -61,7 +65,6 @@ if SETTINGS_FILE.is_file():
 	settings = json.loads(SETTINGS_FILE.read_text())
 	ROOT = Path(settings.get('input') or ROOT)
 	INGEST = Path(settings.get('output') or INGEST)
-DISC_RE = re.compile(r'^(?:Disc|CD)\s*\d+$', re.I)  # same rule as discogs disc_layout.DISC_DIR_RE
 CATALOG_KEYS = (
 	'CATALOGNUMBER',
 	'CATALOG NUMBER',
@@ -92,9 +95,7 @@ def cover_note(cov: dict | None) -> str:
 	)
 
 
-SYNCED_RE = re.compile(
-	r'\[\d{2}:\d{2}\.\d{2}\]'
-)  # strict [MM:SS.xx], as in the discogs lrc_count.py
+SYNCED_RE = re.compile(r'\[\d{2}:\d{2}\.\d{2}\]')  # strict [MM:SS.xx], as in pipeline/lrc_format.py
 INSTRUMENTAL_RE = re.compile(
 	r'\[instrumental:true\]|\[\d{2}:\d{2}\.\d{2}\]\s*(?:\[instrumental\]|\(instrumental\))', re.I
 )
@@ -107,7 +108,7 @@ job = {
 	'rc': None,
 	'queue': [],
 	'stop': False,
-	'proc': None,
+	'ctx': None,  # the Context of the running job (Stop ends its tools)
 }  # lines accumulate across runs
 lock = threading.Lock()
 
@@ -118,80 +119,6 @@ def safe(p: str) -> Path:
 	if path != ROOT and ROOT not in path.parents:
 		raise HTTPException(400, 'path outside root')
 	return path
-
-
-def flacs(album: Path) -> list[Path]:
-	return sorted(album.rglob('*.flac'))
-
-
-def album_dirs(base: Path) -> list[Path]:
-	found = set()
-	for f in base.rglob('*.flac'):
-		d = f.parent
-		found.add(d.parent if DISC_RE.match(d.name) else d)
-	return sorted(found)
-
-
-def tag(t: Tags, *keys: str) -> str:
-	for k in keys:
-		v = t.get(k)
-		if v:
-			return v[0]
-	return ''
-
-
-def clean(text: str) -> str:
-	"""Same rule as discogs bliss.clean(); keep in sync (bliss.py imports config and syslog logging, so not imported)."""
-	return sanitize_filename(slugify(text, lowercase=False, separator='_'))
-
-
-def bliss_name(t: Tags) -> str | None:
-	"""Bliss file name <disc>_<track>_<title>.flac, or None while TITLE, TRACKNUMBER or DISCNUMBER is empty.
-
-	An empty tag means the album is not ready; nothing is invented (no "Unknown Title", no track 00, no disc 01).
-	"""
-	title, number, disc = tag(t, 'TITLE'), tag(t, 'TRACKNUMBER'), tag(t, 'DISCNUMBER')
-	if not title or not number or not disc:
-		return None
-	return f'{disc.split("/")[0].zfill(2)}_{number.split("/")[0].zfill(2)}_{clean(title)}.flac'
-
-
-def bliss_album(t: Tags) -> str:
-	"""Bliss library path <album artist>/<album [version]>, or '' while ALBUMARTIST or ALBUM is empty (not ready)."""
-	album, artist = tag(t, 'ALBUM'), tag(t, 'ALBUMARTIST')
-	if not album or not artist:
-		return ''
-	ver = tag(t, 'VERSION')
-	if ver and ver not in album:
-		album = f'{album} {ver}'
-	return f'{clean(artist)}/{clean(album)}'
-
-
-def same_name(a: str, b: str) -> bool:
-
-	def n(x: str) -> str:
-		return unicodedata.normalize('NFD', x.lower())
-
-	return n(a) == n(b)
-
-
-def rename_files(album: Path) -> list[str]:
-	"""Rename FLACs in place to the bliss pattern. Returns log lines."""
-	out = []
-	for f in flacs(album):
-		new = bliss_name(FLAC(f).tags or {})
-		if new is None:
-			out.append(f'skip {f.name}: title or track number is empty')
-			continue
-		if f.name == new:
-			continue
-		dest = f.with_name(new)
-		if dest.exists() and not same_name(str(dest), str(f)):
-			out.append(f'skip {f.name}: {new} already exists')
-			continue
-		f.rename(dest)
-		out.append(f'renamed {f.name} -> {new}')
-	return out or ['filenames already match']
 
 
 def lyric_kind(t: Tags) -> str:
@@ -608,70 +535,53 @@ def cover(path: str) -> Response:
 	return Response(status_code=204)  # no art: 204 keeps the browser console free of 404s
 
 
-def overlay_env(env: dict) -> None:
-	"""Point CONFIG_DIR at a generated copy of the scripts' config.py with the API keys from settings appended.
+class JobLog(logging.Handler):
+	"""Copies what the pipeline logs into the job log that the UI polls (ADR 0008)."""
 
-	log.py puts CONFIG_DIR first on sys.path, so the scripts import this copy and the original stays untouched.
-	"""
-	if not any(settings.get(k) for k in KEYS):
-		return
-	orig = Path(os.environ.get('CONFIG_DIR', SCRIPTS)) / 'config.py'
-	text = orig.read_text() if orig.is_file() else ''
-	extra = ''.join(f'\n{k} = {settings[k]!r}' for k in KEYS if settings.get(k))
-	d = DATA / 'overlay'
-	d.mkdir(parents=True, exist_ok=True)
-	f = d / 'config.py'
-	f.write_text(f'{text}\n# tagwright settings overrides{extra}\n')
-	f.chmod(0o600)
-	env['CONFIG_DIR'] = str(d)
+	def emit(self, record: logging.LogRecord) -> None:
+		job['lines'].append(self.format(record))
 
 
-def runner(path: Path) -> int:
-	"""Run nzbfix for one album, then rename files. Returns the exit code."""
-	env = {**os.environ, 'LOG_LEVEL': 'INFO'}
-	overlay_env(env)
+def runner(path: Path, ctx: Context) -> int:
+	"""Run the pipeline for one album, then rename files. Returns 0, or 1 when a step failed (-1 if stopped)."""
 	job['path'] = str(path)
 	job['lines'].append(f'=== {path.name} ===')
 	try:
-		p = subprocess.Popen(
-			[str(SCRIPTS / 'nzbfix.py'), str(path)],
-			stdout=subprocess.PIPE,
-			stderr=subprocess.STDOUT,
-			text=True,
-			env=env,
-			cwd=SCRIPTS,
-			start_new_session=True,  # own process group, so Stop can end nzbfix and the tools it started
-		)
-		job['proc'] = p
-		for line in p.stdout:
-			job['lines'].append(line.rstrip())
-		rc = p.wait()
-		if job['stop']:
-			job['lines'].append('-- stopped by user')
-		elif rc == 0:
-			job['lines'].append('-- rename files')
-			job['lines'].extend(rename_files(path))
-	except Exception as e:  # surface launch failures in the log pane
-		job['lines'].append(f'launch failed: {e}')
-		rc = -1
-	return rc
+		ok = run_album(path, ctx)
+	except Stopped:
+		job['lines'].append('-- stopped by user')
+		return -1
+	except Exception as e:  # the job thread must survive anything; the message goes to the log pane
+		job['lines'].append(f'pipeline failed: {e}')
+		return -1
+	job['lines'].append('-- rename files')
+	job['lines'].extend(rename_files(path))
+	return 0 if ok else 1
 
 
-def worker(paths: list[Path]) -> None:
+def worker(paths: list[Path], ctx: Context) -> None:
 	"""Process the queue one album at a time; a failure is logged and the queue continues."""
 	failed = 0
-	for p in paths:
-		if job['stop']:
-			break
-		job['queue'] = [str(x) for x in paths[paths.index(p) + 1 :]]
-		if runner(p) != 0:
-			failed += 1
-	job.update(
-		queue=[],
-		proc=None,
-		rc=1 if failed else 0,
-		state='stopped' if job['stop'] else 'failed' if failed else 'done',
-	)
+	handler = JobLog()
+	handler.setFormatter(logging.Formatter('%(message)s'))
+	pipeline_log = logging.getLogger('pipeline')
+	pipeline_log.addHandler(handler)
+	pipeline_log.setLevel(logging.INFO)
+	try:
+		for p in paths:
+			if job['stop']:
+				break
+			job['queue'] = [str(x) for x in paths[paths.index(p) + 1 :]]
+			if runner(p, ctx) != 0:
+				failed += 1
+	finally:
+		pipeline_log.removeHandler(handler)
+		job.update(
+			queue=[],
+			ctx=None,
+			rc=1 if failed else 0,
+			state='stopped' if job['stop'] else 'failed' if failed else 'done',
+		)
 
 
 @app.post('/api/run')
@@ -687,37 +597,30 @@ def run(body: dict) -> dict:
 	with lock:  # one heavy task at a time
 		if job['state'] == 'running':
 			raise HTTPException(409, 'a job is already running')
+		ctx = Context(Config(data_dir=DATA))
 		job.update(
 			path=str(paths[0]),
 			state='running',
 			rc=None,
 			stop=False,
-			proc=None,
+			ctx=ctx,
 			queue=[str(x) for x in paths[1:]],
 		)
-	threading.Thread(target=worker, args=(paths,), daemon=True).start()
+	threading.Thread(target=worker, args=(paths, ctx), daemon=True).start()
 	return {'ok': True, 'count': len(paths)}
 
 
 @app.post('/api/stop')
 def stop() -> dict:
-	"""Stop the running job: clear the queue and end nzbfix with everything it started (SIGTERM, SIGKILL after 10 s)."""
+	"""Stop the running job: clear the queue and end the tools it started (SIGTERM, SIGKILL after 10 s)."""
 	with lock:
 		if job['state'] != 'running':
 			raise HTTPException(409, 'no job is running')
 		job['stop'] = True
 		job['queue'] = []
-		p = job['proc']
-
-	def end(sig: int) -> None:
-		try:
-			os.killpg(p.pid, sig)  # start_new_session made the group id the pid
-		except ProcessLookupError:
-			pass
-
-	if p and p.poll() is None:
-		end(signal.SIGTERM)
-		threading.Timer(10, lambda: p.poll() is None and end(signal.SIGKILL)).start()
+		ctx = job['ctx']
+	if ctx:
+		ctx.kill()
 	return {'ok': True}
 
 
@@ -810,89 +713,22 @@ raw_releases: dict[
 ] = {}  # release id -> the Discogs release JSON, for the tags written on apply
 
 
-def discogs_key() -> str:
-	if settings.get('discogs_api_key'):
-		return settings['discogs_api_key']
-	cfg = Path(os.environ.get('CONFIG_DIR', SCRIPTS)) / 'config.py'
-	m = (
-		re.search(r'^discogs_api_key\s*=\s*[\'"]([^\'"]+)', cfg.read_text(), re.M)
-		if cfg.is_file()
-		else None
-	)
-	return m.group(1) if m else ''
-
-
-# Same rate-limit handling as the discogs repository (find_audiophile_upgrades: min_interval 1.1 s and a 5 s pause when
-# X-Discogs-Ratelimit-Remaining drops below 3; fixtags.discogs_fetch and ADR 0001 section 6: a 429 or an empty body is
-# retried up to 3 times after 60 s). Discogs allows 60 requests a minute, so requests are sent one at a time, at least
-# 1.1 s apart, and the waits are shared (the lock is held) so concurrent calls do not pause and then burst together.
-discogs_lock = threading.Lock()
-DISCOGS_INTERVAL, DISCOGS_LOW_PAUSE, DISCOGS_RETRIES, DISCOGS_BACKOFF = 1.1, 5.0, 3, 60.0
-discogs_last = 0.0  # time the last request ended; guarded by discogs_lock
-
-
-def discogs_wait() -> None:
-	time.sleep(max(0.0, DISCOGS_INTERVAL - (time.time() - discogs_last)))
-
-
-def discogs_done(headers: Mapping[str, str] | None) -> None:
-	global discogs_last
-	discogs_last = time.time()
-	remaining = headers.get('X-Discogs-Ratelimit-Remaining') if headers else None
-	if remaining and remaining.isdigit() and int(remaining) < 3:
-		time.sleep(DISCOGS_LOW_PAUSE)
+discogs_api.configure(lambda: settings.get('discogs_api_key', ''))
 
 
 def discogs(path: str, **params: str | int) -> dict:
-	key = discogs_key()
-	if not key:
-		raise HTTPException(400, 'Discogs API key not set (Settings)')
-	url = 'https://api.discogs.com' + path + ('?' + urlencode(params) if params else '')
-	req = urllib.request.Request(
-		url, headers={'User-Agent': 'Tagwright/0.2', 'Authorization': f'Discogs token={key}'}
-	)
-	with discogs_lock:
-		for attempt in range(DISCOGS_RETRIES + 1):
-			discogs_wait()
-			try:
-				with urllib.request.urlopen(req, timeout=20) as r:
-					data = json.load(r)
-					discogs_done(r.headers)
-				return data
-			except urllib.error.HTTPError as e:
-				discogs_done(e.headers)
-				if e.code == 404:
-					raise HTTPException(404, 'Discogs: not found') from e
-				if e.code != 429:
-					raise HTTPException(502, f'Discogs: HTTP {e.code}') from e
-				err = HTTPException(429, 'Discogs rate limit reached; try again in a minute')
-			except json.JSONDecodeError:  # an empty body is how Discogs sometimes signals the limit
-				err = HTTPException(502, 'Discogs sent an empty response; try again in a minute')
-			except OSError as e:
-				raise HTTPException(502, f'Discogs: {e}') from e
-			if attempt < DISCOGS_RETRIES:
-				time.sleep(DISCOGS_BACKOFF)
-			else:
-				raise err
+	"""A Discogs API call; failures become the HTTP error the UI shows (the client is pipeline/discogs.py)."""
+	try:
+		return discogs_api.get(path, **params)
+	except ApiError as e:
+		raise HTTPException(e.status, e.message) from e
 
 
 def discogs_image(url: str) -> bytes:
-	"""Download a release image with the same pacing as API calls (one request at a time, 1.1 s apart)."""
-	req = urllib.request.Request(
-		url,
-		headers={'User-Agent': 'Tagwright/0.2', 'Authorization': f'Discogs token={discogs_key()}'},
-	)
-	with discogs_lock:
-		discogs_wait()
-		try:
-			with urllib.request.urlopen(req, timeout=30) as r:
-				data = r.read(20_000_001)
-				discogs_done(r.headers)
-		except (urllib.error.URLError, OSError) as e:
-			raise HTTPException(502, f'Discogs image: {e}') from e
-	if len(data) > 20_000_000:
-		raise HTTPException(502, 'Discogs image is too large')
-	return data
+	try:
+		return discogs_api.image(url)
+	except ApiError as e:
+		raise HTTPException(e.status, e.message) from e
 
 
 def artist_names(artists: list[dict]) -> str:
@@ -1382,10 +1218,6 @@ def set_track(body: dict) -> dict:
 # ---- MusicBrainz release search and tags (ADR 0023) ----
 # MusicBrainz allows one request a second and wants a User-Agent naming the application; it answers 503 when the
 # limit is exceeded. Requests go through one lock, at least 1.1 s apart; a 503 is retried 3 times after 5 s.
-MB_UA = 'Tagwright/0.2 (+https://github.com/koehntopp/tagwright)'
-MB_INTERVAL, MB_RETRIES, MB_BACKOFF = 1.1, 3, 5.0
-mb_lock = threading.Lock()
-mb_last = 0.0  # guarded by mb_lock
 mb_releases: dict[str, dict] = {}  # parsed releases, for the life of the process
 UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
 # Written by "Apply" for a chosen release; replaced on every apply. MUSICBRAINZ_ARTISTID and MUSICBRAINZ_ARTIST_URL are
@@ -1406,36 +1238,11 @@ MB_TRACK_KEYS = ('MUSICBRAINZ_ARTISTID', 'MUSICBRAINZ_ARTIST_URL')
 
 
 def musicbrainz(path: str, **params: str | int) -> dict:
-	global mb_last
-	url = 'https://musicbrainz.org/ws/2' + path + '?' + urlencode({**params, 'fmt': 'json'})
-	req = urllib.request.Request(url, headers={'User-Agent': MB_UA, 'Accept': 'application/json'})
-	with mb_lock:
-		for attempt in range(MB_RETRIES + 1):
-			time.sleep(max(0.0, MB_INTERVAL - (time.time() - mb_last)))
-			try:
-				with urllib.request.urlopen(req, timeout=20) as r:
-					data = json.load(r)
-				mb_last = time.time()
-				return data
-			except urllib.error.HTTPError as e:
-				mb_last = time.time()
-				if e.code == 404:
-					raise HTTPException(404, 'MusicBrainz: not found') from e
-				if e.code not in (429, 503):
-					raise HTTPException(502, f'MusicBrainz: HTTP {e.code}') from e
-				err = HTTPException(429, 'MusicBrainz rate limit reached; try again in a minute')
-			except json.JSONDecodeError:
-				mb_last = time.time()
-				err = HTTPException(
-					502, 'MusicBrainz sent an unreadable response; try again in a minute'
-				)
-			except OSError as e:
-				mb_last = time.time()
-				raise HTTPException(502, f'MusicBrainz: {e}') from e
-			if attempt < MB_RETRIES:
-				time.sleep(MB_BACKOFF)
-			else:
-				raise err
+	"""A MusicBrainz API call; failures become the HTTP error the UI shows (the client is pipeline/musicbrainz.py)."""
+	try:
+		return mb_api.get(path, **params)
+	except ApiError as e:
+		raise HTTPException(e.status, e.message) from e
 
 
 def mb_names(credit: list[dict] | None) -> str:
@@ -1720,7 +1527,7 @@ ALBUM_FIELDS = {
 	'MUSICBRAINZ_ALBUMID': ('MUSICBRAINZ ALBUM ID',),
 }
 OVERRIDES = {'ALBUM_ARTIST_OVERRIDE': 'ALBUMARTIST', 'ALBUM_TITLE_OVERRIDE': 'ALBUM'}
-# Tags fixtags writes from the Discogs release (see discogs/fixtags.py); shown read-only.
+# Tags the Discogs tags step writes (pipeline/fixtags.py; tests/test_tag_contract.py keeps both in line); shown read-only.
 DISCOGS_FIXED = (
 	'DATE',
 	'YEAR',
@@ -1752,7 +1559,7 @@ DISCOGS_FIXED = (
 	'ALBUM_RELEASE_SERIES',
 	'ALBUM_DR',
 )
-DISCOGS_PREFIXES = ('ALBUM_COMPANY_', 'ALBUM_CREDIT_', 'ALBUM_IDENT_', 'DISCOGS_')
+DISCOGS_PREFIXES = (*DISCOGS_TAG_PREFIXES, 'DISCOGS_')
 
 
 @app.get('/api/tags')

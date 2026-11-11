@@ -20,6 +20,15 @@ def album_root(path: Path) -> Path:
 	return path.parent if is_disc_dir(path.name) else path
 
 
-def album_flacs(album: Path) -> list[Path]:
+def flacs(album: Path) -> list[Path]:
 	"""All FLAC files of an album, sorted (its own files and those in disc folders)."""
 	return sorted(album.rglob('*.flac'))
+
+
+def album_dirs(base: Path) -> list[Path]:
+	"""The albums below base: every folder with FLACs, a `Disc N` folder counting as part of its parent."""
+	found = set()
+	for f in base.rglob('*.flac'):
+		d = f.parent
+		found.add(d.parent if is_disc_dir(d.name) else d)
+	return sorted(found)

@@ -1,6 +1,6 @@
 # AGENTS.md: rules for AI agents working on Tagwright
 
-Tagwright is a self-hosted web app (FastAPI + one-file frontend) around the discogs `nzbfix` pipeline for FLAC albums. The architecture decision records in `docs/adr/` are **binding**. They are the specification. Code, comments and your own judgement do not outrank them.
+Tagwright is a self-hosted web app (FastAPI backend, Next.js frontend) with its own tag-fixing pipeline for FLAC albums, the `pipeline/` package. It needs no other repository. The architecture decision records in `docs/adr/` are **binding**. They are the specification. Code, comments and your own judgement do not outrank them.
 
 ## 1. Before any change
 
@@ -19,13 +19,13 @@ Tagwright is a self-hosted web app (FastAPI + one-file frontend) around the disc
 
 ## 3. Hard rules that come from the ADRs
 
-- **Engine** (0004): never reimplement, reorder or skip `nzbfix` steps; never edit the discogs repository unless the owner asks, and then record why in an ADR.
-- **Tags** (0004, 0014): UPPERCASE keys; never read a tag the tools wrote as input; never make a Discogs-owned tag editable and never overwrite a user-owned tag from automation. Keep `ALBUM_FIELDS`, `DISCOGS_FIXED` and `DISCOGS_PREFIXES` in sync with discogs `fixtags.py`.
+- **Pipeline** (0036): the steps and their order (dot_clean, dynamic range via `drcalc`, ReplayGain, fingerprints, Discogs tags, lyrics) are one run, one step after the other; do not reorder, skip or run steps in parallel. Steps live in `pipeline/` and import nothing from `app.py`. External tools (`drcalc`, `rsgain`, `fpcalc`) are found on `PATH`.
+- **Tags** (0004, 0014): UPPERCASE keys; never read a tag the tools wrote as input; never make a Discogs-owned tag editable and never overwrite a user-owned tag from automation. `ALBUM_FIELDS`, `DISCOGS_FIXED` and `DISCOGS_PREFIXES` must agree with `pipeline/fixtags.py` (`tests/test_tag_contract.py` checks it).
 - **Safety** (0007, 0008): every path goes through `safe()`; every endpoint that writes returns 409 while a job runs; never log, return or commit an API key; never add an endpoint that reads or writes outside `ROOT` or `INGEST_DIR`.
-- **File names** (0010): `clean()` stays identical to discogs `bliss.clean()`; Tagwright never renames album folders.
+- **File names** (0010): `clean()` in `pipeline/naming.py` stays as it is (the rule existing libraries were named with); Tagwright never renames album folders.
 - **Ingest** (0011): move only `fixed` albums; never overwrite or merge into an existing destination.
 - **Status model** (0006, 0016): changing what makes a step done or partial is an ADR change.
-- **Stack** (0005, 0029, 0034): single-file backend `app.py` (PEP 723 deps); frontend in `ui/` (Next.js static export, shadcn/ui). Tabs, single quotes. No new framework or build step without an ADR. Any change under `ui/` means `cd ui && npm run build` and committing the resulting `static/ui/`.
+- **Stack** (0005, 0029, 0034, 0036): backend `app.py` (web layer, PEP 723 deps) plus the `pipeline/` package; frontend in `ui/` (Next.js static export, shadcn/ui). Tabs, single quotes. No new framework or build step without an ADR. Any change under `ui/` means `cd ui && npm run build` and committing the resulting `static/ui/`.
 - **UI** (0030, 0031): colours keep their meaning; do not add a stats bar or filter tabs; the top bar navigation is the only filter; follow the dialog widths and fixed-width badge columns.
 
 ## 4. Verification (ADR 0018)
@@ -33,14 +33,9 @@ Tagwright is a self-hosted web app (FastAPI + one-file frontend) around the disc
 - Never run tests, servers or edits against `/path/to/staging`, the real ingest folder or any real library. Copy one album to a scratch directory, set `ROOT`, `INGEST_DIR` and `DATA_DIR` there, use a free port, and clean up afterwards.
 - Check API behaviour with `curl`, tags and pictures on disk with `metaflac`, and the UI in a browser at 1440 px with a clean console. Report what you did **not** verify.
 - Do not claim a feature works until you ran it. If something failed or was skipped, say so.
-- Automated tests ([ADR 0035](docs/adr/0035-automated-tests-with-pytest.md)): `uv run --group test pytest`. They use synthetic albums in a temp directory and a fake `nzbfix`, never real data. A change to status, naming, job or move behaviour comes with a test that fails without it.
+- Automated tests ([ADR 0035](docs/adr/0035-automated-tests-with-pytest.md)): `uv run --group test pytest`. They use synthetic albums in a temp directory and fake pipeline steps or tools, never real data. A change to status, naming, job or move behaviour comes with a test that fails without it.
 
-## 5. Related code
-
-- Tag-management scripts live in `../discogs`; changes there must be confirmed against that project's ADRs.
-- Use the `drcalc` binary from `../drcalc` as a replacement for `drmeter`.
-
-## 6. Python
+## 5. Python
 
 ### Setup
 
@@ -103,14 +98,14 @@ Avoid `Any`. If it is genuinely necessary, add a comment saying why.
 - Do not add `# noqa`, `# fmt: off` or `# type: ignore` to silence a warning. Fix the underlying issue.
 - If suppression is truly required, use the narrowest form (`# noqa: B008`, `# type: ignore[arg-type]`, never bare) and add a one-line reason.
 
-## 7. Git (ADR 0020)
+## 6. Git (ADR 0020)
 
 - **Never create a branch.** Work and commit directly on `main`, then push to `origin main`. `main` is the only branch; if any other exists, tell the owner. Do not tag unless asked.
 - Never commit `data/`, `node_modules/`, `__pycache__/`, keys or music files.
 - Keep commits focused, with a message that says what and why. Verify first ([ADR 0018](docs/adr/0018-verification.md)); there is no branch to catch a bad change.
 - Never force-push or rewrite history.
 
-## 8. Before you say "done"
+## 7. Before you say "done"
 
 Check each item and say which you checked:
 

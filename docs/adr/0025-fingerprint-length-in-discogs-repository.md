@@ -1,6 +1,6 @@
 # ADR 0025: Fingerprints read the first 120 seconds (change in the discogs repository)
 
-- **Status**: Accepted
+- **Status**: Accepted (history: a change to the discogs repository, which Tagwright no longer uses, [0036](0036-standalone-pipeline-package.md))
 - **Date**: 2026-11-09
 
 ## Context

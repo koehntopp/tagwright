@@ -1,6 +1,6 @@
 # ADR 0033: Dynamic range, ReplayGain and fingerprints run in sequence (discogs repository change)
 
-- **Status**: Accepted
+- **Status**: Accepted (history: a change to the discogs repository, which Tagwright no longer uses, [0036](0036-standalone-pipeline-package.md))
 - **Date**: 2026-11-10
 - **Supersedes**: the word "in parallel" in [0004](0004-pipeline-engine-reuses-discogs-scripts.md) (the steps and their order are unchanged)
 

@@ -1,6 +1,6 @@
 # ADR 0003: Deployment: a web app in Docker on a Linux server
 
-- **Status**: Accepted
+- **Status**: Accepted (the discogs checkout mount, `DISCOGS_DIR` and the `drmeter` binary are gone, replaced by `drcalc` in the image: [0036](0036-standalone-pipeline-package.md))
 - **Date**: 2026-11-08
 
 ## Context

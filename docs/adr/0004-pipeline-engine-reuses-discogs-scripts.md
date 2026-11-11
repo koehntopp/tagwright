@@ -1,6 +1,6 @@
 # ADR 0004: The pipeline engine is the unchanged discogs scripts
 
-- **Status**: Accepted
+- **Status**: Superseded by [0036](0036-standalone-pipeline-package.md)
 - **Date**: 2026-11-08
 
 ## Context

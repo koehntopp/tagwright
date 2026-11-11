@@ -5,5 +5,4 @@ services:
     volumes:
       - /path/to/staging:/staging
       - /srv/flac/ingest:/flac/ingest
-      - ./discogs:/opt/discogs:ro   # checkout of the discogs repo (nzbfix.py, fixtags.py, ...)
-      - ./data:/data               # settings.json (includes API keys) and generated config overlay
+      - ./data:/data               # settings.json (includes API keys) and the MusicBrainz cache
