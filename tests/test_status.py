@@ -173,3 +173,27 @@ def test_a_wrong_file_name_is_a_missing_item_too(album: Path) -> None:
 	first = tagwright.flacs(album)[0]
 	first.rename(first.with_name('renamed.flac'))
 	assert [m['label'] for m in tagwright.summarize(album)['missing']] == ['Names differ']
+
+
+def test_without_a_release_id_nothing_else_is_checked_or_listed(
+	album: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	monkeypatch.setattr(tagwright, 'MIN_COVER', 1400)  # the fixture has no cover at all
+	for key in ('DISCOGS_RELEASE_ID', 'DYNAMIC_RANGE', 'LYRICS'):
+		set_tag(album, key, None)
+	s = tagwright.summarize(album)
+	assert [(i['level'], i['action']) for i in s['issues']] == [
+		('error', 'search')
+	]  # no cover line either
+	assert s['missing'] == []
+	assert s['status'] == 'needs'
+
+
+def test_with_a_release_id_the_cover_line_and_the_missing_list_are_back(
+	album: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	monkeypatch.setattr(tagwright, 'MIN_COVER', 1400)
+	set_tag(album, 'LYRICS', None)
+	s = tagwright.summarize(album)
+	assert [i['level'] for i in s['issues']] == ['ingest']
+	assert [m['label'] for m in s['missing']] == ['No lyrics']

@@ -331,7 +331,9 @@ def summarize(album: Path) -> dict:
 		tags_ok=req,
 		steps_done=sum(1 for _, ok in steps if ok),
 	)
-	out['missing'] = missing_steps(out['files'], out['steps'])
+	out['missing'] = (
+		missing_steps(out['files'], out['steps']) if did else []
+	)  # a release comes first (ADR 0039)
 	out['issues'] = album_issues(out, tags, small_cover)
 	out['status'] = status(out)
 	return out
@@ -384,9 +386,7 @@ def album_issues(out: dict, tags: list, small_cover: bool) -> list[dict]:
 				'level': 'error',
 			}
 		)
-		if small_cover:
-			issues.append({'text': cover_note(out['cover']), 'action': 'cover', 'level': 'ingest'})
-		return issues
+		return issues  # nothing else is checked before the album has its Discogs data (ADR 0039)
 	for label, keys, action, required in ALBUM_LEVEL:
 		values = [tag(t, *keys) for t in tags]
 		if (
