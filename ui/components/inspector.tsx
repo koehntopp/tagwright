@@ -54,7 +54,10 @@ export function ChannelBadge({ n, hint }: { n?: number; hint?: boolean }) {
 	return <span title={hint ? `The title says ${channelLabel(n)}` : `${n} channel${n > 1 ? 's' : ''}`} className={`inline-flex h-5 w-[3.25rem] shrink-0 items-center justify-center rounded-full text-[11px] font-medium ${n > 2 ? 'bg-violet-100 text-violet-800' : 'bg-slate-200 text-slate-700'} ${hint ? 'opacity-70' : ''}`}>{channelLabel(n)}</span>
 }
 
-export const IdBadge = ({ l, v, full }: { l: 'D' | 'MB'; v: string; full?: boolean }) => {
+export const searchQuery = (a: Album) => [a.artist, title(a)].filter(Boolean).join(' ')
+
+/** The ID of a release on Discogs or MusicBrainz; without one, a link that searches the site for `q` (artist and title as they are now). */
+export const IdBadge = ({ l, v, full, q }: { l: 'D' | 'MB'; v: string; full?: boolean; q?: string }) => {
 	const icon = l === 'D' ? '/static/discogs.png' : '/static/musicbrainz.ico'
 	const url = (l === 'D' ? 'https://www.discogs.com/release/' : 'https://musicbrainz.org/release/') + encodeURIComponent(v)
 	return v ? (
@@ -62,6 +65,13 @@ export const IdBadge = ({ l, v, full }: { l: 'D' | 'MB'; v: string; full?: boole
 			{/* eslint-disable-next-line @next/next/no-img-element */}
 			<img src={icon} alt={l} className="size-3.5 rounded-sm" />
 			{!full && v.length > 13 ? v.slice(0, 8) : v}
+		</a>
+	) : q ? (
+		<a href={(l === 'D' ? 'https://www.discogs.com/search/?type=release&q=' : 'https://musicbrainz.org/search?type=release&method=indexed&query=') + encodeURIComponent(q)}
+			target="_blank" rel="noopener" onClick={e => e.stopPropagation()} title={`Search ${l === 'D' ? 'Discogs' : 'MusicBrainz'} for ${q}`}
+			className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700 hover:bg-rose-200">
+			{/* eslint-disable-next-line @next/next/no-img-element */}
+			<img src={icon} alt={l} className="size-3.5 rounded-sm" />missing
 		</a>
 	) : (
 		<Pill className="gap-1 bg-rose-100 text-rose-700">
@@ -195,9 +205,9 @@ export function Inspector(p: Props) {
 						{a.version || [a.year, a.media || 'CD', a.catalog].filter(Boolean).join(' · ')}
 					</div>
 					<div className="mt-2 flex flex-wrap items-center gap-1">
-						<IdBadge l="D" v={a.discogs} />
+						<IdBadge l="D" v={a.discogs} q={searchQuery(a)} />
 						<button onClick={p.openDiscogs} title="Change the Discogs release" className="mr-1"><Pencil className="size-3" /></button>
-						<IdBadge l="MB" v={a.mbid} />
+						<IdBadge l="MB" v={a.mbid} q={searchQuery(a)} />
 						<button onClick={p.openMb} title="Choose the MusicBrainz release" className="mr-1"><Pencil className="size-3" /></button>
 						{a.dr && <Pill className="bg-emerald-100 text-emerald-800" title="Album dynamic range">DR{a.dr}</Pill>}
 					</div>

@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Album, api, mmss, post } from '@/lib/api'
-import { CopyBtn, IdBadge } from '@/components/inspector'
+import { CopyBtn, IdBadge, searchQuery } from '@/components/inspector'
 import { TrackTable } from '@/components/track-table'
 import { LibraryTab } from '@/components/library'
 
@@ -245,13 +245,13 @@ export function TagEditor({ a, tab, reload, onClose, done, begin, openLyrics, op
 						<div className="grid grid-cols-2 gap-x-6">
 							<Field label="Discogs Release ID">
 								<div className="flex items-center gap-1 py-1">
-									<IdBadge l="D" v={d.discogs_id || ''} full />
+									<IdBadge l="D" v={d.discogs_id || ''} full q={searchQuery(a)} />
 									<button onClick={openDiscogs} title={d.discogs_id ? 'Change the Discogs release' : 'Choose the Discogs release'} className="rounded-full p-1 hover:bg-slate-100"><Pencil className="size-3.5" /></button>
 								</div>
 							</Field>
 							<Field label="Musicbrainz Release ID">
 								<div className="flex items-center gap-1 py-1">
-									<IdBadge l="MB" v={mbid || ''} full />
+									<IdBadge l="MB" v={mbid || ''} full q={searchQuery(a)} />
 									<button onClick={openMb} title={mbid ? 'Change the MusicBrainz release' : 'Choose the MusicBrainz release'} className="rounded-full p-1 hover:bg-slate-100"><Pencil className="size-3.5" /></button>
 								</div>
 							</Field>
