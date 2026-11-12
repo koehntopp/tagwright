@@ -19,6 +19,8 @@ RUN ldd /tmp/rsgain-build/rsgain | awk '/=>/ {print $3}' | xargs -r realpath | x
 
 # ── Stage 2: runtime image ───────────────────────────────────────────────────
 FROM python:3.14-slim
+LABEL org.opencontainers.image.source="https://github.com/koehntopp/tagwright" \
+      org.opencontainers.image.licenses="GPL-3.0-or-later"
 ARG TARGETARCH
 # renovate: datasource=github-releases depName=koehntopp/drcalc extractVersion=^v(?<version>.*)$
 ARG DRCALC_VERSION=0.1.0

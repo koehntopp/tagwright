@@ -118,3 +118,7 @@ cd ui && npm run build                # frontend; commit the resulting static/ui
 Layout: `app.py` (web layer), `pipeline/` (the steps), `library/` (watcher, planner, layout template), `ui/` (Next.js, shadcn/ui), `docs/adr/` (the specification).
 
 Never run tests or experiments against a real library (ADR 0018). Contributors and AI agents: read [AGENTS.md](AGENTS.md) first; the ADRs are binding.
+
+## Licence
+
+Tagwright is free software under the [GNU General Public License, version 3 or later](LICENSE). It builds on `mutagen` and `Unidecode`, which are GPL, so the combined program and the Docker image are GPL ([ADR 0062](docs/adr/0062-license-gpl-3-or-later.md)). [NOTICE](NOTICE) lists the third-party software it uses and the image contains.

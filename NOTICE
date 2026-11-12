@@ -1,0 +1,42 @@
+Tagwright
+Copyright (C) 2026 Frank Köhntopp
+
+Tagwright is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
+later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY. See the file
+LICENSE for the full text. Why this licence: ADR 0062.
+
+This file lists what Tagwright uses and the Docker image contains. The licences are those the projects state;
+check the linked sources for the authoritative text.
+
+Python libraries (installed from PyPI, imported by Tagwright)
+  mutagen            GPL-2.0-or-later   https://github.com/quodlibet/mutagen
+  Unidecode          GPL-2.0-or-later   https://github.com/avian2/unidecode
+  text-unidecode     Artistic / GPL     https://github.com/kmike/text-unidecode
+  fastapi, pydantic, anyio, python-slugify, pathvalidate, annotated-types, h11   MIT
+  starlette, uvicorn, click, idna                                                  BSD-3-Clause
+  pillow                                                                           MIT-CMU
+
+Frontend (compiled into static/ui/)
+  React, Next.js runtime, base-ui, floating-ui, sonner, next-themes, tw-animate-css and others   MIT
+  lucide-react, semver                                                                           ISC
+  class-variance-authority, @swc/helpers                                                         Apache-2.0
+  tslib                                                                                          0BSD
+
+Programs run as separate processes (not linked into Tagwright)
+  drcalc       MIT                  https://github.com/koehntopp/drcalc (release binary)
+  rsgain       BSD-style, several copyright holders   https://github.com/complexlogic/rsgain (built from the
+               release source tarball in the Docker image)
+  fpcalc       LGPL-2.1-or-later with MIT/BSD parts   Debian package libchromaprint-tools
+  uv           MIT or Apache-2.0    https://github.com/astral-sh/uv (copied into the image to install the
+               Python libraries)
+
+Debian packages in the Docker image
+  The image is based on python:3.14-slim (Debian) and adds the libraries rsgain and fpcalc need: FFmpeg's
+  libavcodec, libavformat, libavutil and libswresample (LGPL and GPL-2-or-later parts), TagLib (LGPL/MPL),
+  libebur128, libfmt, libinih (BSD/MIT) and the codec libraries they depend on (LAME, mpg123, Opus, Vorbis, x264,
+  x265 and others, under their own licences). Each package ships its licence in /usr/share/doc/<package>/copyright
+  inside the image. Their complete source is available from Debian: `apt-get source <package>` on a Debian
+  system of the same release, or https://sources.debian.org. A written offer: for the GPL and LGPL parts of the
+  image, the corresponding source is available on request: open an issue at
+  https://github.com/koehntopp/tagwright/issues.
