@@ -1609,6 +1609,17 @@ def mb_brief(r: dict) -> dict:
 	}
 
 
+def mb_discogs_releases(did: str) -> list[str]:
+	"""MusicBrainz releases that link this Discogs release (a url relation); none when unknown or on any error."""
+	try:
+		url = musicbrainz(
+			'/url', resource=f'https://www.discogs.com/release/{did}', inc='release-rels'
+		)
+	except HTTPException:
+		return []
+	return [r['id'] for rel in url.get('relations', []) if (r := rel.get('release'))][:5]
+
+
 def lucene(s: str) -> str:
 	return re.sub(r'([+\-&|!(){}\[\]^"~*?:\\/])', r'\\\1', s)
 
@@ -1627,6 +1638,12 @@ def musicbrainz_search(q: str, path: str = '') -> list[dict]:
 	hits: dict[str, dict] = {}
 	did = get_summary(safe(path))['discogs'] if path else ''
 	if did:
+		for mbid in mb_discogs_releases(did):
+			try:
+				brief = mb_brief(musicbrainz(f'/release/{mbid}', inc='artist-credits+labels+media'))
+			except HTTPException:
+				continue
+			hits.setdefault(mbid, {**brief, 'match': 'Discogs ID'})
 		try:
 			release_tracks(did)
 			d = raw_releases[did]
@@ -1644,7 +1661,7 @@ def musicbrainz_search(q: str, path: str = '') -> list[dict]:
 				mb_hits(f'barcode:{code}', 10, 'barcode', hits)
 			for catno in (
 				catnos[:2] if not hits else []
-			):  # a barcode hit is exact; the slower catalogue-number search is the fallback
+			):  # a barcode or Discogs ID hit is exact; the slower catalogue-number search is the fallback
 				mb_hits(f'catno:"{lucene(catno)}"', 10, 'catalog number', hits)
 		except HTTPException:
 			pass  # no Discogs key or Discogs unreachable: the plain search below still works

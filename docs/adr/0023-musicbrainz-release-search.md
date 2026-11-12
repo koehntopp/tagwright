@@ -18,6 +18,7 @@ UC-11. `MUSICBRAINZ_ALBUMID` anchors the language tags in `fixtags.py` ([0014](0
 
 ### Search (`GET /api/musicbrainz/search?q=&path=`, read-only)
 - A release ID (UUID) loads that release. Otherwise every word of the query must match the release title or an artist (Lucene `(release:w OR artist:w) AND ...`, 20 results).
+- **Discogs ID match**: when the album has a `DISCOGS_RELEASE_ID`, the MusicBrainz releases that link that Discogs release (a `url` lookup of `https://www.discogs.com/release/<id>`, up to 5) come first, badged **Discogs ID match**; the barcode and catalogue-number matches below follow. A barcode or Discogs ID hit also skips the catalogue-number fallback.
 - **Discogs enhancement**: when the album has a `DISCOGS_RELEASE_ID`, the Discogs release is read (cached, [0013](0013-discogs-track-assignment.md)) and releases with the **same barcode** are searched first; only when that finds nothing, releases with the same **catalogue number** (up to two, `none` ignored). These come first in the list with a green "barcode match" / "catalog number match" badge. A missing Discogs key or a Discogs error is ignored and the plain search still runs.
 - `GET /api/musicbrainz/release?id=&path=` returns the parsed release (cached for the life of the process) and the album's file count.
 

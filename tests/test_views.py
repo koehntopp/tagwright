@@ -312,3 +312,23 @@ class TestUnreadableAlbum:
 		rows = {r['name']: r for r in client.get('/api/albums').json()['albums']}
 		assert rows[album.name]['error'] == 'boom'
 		assert 'error' not in rows['Other']
+
+
+def test_musicbrainz_search_puts_releases_linking_the_discogs_id_first(
+	monkeypatch: pytest.MonkeyPatch, client: TestClient, album: Path
+) -> None:
+	brief = lambda i, t: {'id': i, 'title': t, 'artist-credit': [{'name': 'A'}], 'media': []}  # noqa: E731  # tiny test double
+	monkeypatch.setattr(tagwright, 'release_tracks', lambda did: None)
+	monkeypatch.setitem(tagwright.raw_releases, '12345', {'identifiers': [], 'labels': []})
+
+	def fake(path: str, **params: str | int) -> dict:
+		if path == '/url':
+			assert params['resource'] == 'https://www.discogs.com/release/12345'
+			return {'relations': [{'release': {'id': 'linked'}}]}
+		if path == '/release/linked':
+			return brief('linked', 'Linked')
+		return {'releases': [brief('plain', 'Plain'), brief('linked', 'Linked')]}
+
+	monkeypatch.setattr(tagwright, 'musicbrainz', fake)
+	rows = client.get('/api/musicbrainz/search', params={'q': 'a b', 'path': str(album)}).json()
+	assert [(r['id'], r['match']) for r in rows] == [('linked', 'Discogs ID'), ('plain', '')]
