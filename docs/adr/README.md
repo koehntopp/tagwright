@@ -50,6 +50,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0044](0044-lrclib-application-id-no-key-setting.md) | lrclib.net is reached with the application ID; no key setting | Accepted |
 | [0045](0045-folders-from-the-environment-only.md) | Staging and library folders come from the environment only; Settings shows their host paths | Accepted |
 | [0046](0046-discogs-medleys-are-one-release-track.md) | A Discogs medley (index entry with sub-tracks) is one release track | Accepted |
+| [0047](0047-a-real-catalogue-number-replaces-none.md) | A real catalogue number replaces the placeholder `none` on assignment | Accepted |
 
 ## Which ADR covers what
 

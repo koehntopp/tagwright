@@ -160,3 +160,18 @@ def test_a_skipped_file_with_another_discogs_release_is_reported(
 		json={'path': str(album), 'release_id': '777', 'assignments': [{'file': first, 'rel': 0}]},
 	)
 	assert f'{second} was skipped and keeps Discogs release 12345, not 777' in r.json()['log']
+
+
+def test_a_real_catalogue_number_replaces_the_placeholder_none(
+	client: TestClient, album: Path, stubbed: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	monkeypatch.setattr(tagwright, 'fix_album', lambda path, cfg: fixtags.FixResult(2, 'X', 'V'))
+	first, second = sorted(album.glob('*.flac'))
+	for f, value in ((first, 'none'), (second, 'USER-1')):
+		a = FLAC(f)
+		a['CATALOGNUMBER'] = [value]
+		a.save()
+	apply(client, album)
+	got = {f.name: FLAC(f)['CATALOGNUMBER'] for f in (first, second)}
+	assert got[first.name] == ['CAT-9']  # 'none' was a placeholder
+	assert got[second.name] == ['USER-1']  # a value the owner set stays

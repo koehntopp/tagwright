@@ -1459,6 +1459,10 @@ def tracks_apply(body: dict) -> dict:
 		if a.tags is None:
 			a.add_tags()
 		a['DISCOGS_RELEASE_ID'] = [rel['id']]
+		if rel['catno'].lower() != 'none' and tag(a.tags, *CATALOG_KEYS).lower() == 'none':
+			for k in CATALOG_KEYS:  # Discogs' own 'none' is a placeholder, a real catalogue number replaces it (ADR 0047)
+				if k in a:
+					del a[k]
 		fill(a, 'CATALOGNUMBER', rel['catno'], *CATALOG_KEYS[1:])
 		fill(a, 'ALBUM_FORMAT', release_format(raw_releases[rel['id']]))
 		fill(a, 'ARTIST', t['artist'])
