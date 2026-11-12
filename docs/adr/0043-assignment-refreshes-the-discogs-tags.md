@@ -1,6 +1,6 @@
 # ADR 0043: Assigning a Discogs release refreshes the Discogs-owned tags at once
 
-- **Status**: Accepted
+- **Status**: Superseded by [0053](0053-discogs-search-and-assignment-consolidated.md) (consolidated; kept as history)
 - **Date**: 2026-11-12
 - **Supersedes**: the part of [0013](0013-discogs-track-assignment.md) that leaves the Discogs-owned tags (year, album title, version, label ...) to the next run
 

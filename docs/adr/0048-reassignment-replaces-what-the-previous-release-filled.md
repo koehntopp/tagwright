@@ -1,6 +1,6 @@
 # ADR 0048: Re-assigning replaces what the previous release filled
 
-- **Status**: Accepted
+- **Status**: Superseded by [0053](0053-discogs-search-and-assignment-consolidated.md) (consolidated; kept as history)
 - **Date**: 2026-11-12
 - **Supersedes in part**: [0013](0013-discogs-track-assignment.md) (release-level tags are filled only when empty); extends [0047](0047-a-real-catalogue-number-replaces-none.md)
 

@@ -1,6 +1,6 @@
 # ADR 0052: The Discogs search starts with artist and album and marks MusicBrainz matches
 
-- **Status**: Accepted
+- **Status**: Superseded by [0053](0053-discogs-search-and-assignment-consolidated.md) (consolidated; kept as history)
 - **Date**: 2026-11-12
 - **Supersedes in part**: [0013](0013-discogs-track-assignment.md) (the search field is prefilled with the album's Discogs ID)
 

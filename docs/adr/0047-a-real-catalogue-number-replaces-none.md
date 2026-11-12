@@ -1,6 +1,6 @@
 # ADR 0047: A real catalogue number replaces the placeholder `none`
 
-- **Status**: Accepted
+- **Status**: Superseded by [0053](0053-discogs-search-and-assignment-consolidated.md) (consolidated; kept as history)
 - **Date**: 2026-11-12
 - **Supersedes in part**: [0013](0013-discogs-track-assignment.md) (the catalogue number is filled only when the tag is empty)
 

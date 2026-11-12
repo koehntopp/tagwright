@@ -1,6 +1,6 @@
 # ADR 0046: A Discogs medley is one release track
 
-- **Status**: Accepted
+- **Status**: Superseded by [0053](0053-discogs-search-and-assignment-consolidated.md) (consolidated; kept as history)
 - **Date**: 2026-11-12
 - **Supersedes in part**: [0013](0013-discogs-track-assignment.md) (tracklist: "index entries are skipped")
 
