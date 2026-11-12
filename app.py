@@ -293,6 +293,10 @@ def summarize(album: Path) -> dict:
 		'title_override': tag(t0, 'ALBUM_TITLE_OVERRIDE'),
 		'year': tag(t0, 'DATE', 'YEAR')[:4],
 		'catalog': tag(t0, *CATALOG_KEYS[:1]),
+		'country': tag(
+			t0, 'DISCOGS_ALBUM_RELEASECOUNTRY', 'COUNTRY', 'MUSICBRAINZ_ALBUM_RELEASECOUNTRY'
+		),
+		'media': tag(t0, 'ALBUM_FORMAT'),
 		'discogs': did,
 		'mbid': mid,
 		'tracks': len(files),
@@ -523,6 +527,8 @@ def unreadable_summary(a: Path, error: str) -> dict:
 		'new_title': '',
 		'year': '',
 		'catalog': '',
+		'country': '',
+		'media': '',
 		'edition': '',
 		'discogs': '',
 		'mbid': '',

@@ -24,6 +24,8 @@ export type Album = {
 	folder?: string
 	year: string
 	catalog: string
+	country: string
+	media: string
 	edition: string
 	discogs: string
 	mbid: string

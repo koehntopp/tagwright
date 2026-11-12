@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Alert } from '@/components/ui/alert'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { flagOf } from '@/lib/flags'
 import { Album, Job, LogLine, TrackFile, api, channelLabel, coverUrl, fmtBytes, mmss, title } from '@/lib/api'
 
 // navigator.clipboard exists only in secure contexts (https or localhost); over plain http on the LAN the
@@ -169,7 +170,9 @@ export function Inspector(p: Props) {
 						<button onClick={p.openAlbum} className="ml-1 align-middle" title="Edit album artist and title"><Pencil className="inline size-3" /></button>
 						<CopyBtn text={title(a)} />
 					</h2>
-					<div className="mt-0.5 text-xs text-slate-500">{[a.edition, a.year].filter(Boolean).join(' · ')}</div>
+					<div className="mt-0.5 text-xs text-slate-500">
+						{[a.edition, a.year || a.country ? <span key="y" title={a.country || undefined}>{flagOf(a.country) ? flagOf(a.country) + ' ' : ''}{a.year}</span> : '', a.media || 'CD'].filter(Boolean).map((x, i) => <span key={i}>{i ? ' · ' : ''}{x}</span>)}
+					</div>
 					<div className="mt-2 flex flex-wrap items-center gap-1">
 						<IdBadge l="D" v={a.discogs} />
 						<button onClick={p.openDiscogs} title="Change the Discogs release" className="mr-1"><Pencil className="size-3" /></button>

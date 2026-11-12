@@ -208,3 +208,17 @@ def test_missing_lyrics_are_optional_and_do_not_keep_an_album_from_fixed(album: 
 	assert s['status'] == 'fixed'
 	assert [(m['step'], m['optional']) for m in s['missing']] == [('Lyrics', True)]
 	assert [st['done'] for st in s['steps']].count(False) == 1  # the step itself still shows open
+
+
+def test_the_summary_carries_country_and_media(album: Path) -> None:
+	assert (
+		tagwright.summarize(album)['country'] == '' and tagwright.summarize(album)['media'] == 'CD'
+	)
+	for f in sorted(album.glob('*.flac')):
+		a = FLAC(f)
+		a['COUNTRY'] = ['Germany']
+		a['DISCOGS_ALBUM_RELEASECOUNTRY'] = ['UK']
+		a['ALBUM_FORMAT'] = ['SACD']
+		a.save()
+	s = tagwright.summarize(album)
+	assert (s['country'], s['media']) == ('UK', 'SACD')  # the Discogs-owned tag leads
