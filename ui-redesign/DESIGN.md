@@ -2,7 +2,7 @@
 
 This is the target design for the Album Fixer web UI. It replaces the current layout: a single list on the left and one long detail page.
 
-- `screenshots/` shows the finished look. **Match these.**
+- The screenshots of the original mock were removed; this design is superseded by [ADR 0030](../docs/adr/0030-ui-layout-and-design-system-v2.md).
 - `reference/daisy.html` is a working static mockup with fake data (`reference/data.js`). Treat it as the source of truth for markup, classes and spacing. You can copy from it freely.
 - `reference/daisy.in.css` is the Tailwind v4 + daisyUI 5 entry file, including the custom theme.
 
@@ -116,7 +116,7 @@ There are three full-height columns and no page scroll. Each column scrolls on i
 - "Sorted by recently added": needs the folder's modification time
 
 ## 7. Done when
-- The UI matches the three screenshots at 1440–1500px width.
+- The UI matches the reference mock at 1440–1500px width.
 - Every existing action still works from its new location: change folder, rescan, run fixes, move to ingest, and the live log.
 - Filters and counts are correct, and selecting a card updates the inspector.
 - No console errors.
