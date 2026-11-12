@@ -99,6 +99,14 @@ There are no default paths: Tagwright refuses to start when one of the three is 
 
 ### Docker
 
+A published image (amd64 and arm64) is on GitHub's registry:
+
+```bash
+docker pull ghcr.io/koehntopp/tagwright:latest
+```
+
+Or build and run it with compose:
+
 ```bash
 docker compose up -d
 ```

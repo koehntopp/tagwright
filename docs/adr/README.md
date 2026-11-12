@@ -51,6 +51,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0060](0060-parts-of-a-work-are-release-tracks.md) | The parts of a work or medley are release tracks too | Accepted |
 | [0061](0061-renovate-for-dependency-updates.md) | Renovate for dependency updates | Accepted |
 | [0062](0062-license-gpl-3-or-later.md) | Licence: GPL-3.0-or-later (mutagen and Unidecode are GPL) | Accepted |
+| [0063](0063-publish-the-image-on-ghcr.md) | The image is published on GitHub's container registry (amd64 and arm64) | Accepted |
 
 ## History: superseded ADRs
 
