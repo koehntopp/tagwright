@@ -1,0 +1,20 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "customManagers:dockerfileVersions",
+    "group:allNonMajor",
+    "schedule:weekly"
+  ],
+  "timezone": "Europe/Berlin",
+  "pep723": {
+    "managerFilePatterns": ["/^app\\.py$/"]
+  },
+  "packageRules": [
+    {
+      "description": "Major updates come one at a time, never grouped",
+      "matchUpdateTypes": ["major"],
+      "groupName": null
+    }
+  ]
+}

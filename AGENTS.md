@@ -104,6 +104,7 @@ Avoid `Any`. If it is genuinely necessary, add a comment saying why.
 - Never commit `data/`, `node_modules/`, `__pycache__/`, keys or music files.
 - Keep commits focused, with a message that says what and why. Verify first ([ADR 0018](docs/adr/0018-verification.md)); there is no branch to catch a bad change.
 - Never force-push or rewrite history.
+- Branches `renovate/*` belong to the Renovate bot ([ADR 0061](docs/adr/0061-renovate-for-dependency-updates.md)): do not create, push to or delete them, and do not count them as a violation of the one-branch rule.
 
 ## 7. Before you say "done"
 

@@ -1,5 +1,6 @@
 # ── Stage 1: build rsgain (no package for it) ────────────────────────────────
 FROM python:3.14-slim AS rsgain
+# renovate: datasource=github-releases depName=complexlogic/rsgain extractVersion=^v(?<version>.*)$
 ARG RSGAIN_VERSION=3.7
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl ca-certificates xz-utils cmake make g++ pkg-config \
@@ -19,6 +20,7 @@ RUN ldd /tmp/rsgain-build/rsgain | awk '/=>/ {print $3}' | xargs -r realpath | x
 # ── Stage 2: runtime image ───────────────────────────────────────────────────
 FROM python:3.14-slim
 ARG TARGETARCH
+# renovate: datasource=github-releases depName=koehntopp/drcalc extractVersion=^v(?<version>.*)$
 ARG DRCALC_VERSION=0.1.0
 COPY --from=rsgain /tmp/rsgain-runtime-pkgs /tmp/rsgain-runtime-pkgs
 # fpcalc (chromaprint) and the libraries of rsgain
