@@ -1,6 +1,6 @@
 # ADR 0039: "Incomplete" instead of "Ready", and showing what is missing
 
-- **Status**: Accepted
+- **Status**: Accepted (lyrics are an optional blue entry: [0050](0050-lyrics-are-optional.md))
 - **Date**: 2026-11-12
 - **Supersedes**: the label "Ready" of [0006](0006-status-model-and-pipeline-steps.md), [0026](0026-ready-filter-returns.md) and [0030](0030-ui-layout-and-design-system-v2.md) (the status key `ready`, the API and the colours are unchanged), and the words "(plus the cover line)" in 0006: without a Discogs release ID nothing but the red Discogs line is shown
 

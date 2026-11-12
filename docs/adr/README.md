@@ -53,6 +53,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0047](0047-a-real-catalogue-number-replaces-none.md) | A real catalogue number replaces the placeholder `none` on assignment | Accepted |
 | [0048](0048-reassignment-replaces-what-the-previous-release-filled.md) | Re-assigning replaces the release-level tags the previous release filled | Accepted |
 | [0049](0049-tag-edits-refresh-the-version-at-once.md) | Editing format, catalog # or edition refreshes the Discogs tags (VERSION) at once | Accepted |
+| [0050](0050-lyrics-are-optional.md) | Missing lyrics are an optional, blue notice; they do not block `fixed` or the move | Accepted |
 
 ## Which ADR covers what
 

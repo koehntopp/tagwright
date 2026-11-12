@@ -262,6 +262,7 @@ def missing_steps(files: list[dict], steps: list[dict]) -> list[dict]:
 				{
 					'step': step['name'],
 					'label': MISSING_LABEL.get(step['name'], step['name']),
+					'optional': step['name'] in OPTIONAL_STEPS,
 					'count': len(bad),
 					'of': len(files),
 					'tracks': [f['title'] or f['file'] for f in bad[:12]],
@@ -460,11 +461,18 @@ def album_issues(out: dict, tags: list, small_cover: bool) -> list[dict]:
 	)  # the Discogs lines always come first
 
 
+OPTIONAL_STEPS = (
+	'Lyrics',
+)  # shown as missing (info), but they neither keep an album from `fixed` nor from moving
+
+
 def status(s: dict) -> str:
-	"""needs: a blocking issue (no Discogs id, an empty required tag, files that disagree); fixed: all steps done; else ready."""
+	"""needs: a blocking issue (no Discogs id, an empty required tag, files that disagree); fixed: all required steps
+	done (lyrics are optional, ADR 0050); else ready."""
 	if any(i['level'] in ('warn', 'error') for i in s['issues']):
 		return 'needs'
-	return 'fixed' if s['steps_done'] == len(s['steps']) else 'ready'
+	required = [st for st in s['steps'] if st['name'] not in OPTIONAL_STEPS]
+	return 'fixed' if all(st['done'] for st in required) else 'ready'
 
 
 cache: dict[str, tuple[tuple, dict]] = {}

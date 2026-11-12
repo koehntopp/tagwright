@@ -197,3 +197,14 @@ def test_with_a_release_id_the_cover_line_and_the_missing_list_are_back(
 	s = tagwright.summarize(album)
 	assert [i['level'] for i in s['issues']] == ['ingest']
 	assert [m['label'] for m in s['missing']] == ['No lyrics']
+
+
+def test_missing_lyrics_are_optional_and_do_not_keep_an_album_from_fixed(album: Path) -> None:
+	for f in sorted(album.glob('*.flac')):
+		a = FLAC(f)
+		del a['LYRICS']
+		a.save()
+	s = tagwright.summarize(album)
+	assert s['status'] == 'fixed'
+	assert [(m['step'], m['optional']) for m in s['missing']] == [('Lyrics', True)]
+	assert [st['done'] for st in s['steps']].count(False) == 1  # the step itself still shows open

@@ -223,7 +223,7 @@ export default function Page() {
 								<div key={x.path} onClick={() => setSelected(x.path)} className={`cursor-pointer overflow-hidden rounded-2xl border transition hover:-translate-y-0.5 hover:shadow-md ${TONE[x.status]} ${x.path === selected ? 'ring-2 ring-slate-800' : ''}`}>
 									<div className="relative aspect-square">
 										<CoverImg a={x} className="size-full" />
-										<Pill className={`absolute left-3 top-3 shadow ${BADGE[x.status]}`}>{x.status === 'ready' && x.missing?.length ? x.missing[0].label + (x.missing.length > 1 ? ` +${x.missing.length - 1}` : '') : STATUS[x.status]}</Pill>
+										<Pill className={`absolute left-3 top-3 shadow ${BADGE[x.status]}`}>{x.status === 'ready' && x.missing?.some(m => !m.optional) ? x.missing.filter(m => !m.optional)[0].label + (x.missing.filter(m => !m.optional).length > 1 ? ` +${x.missing.filter(m => !m.optional).length - 1}` : '') : STATUS[x.status]}</Pill>
 										{playing?.startsWith(x.path + '|') && (
 											<span title="Playing" className="absolute right-3 top-3 flex h-5 items-center gap-0.5 rounded-full bg-yellow-400 px-2.5 shadow">
 												{[0, 0.25, 0.5, 0.15].map(d => <i key={d} className="eq-bar block w-0.5 rounded-sm bg-slate-900" style={{ animationDelay: `${d}s` }} />)}
@@ -245,7 +245,7 @@ export default function Page() {
 										</div>
 										{!!x.missing?.length && (
 											<div className="flex min-h-5 flex-wrap items-center gap-1.5">
-												{x.missing.map(m => <Pill key={m.step} title={`${m.count} of ${m.of} tracks: ${m.tracks.slice(0, 5).join(', ')}${m.tracks.length > 5 ? ', …' : ''}`} className="bg-rose-100 text-rose-700 ring-1 ring-rose-200">{m.label} {m.count}</Pill>)}
+												{x.missing.map(m => <Pill key={m.step} title={`${m.count} of ${m.of} tracks: ${m.tracks.slice(0, 5).join(', ')}${m.tracks.length > 5 ? ', …' : ''}`} className={m.optional ? 'bg-sky-100 text-sky-700 ring-1 ring-sky-200' : 'bg-rose-100 text-rose-700 ring-1 ring-rose-200'}>{m.label} {m.count}</Pill>)}
 											</div>
 										)}
 										<div className="mt-2 flex items-center gap-2">

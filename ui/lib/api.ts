@@ -39,7 +39,7 @@ export type Album = {
 	missing?: Missing[]
 	status: 'needs' | 'ready' | 'fixed'
 }
-export type Missing = { step: string; label: string; count: number; of: number; tracks: string[] }
+export type Missing = { step: string; label: string; count: number; of: number; tracks: string[]; optional?: boolean }
 export type Job = { state: string; path: string | null; queue: string[]; step?: string }
 export type LogLine = { t: string; k: string; m: string }
 
