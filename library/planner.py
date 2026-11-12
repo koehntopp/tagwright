@@ -93,7 +93,12 @@ def plan(
 	placed: list[tuple[Item, Target]] = []
 	for item in sorted(items, key=lambda i: str(i.path)):
 		try:
-			placed.append((item, target(template, item.tags)))
+			placed.append(
+				(
+					item,
+					target(template, item.tags, PurePosixPath(item.path).suffix.lower() or '.flac'),
+				)
+			)
 		except MissingTag as e:
 			result.unplaced.append(Problem(item.path, f'{e.tag} is empty'))
 		except ValueError as e:

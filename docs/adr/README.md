@@ -47,6 +47,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0056](0056-cover-controls-in-one-menu.md) | Cover controls in one menu, with the size warning on the cover | Accepted |
 | [0057](0057-tag-editor-tabs-and-other-tags.md) | Tag editor tabs: Discogs and MusicBrainz apart, and an Other tab with the remaining tags | Accepted |
 | [0058](0058-audio-files-through-one-seam.md) | Audio files are opened through one seam (`pipeline/audio.py`) | Accepted |
+| [0059](0059-mp3-support.md) | MP3 support: ID3 mapped to the Vorbis-style tag model, v2.4 written, mixed albums, own extensions | Accepted |
 
 ## History: superseded ADRs
 

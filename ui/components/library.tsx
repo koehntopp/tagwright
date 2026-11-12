@@ -134,7 +134,7 @@ export function LibraryTab({ lib, setLib }: { lib: any; setLib: (l: any) => void
 		})
 		setSel(null)
 	}
-	const rows = [...tpl.folders.map((_, i) => ({ key: 'f' + i, name: `Folder level ${i + 1}` })), ...(tpl.disc_folder ? [{ key: 'disc', name: 'Disc folder (multi-disc albums only)' }] : []), { key: 'file', name: 'File name (.flac is added)' }]
+	const rows = [...tpl.folders.map((_, i) => ({ key: 'f' + i, name: `Folder level ${i + 1}` })), ...(tpl.disc_folder ? [{ key: 'disc', name: 'Disc folder (multi-disc albums only)' }] : []), { key: 'file', name: 'File name (the extension is added)' }]
 	const chipText = (c: Chip) => (c.tag ? label(c.tag) + (c.fmt && c.fmt !== 'text' ? ` · ${c.fmt === 'num' ? `#${c.pad || ''}` : c.fmt}` : '') + (c.fallback ? ` / ${label(c.fallback)}` : '') : `“${c.text}”`)
 	const selChip = sel ? rowOf(tpl, sel.row)?.[sel.idx] : undefined
 	const patch = (p: Partial<Chip>) => sel && mutate(t => { Object.assign(rowOf(t, sel.row)[sel.idx], p) })

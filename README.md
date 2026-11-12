@@ -1,6 +1,6 @@
 # Tagwright
 
-A self-hosted web app that turns freshly downloaded FLAC albums into clean, tagged, loudness-analysed albums with lyrics, and keeps your music library in one canonical folder layout.
+A self-hosted web app that turns freshly downloaded FLAC and MP3 albums into clean, tagged, loudness-analysed albums with lyrics, and keeps your music library in one canonical folder layout.
 
 One user, one browser tab. FastAPI backend, Next.js frontend, no database server, no account. The decisions behind every behaviour are in [docs/adr/](docs/adr/README.md).
 

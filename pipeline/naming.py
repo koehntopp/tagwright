@@ -49,13 +49,15 @@ def same_name(a: str, b: str) -> bool:
 
 
 def rename_files(album: Path, name_of: Callable[[Tags], str | None] = bliss_name) -> list[str]:
-	"""Rename FLACs in place to the name `name_of` gives (the bliss pattern by default). Returns log lines."""
+	"""Rename the files in place to the name `name_of` gives (the bliss pattern by default); each file keeps its own
+	extension (`.flac`, `.mp3`), in lower case. Returns log lines."""
 	out = []
 	for f in flacs(album):
 		new = name_of(open_audio(f).tags or {})
 		if new is None:
 			out.append(f'skip {f.name}: title or track number is empty')
 			continue
+		new = Path(new).stem + f.suffix.lower()
 		if f.name == new:
 			continue
 		dest = f.with_name(new)

@@ -12,7 +12,15 @@ from .conftest import MakeFlac
 
 @pytest.mark.parametrize(
 	('name', 'expected'),
-	[('a.flac', True), ('A.FLAC', True), ('a.mp3', False), ('cover.jpg', False), ('flac', False)],
+	[
+		('a.flac', True),
+		('A.FLAC', True),
+		('a.mp3', True),
+		('A.MP3', True),
+		('cover.jpg', False),
+		('flac', False),
+		('a.ogg', False),
+	],
 )
 def test_is_audio_goes_by_the_extension(name: str, expected: bool) -> None:
 	assert audio.is_audio(name) is expected

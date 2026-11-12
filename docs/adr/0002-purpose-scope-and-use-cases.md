@@ -31,6 +31,10 @@ Tagwright is a single-user, self-hosted web app that lets one person work throug
 | UC-14 | See the library's state in the top bar (album artists, albums, tracks, activity, unplaced files) and re-analyse it by hand. | [0037](0037-library-watcher-and-layout.md) |
 | UC-15 | Switch the board between the staging folder and the library folder to fix details of albums that are already in the library. | [0038](0038-staging-and-library-views.md) |
 
+### Audio formats
+
+FLAC and MP3 files, alone or mixed in one album ([0059](0059-mp3-support.md)). M4A, Ogg and other formats are out of scope.
+
 ### Out of scope
 
 - Multi-user access, authentication, per-user settings ([0007](0007-trust-boundary-and-secrets.md)).

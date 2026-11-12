@@ -216,12 +216,12 @@ class Target:
 	extra: dict = field(default_factory=dict, compare=False)
 
 
-def target(t: Template, tags: dict[str, str]) -> Target:
+def target(t: Template, tags: dict[str, str], suffix: str = '.flac') -> Target:
 	"""The folder levels, the disc folder and the file name of a file; raises MissingTag, or ValueError for an
-	empty component (a title or album that is nothing but symbols)."""
+	empty component (a title or album that is nothing but symbols). `suffix` is the file's own extension."""
 	album_dir = tuple(render_level(level, tags) for level in t.folders)
 	disc_dir = render_level(t.disc_folder, tags) if t.disc_folder is not None else ''
 	stem = render_level(t.filename, tags)
 	if not stem or not all(album_dir):
 		raise ValueError('a name is empty after cleaning')
-	return Target(album_dir, disc_dir, f'{stem}.flac')
+	return Target(album_dir, disc_dir, f'{stem}{suffix}')

@@ -387,7 +387,7 @@ def test_move_preview_says_what_would_happen_without_doing_it(
 	assert p['album_dir'] == 'Test_Artist/Test_Album_2020_DR10_CD_TST_001'
 	assert [f['name'] for f in p['files']] == ['01_01_One.flac', '01_02_Two.flac']
 	assert (p['can_move'], p['problems']) == (True, [])
-	assert 'Only the FLAC files move' in p['stays']
+	assert 'Only the audio files move' in p['stays']
 	assert len(tagwright.flacs(album)) == 2  # nothing moved
 	assert not (tagwright.INGEST / 'Test_Artist').exists()
 

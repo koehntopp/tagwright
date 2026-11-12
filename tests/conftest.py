@@ -28,6 +28,7 @@ from mutagen.flac import FLAC  # noqa: E402  # same reason
 import app as tagwright  # noqa: E402  # same reason
 
 MakeFlac = Callable[..., Path]
+MakeMp3 = Callable[..., Path]
 
 # A complete, consistent tag set: every pipeline step done, nothing missing.
 COMPLETE: dict[str, str] = {
@@ -104,3 +105,23 @@ def album(make_flac: MakeFlac) -> Path:
 			**COMPLETE,
 		)
 	return folder
+
+
+@pytest.fixture
+def make_mp3() -> MakeMp3:
+	"""make_mp3(path, **tags) writes a one-second silent MP3 with the given tags (ID3v2.4 through the adapter)."""
+	from pipeline.audio import (
+		open_audio,  # after the environment is set, like the other app imports
+	)
+
+	def make(path: Path, rate: int = 44100, **tags: str) -> Path:
+		path.parent.mkdir(parents=True, exist_ok=True)
+		sf.write(path, np.zeros(rate, dtype='int16'), rate, format='MP3')
+		audio = open_audio(path)
+		audio.add_tags()
+		for key, value in tags.items():
+			audio[key] = [value]
+		audio.save()
+		return path
+
+	return make

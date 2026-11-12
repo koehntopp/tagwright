@@ -10,8 +10,8 @@ Tagwright reads and writes tags with `mutagen.flac.FLAC` in about 30 places in `
 ## Decision
 
 - `pipeline/audio.py` is the only module that imports a format class from mutagen. Everything else calls `open_audio(path)`, works on the `Audio` interface (mutagen's FLAC surface: a case-insensitive dict of lists in `.tags`, `.pictures`, `add_picture`, `clear_pictures`, `.info`, `save`) and builds covers with `new_cover()` (type `Cover`). File names are accepted by `is_audio(name)`, which today means the extension `.flac` in any case. `EXTENSIONS` is the one list.
-- This is a refactor: behaviour is unchanged and only FLAC is handled. Another format has to provide the same `Audio` surface; the decisions for MP3 (tag mapping, which steps apply, mixed albums) get their own ADR.
-- Names produced by Tagwright (the layout's file name, the bliss name) still end in `.flac`; they follow the file's own extension when a second format arrives.
+- This was a refactor: behaviour unchanged, only FLAC handled. Another format provides the same `Audio` surface: MP3 does, see [0059](0059-mp3-support.md). `EXTENSIONS` is `.flac` and `.mp3`.
+- Names produced by Tagwright follow the file's own extension ([0059](0059-mp3-support.md)).
 
 ## Consequences
 

@@ -203,7 +203,7 @@ def track_files(
 					bool(tag(t, 'ACOUSTID_FINGERPRINT', 'ACOUSTID FINGERPRINT')),
 					tags_ok,
 					kind != 'none',
-					f.name == file_name(t),
+					f.name == file_name(t, f.suffix.lower()),
 				],
 			}
 		)
@@ -322,7 +322,9 @@ def summarize(album: Path) -> dict:
 		('Lyrics', mis == 0),
 		(
 			'Filenames',
-			all(f.name == file_name(t) for f, t in zip(files, tags, strict=False)),
+			all(
+				f.name == file_name(t, f.suffix.lower()) for f, t in zip(files, tags, strict=False)
+			),
 		),  # None (not ready) never equals a name
 	]
 	out.update(
@@ -818,7 +820,7 @@ def library_settings() -> LibrarySettings:
 library = Library(lambda: INGEST, DATA / 'library.db', library_settings)
 
 
-def file_name(t: Tags) -> str | None:
+def file_name(t: Tags, suffix: str = '.flac') -> str | None:
 	"""The file name the layout gives a file (the bliss name with the default template), or None while a tag it
 	needs is empty. The Filenames step and every rename use it, so they agree with the watcher (ADR 0038)."""
 	try:
@@ -827,7 +829,7 @@ def file_name(t: Tags) -> str | None:
 		)
 	except MissingTag:
 		return None
-	return f'{stem}.flac' if stem else None
+	return f'{stem}{suffix}' if stem else None
 
 
 def library_json() -> dict:
@@ -1040,7 +1042,7 @@ def move_plan(path: Path) -> tuple[dict, list[lib_planner.Move]]:
 		'files': files,
 		'problems': problems,
 		'can_move': bool(plan.moves) and not problems,
-		'stays': 'Only the FLAC files move. Other files in the album folder (images, logs) stay in the staging folder.',
+		'stays': 'Only the audio files move. Other files in the album folder (images, logs) stay in the staging folder.',
 	}
 	return info, plan.moves
 
@@ -1623,7 +1625,8 @@ def track_path(album: str, file: str) -> Path:
 
 @app.get('/api/audio')
 def audio(path: str, file: str) -> FileResponse:
-	return FileResponse(track_path(path, file), media_type='audio/flac')
+	f = track_path(path, file)
+	return FileResponse(f, media_type='audio/mpeg' if f.suffix.lower() == '.mp3' else 'audio/flac')
 
 
 @app.get('/api/track')
