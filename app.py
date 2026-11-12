@@ -40,7 +40,7 @@ from library.template import default as default_template
 from library.template import validate as validate_template
 from library.watcher import Library
 from library.watcher import Settings as LibrarySettings
-from pipeline import covers, lrclib
+from pipeline import covers, logconfig, lrclib
 from pipeline import discogs as discogs_api
 from pipeline import musicbrainz as mb_api
 from pipeline.audio import Audio, Cover, is_audio, new_cover, open_audio
@@ -68,6 +68,7 @@ ROOT = env_path('STAGING_FOLDER')
 INGEST = env_path('LIBRARY_FOLDER')
 DATA = env_path('DATA_DIR')  # settings.json, library.db, the MusicBrainz cache
 SETTINGS_FILE = DATA / 'settings.json'
+log = logging.getLogger('app')  # the program's own lines (ADR 0064)
 KEYS = ('discogs_api_key',)
 settings: dict = {}
 if SETTINGS_FILE.is_file():
@@ -619,6 +620,7 @@ async def set_cover(path: str, request: Request) -> dict:
 		raise HTTPException(409, 'a job is running')
 	album = safe(path)
 	embed_cover(album, make_picture(await request.body()))
+	log.info('cover replaced: %s', album.name)
 	return fresh_summary(album)
 
 
@@ -638,6 +640,7 @@ def delete_cover(path: str) -> dict:
 			a.save()
 	for name in COVER_FILES:
 		(album / name).unlink(missing_ok=True)
+	log.info('cover removed: %s', album.name)
 	return fresh_summary(album)
 
 
@@ -693,6 +696,7 @@ def runner(path: Path, ctx: Context, only: str = '') -> int:
 	Returns 0, or 1 when a step failed (-1 if stopped)."""
 	job['path'] = str(path)
 	job['lines'].append(f'=== {path.name} ===')
+	log.info('job started: %s%s', path.name, f' (step {only})' if only else '')
 	try:
 		steps = only_steps(*PIPELINE_OF[only]) if only else None
 		ok = run_album(
@@ -700,15 +704,19 @@ def runner(path: Path, ctx: Context, only: str = '') -> int:
 		)
 	except Stopped:
 		job['lines'].append('-- stopped by user')
+		log.info('job stopped: %s', path.name)
 		return -1
 	except Exception as e:  # the job thread must survive anything; the message goes to the log pane
 		job['lines'].append(f'pipeline failed: {e}')
+		log.exception('job crashed: %s', path.name)
 		return -1
 	if only and only not in ('Filenames', 'Tags and cover'):
+		log.info('job finished: %s (%s)', path.name, 'ok' if ok else 'a step failed')
 		return 0 if ok else 1
 	job['step'] = 'Filenames'
 	job['lines'].append('-- rename files')
 	job['lines'].extend(rename_files(path, file_name))
+	log.info('job finished: %s (%s)', path.name, 'ok' if ok else 'a step failed')
 	return 0 if ok else 1
 
 
@@ -981,6 +989,7 @@ def set_settings(body: dict) -> dict:
 		library.rescan()  # a new layout applies to everything
 	else:
 		library.poke()
+	log.info('settings saved')
 	return get_settings()
 
 
@@ -1071,6 +1080,7 @@ def move(body: dict) -> dict:
 			dst.parent.mkdir(parents=True, exist_ok=True)
 			shutil.move(str(m.src), dst)
 	library.poke()
+	log.info('moved to the library: %s (%d files) -> %s', path.name, len(moves), info['album_dir'])
 	return {'moved_to': str(INGEST / info['album_dir'])}
 
 
@@ -1617,6 +1627,9 @@ def tracks_apply(body: dict) -> dict:
 	# them, so the card and the inspector do not keep the previous release's data (ADR 0013).
 	log.append(refresh_discogs_tags(album))
 	log += rename_files(album, file_name)
+	logging.getLogger('app').info(
+		'assigned Discogs release %s to %s (%d files)', rel['id'], album.name, len(picked)
+	)
 	return {'log': log, 'album': fresh_summary(album)}
 
 
@@ -1966,6 +1979,9 @@ def musicbrainz_apply(body: dict) -> dict:
 			'filled from MusicBrainz (only where empty): '
 			+ ', '.join(f'{k} x{v}' for k, v in filled.items())
 		)
+	logging.getLogger('app').info(
+		'MusicBrainz release %s applied to %s', body.get('id', ''), album.name
+	)
 	return {'log': log, 'album': fresh_summary(album)}
 
 
@@ -2236,6 +2252,12 @@ def set_tags(body: dict) -> dict:
 		log.append(f'track: {tr["file"]}')
 	if stale:
 		log.append(refresh_discogs_tags(album))
+	logging.getLogger('app').info(
+		'tags saved: %s (%d fields, %d tracks)',
+		album.name,
+		len(fields),
+		len(body.get('tracks', [])),
+	)
 	return {'log': [*log, *rename_files(album, file_name)], 'album': fresh_summary(album)}
 
 
@@ -2277,4 +2299,6 @@ def index() -> FileResponse:
 
 
 if __name__ == '__main__':
+	logconfig.configure(os.environ)
+	log.info('Tagwright started: staging %s, library %s', ROOT, INGEST)
 	uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', '8080')))

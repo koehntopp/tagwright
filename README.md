@@ -94,8 +94,15 @@ Open <http://localhost:8080>. In Settings enter your **Discogs API key** (requir
 | `LIBRARY_FOLDER` | Library folder (required) |
 | `DATA_DIR` | Settings, library index, MusicBrainz cache (required) |
 | `PORT` | HTTP port (optional, 8080) |
+| `SYSLOG_HOST` | Also send the log to this syslog host (optional) |
+| `SYSLOG_PORT` | Syslog port (optional, 514) |
+| `SYSLOG_PROTOCOL` | `udp` (default) or `tcp` (optional) |
 
 There are no default paths: Tagwright refuses to start when one of the three is missing. Paths must be absolute. Staging, library and every path the API accepts are checked against these two folders. They are not editable in Settings, which shows them read-only, as host paths (the bind-mounted path or the NFS export) when it can tell.
+
+### Logging
+
+The program logs jobs, moves, assignments and saves to standard output (`docker logs`). Set `SYSLOG_HOST` to send the same lines to a syslog server too. API keys are never logged ([ADR 0064](docs/adr/0064-logging-and-syslog.md)).
 
 ### Docker
 

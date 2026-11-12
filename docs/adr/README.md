@@ -52,6 +52,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0061](0061-renovate-for-dependency-updates.md) | Renovate for dependency updates | Accepted |
 | [0062](0062-license-gpl-3-or-later.md) | Licence: GPL-3.0-or-later (mutagen and Unidecode are GPL) | Accepted |
 | [0063](0063-publish-the-image-on-ghcr.md) | The image is published on GitHub's container registry (amd64 and arm64) | Accepted |
+| [0064](0064-logging-and-syslog.md) | Logging to standard output, and to syslog when SYSLOG_HOST is set | Accepted |
 
 ## History: superseded ADRs
 

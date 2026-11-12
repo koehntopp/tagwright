@@ -117,6 +117,7 @@ class Library:
 			self._state.update(kw)
 
 	def _note(self, text: str) -> None:
+		log.info(text)
 		with self._lock:
 			self._state['recent'].appendleft({'t': self._clock(), 'text': text})
 
