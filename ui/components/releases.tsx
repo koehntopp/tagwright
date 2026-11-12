@@ -127,7 +127,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 										<td>
 											<select className={`h-8 w-full rounded-md border bg-white px-2 text-sm ${f.rel !== null && used[f.rel] > 1 ? 'border-rose-500' : ''}`} value={f.rel ?? ''} onChange={e => upd(k, { rel: e.target.value === '' ? null : +e.target.value, conf: 1, d: null, t: null })}>
 												<option value="">Skip (leave as is)</option>
-												{rel.tracks.map((t: any) => <option key={t.i} value={t.i}>{t.position || t.i + 1}  {t.title}{t.duration ? ` (${mmss(t.duration)})` : ''}{t.channels ? ` · ${channelLabel(t.channels)}` : ''}</option>)}
+												{rel.tracks.map((t: any) => <option key={t.i} value={t.i}>{t.part_of ? '\u00a0\u00a0\u21b3' : (t.position || t.i + 1)}  {t.title}{t.duration ? ` (${mmss(t.duration)})` : ''}{t.channels ? ` · ${channelLabel(t.channels)}` : ''}</option>)}
 											</select>
 										</td>
 										<td className="w-16 text-right">{f.rel === null ? <Badge variant="secondary">skip</Badge> : f.conf >= 0.6 ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">match</Badge> : <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">check</Badge>}</td>
@@ -136,7 +136,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 							</tbody>
 						</table>
 						<div className="mt-3 text-xs text-slate-500">Also fills what the tagger used to import and the album lacks: artist, album artist, album title, catalog number and a missing cover. Existing values are kept.</div>
-						<div className="mt-1 text-xs text-slate-500">Not in this album: {rel.tracks.filter((t: any) => !used[t.i]).map((t: any) => t.title).join(', ') || 'none'}</div>
+						<div className="mt-1 text-xs text-slate-500">Not in this album: {rel.tracks.filter((t: any) => !used[t.i] && !t.part_of && !rel.tracks.some((p: any) => p.part_of === t.title && used[p.i])).map((t: any) => t.title).join(', ') || 'none'}</div>
 					</>
 				) : rows && <Results rows={rows} sort={sort} setSort={setSort} pick={pick} count={r => (r.n == null ? '…' : r.n < 0 ? '?' : r.n + ' tracks')} />}
 			</div>

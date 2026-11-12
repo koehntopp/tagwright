@@ -1,6 +1,6 @@
 # ADR 0053: Discogs release search and track assignment (consolidated)
 
-- **Status**: Accepted
+- **Status**: Accepted (the parts of a medley are release tracks too: [0060](0060-parts-of-a-work-are-release-tracks.md))
 - **Date**: 2026-11-12
 - **Supersedes**: [0013](0013-discogs-track-assignment.md), [0043](0043-assignment-refreshes-the-discogs-tags.md), [0046](0046-discogs-medleys-are-one-release-track.md), [0047](0047-a-real-catalogue-number-replaces-none.md), [0048](0048-reassignment-replaces-what-the-previous-release-filled.md), [0052](0052-discogs-search-by-attributes-and-musicbrainz-match.md). This is the one place that states the current rules; the six ADRs stay as history.
 

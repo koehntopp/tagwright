@@ -1285,14 +1285,35 @@ def release_tracks(rid: str) -> dict:
 	r = discogs(f'/releases/{rid}')
 	album_artist = artist_names(r.get('artists', []))
 	tracks, seq, head = [], 0, 0
+
+	def add(t: dict, pos: str, disc: int, track: int, part_of: str = '', duration: int = 0) -> None:
+		tracks.append(
+			{
+				'i': len(tracks),
+				'position': pos,
+				'disc': disc,
+				'track': track,
+				'title': t.get('title', ''),
+				'part_of': part_of,
+				'channels': channels_from_title(t.get('title', '')),
+				'duration': duration or seconds(t.get('duration', '')),
+				'artist': artist_names(t.get('artists', [])) or album_artist,
+				'composers': by_role(t.get('extraartists') or [], *WRITER_ROLES),
+				'producers': by_role(t.get('extraartists') or [], 'producer'),
+				'engineers': by_role(t.get('extraartists') or [], 'engineer'),
+			}
+		)
+
 	for t in r.get('tracklist', []):
 		if t.get('type_') == 'heading':
 			if h := re.match(r'^(?:CD|DVD|Disc|Disk)\s*(\d+)\b', t.get('title', ''), re.I):
 				head = int(h[1])  # plain positions 1, 2, ... restart under each 'Disc N' heading
 			continue
-		if t.get('type_') == 'index' and t.get('sub_tracks'):
-			# a medley: one entry with its parts as sub-tracks (CD3-6.1, CD3-6.2, ...), usually one file (ADR 0046)
-			pos = re.sub(r'\.\d+$', '', t['sub_tracks'][0].get('position', ''))
+		parts = t.get('sub_tracks') or [] if t.get('type_') == 'index' else []
+		if parts:
+			# a medley or a work in parts: the entry itself is one release track (a single file), and its parts
+			# (CD3-6.1, CD3-6.2, ... or plain 6, 7, ...) are tracks of their own for files split by part (ADR 0060)
+			pos = re.sub(r'\.\d+$', '', parts[0].get('position', ''))
 		elif t.get('type_') == 'track':
 			pos = t.get('position', '')
 		else:
@@ -1301,21 +1322,10 @@ def release_tracks(rid: str) -> dict:
 		if not m and head and pos.isdigit():
 			m = (None, head, pos)
 		seq += 1
-		tracks.append(
-			{
-				'i': len(tracks),
-				'position': pos,
-				'disc': int(m[1]) if m else 1,
-				'track': int(m[2]) if m else seq,
-				'title': t.get('title', ''),
-				'channels': channels_from_title(t.get('title', '')),
-				'duration': seconds(t.get('duration', '')),
-				'artist': artist_names(t.get('artists', [])) or album_artist,
-				'composers': by_role(t.get('extraartists') or [], *WRITER_ROLES),
-				'producers': by_role(t.get('extraartists') or [], 'producer'),
-				'engineers': by_role(t.get('extraartists') or [], 'engineer'),
-			}
-		)
+		disc, number = (int(m[1]) if m else 1), (int(m[2]) if m else seq)
+		add(t, pos, disc, number, duration=sum(seconds(p.get('duration', '')) for p in parts))
+		for part in parts:
+			add(part, part.get('position', ''), disc, number, part_of=t.get('title', ''))
 	# Discogs' own 'none' counts: the tag must not be empty
 	catno = next((c for lb in r.get('labels', []) if (c := (lb.get('catno') or '').strip())), '')
 	images = r.get('images') or []
@@ -1444,10 +1454,15 @@ def tracks_propose(body: dict) -> dict:
 	assign: dict[str, int | None] = {f['file']: None for f in files}
 	conf: dict[str, float] = {}
 	used: set[int] = set()
-	for s, fn, i in sorted(pairs, reverse=True):
-		if s >= 0.35 and assign[fn] is None and i not in used:
-			assign[fn], conf[fn] = i, round(s, 2)
-			used.add(i)
+	is_part = {t['i']: bool(t['part_of']) for t in rel['tracks']}
+	# whole tracks first; the parts of a medley only take the files left over, and only on a clear title match (ADR 0060)
+	for part_pass in (False, True):
+		for s, fn, i in sorted(pairs, reverse=True):
+			if is_part[i] != part_pass or assign[fn] is not None or i in used:
+				continue
+			if s >= (0.45 if part_pass else 0.35):
+				assign[fn], conf[fn] = i, round(s, 2)
+				used.add(i)
 	return {
 		'release': rel,
 		'files': [{**f, 'rel': assign[f['file']], 'conf': conf.get(f['file'], 0)} for f in files],

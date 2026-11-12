@@ -10,6 +10,8 @@ import app as tagwright
 from pipeline import fixtags
 from pipeline.http import ApiError
 
+from .conftest import MakeFlac
+
 REL = {
 	'id': '777',
 	'title': 'New Release',
@@ -118,7 +120,9 @@ def test_a_discogs_failure_does_not_fail_the_assignment(
 	]  # the assignment itself is written
 
 
-def test_a_medley_index_entry_is_one_release_track(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_medley_index_entry_is_one_release_track_and_its_parts_follow(
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
 	"""Discogs lists a medley as an index entry with sub-tracks CD3-6.1 ...; its one file needs one track to pick."""
 	raw = {
 		'id': 5,
@@ -143,10 +147,12 @@ def test_a_medley_index_entry_is_one_release_track(monkeypatch: pytest.MonkeyPat
 	monkeypatch.setattr(tagwright, 'discogs', lambda path, **kw: raw)
 	tagwright.releases.pop('5', None)
 	tracks = tagwright.release_tracks('5')['tracks']
-	assert [(t['disc'], t['track'], t['title']) for t in tracks] == [
-		(3, 5, 'Five'),
-		(3, 6, 'Medley (Mega Mix)'),
-		(3, 7, 'Seven'),
+	assert [(t['disc'], t['track'], t['title'], t['part_of']) for t in tracks] == [
+		(3, 5, 'Five', ''),
+		(3, 6, 'Medley (Mega Mix)', ''),
+		(3, 6, 'Out Of The Blue', 'Medley (Mega Mix)'),  # the parts follow, for files split by part
+		(3, 6, 'Shake Your Love', 'Medley (Mega Mix)'),
+		(3, 7, 'Seven', ''),
 	]
 
 
@@ -240,3 +246,43 @@ def test_when_the_refresh_fails_the_missing_version_reopens_the_tags_step(
 	)
 	assert r.status_code == 200
 	assert 'VERSION' not in FLAC(sorted(album.glob('*.flac'))[0]).tags
+
+
+def test_files_split_by_part_match_the_parts_and_a_whole_track_wins_over_a_part(
+	client: TestClient, make_flac: MakeFlac, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	"""ADR 0060: 'The Fall Of The House Of Usher' as an index entry with parts 6-10 and one file per part."""
+	raw = {
+		'id': 6,
+		'title': 'Tales',
+		'artists': [{'name': 'A'}],
+		'tracklist': [
+			{'type_': 'track', 'position': '5', 'title': 'Doctor Tarr', 'duration': '4:20'},
+			{
+				'type_': 'index',
+				'position': '',
+				'title': 'The Fall Of The House Of Usher (Instrumental)',
+				'sub_tracks': [
+					{'type_': 'track', 'position': '6', 'title': 'I Prelude', 'duration': '7:02'},
+					{'type_': 'track', 'position': '7', 'title': 'II Arrival', 'duration': '2:39'},
+				],
+			},
+			{'type_': 'track', 'position': '11', 'title': 'To One In Paradise', 'duration': '4:46'},
+		],
+	}
+	monkeypatch.setattr(tagwright, 'discogs', lambda path, **kw: raw)
+	tagwright.releases.pop('6', None)
+	folder = tagwright.ROOT / 'split'
+	for n, title in enumerate(('Doctor Tarr', 'Prelude', 'Arrival', 'To One In Paradise'), 1):
+		make_flac(folder / f'{n:02d}.flac', TITLE=title, TRACKNUMBER=str(n), DISCNUMBER='1')
+	r = client.post('/api/tracks/propose', json={'path': str(folder), 'release_id': '6'}).json()
+	titles = {t['i']: t['title'] for t in r['release']['tracks']}
+	got = {f['title']: titles.get(f['rel']) for f in r['files']}
+	assert got == {
+		'Doctor Tarr': 'Doctor Tarr',
+		'Prelude': 'I Prelude',
+		'Arrival': 'II Arrival',
+		'To One In Paradise': 'To One In Paradise',
+	}
+	whole = next(t for t in r['release']['tracks'] if not t['part_of'] and 'Usher' in t['title'])
+	assert whole['duration'] == 7 * 60 + 2 + 2 * 60 + 39  # no duration of its own: the parts add up
