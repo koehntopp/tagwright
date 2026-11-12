@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, Copy, Pause, Pencil, Play, TriangleAlert, Upload, XCircle } from 'lucide-react'
+import { Check, ChevronDown, Copy, Pause, Pencil, Play, RefreshCw, TriangleAlert, Upload, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -241,8 +241,8 @@ export function Inspector(p: Props) {
 				<ol className="grid grid-cols-6 gap-1 text-center text-[11px] leading-tight">
 					{a.steps.map((s, i) => (
 						<li key={s.name} title={s.note} className="cursor-pointer" onClick={() => { setStep(stepSel === i ? null : i); setTracksOpen(true) }}>
-							<div className={`mx-auto mb-1 grid size-7 place-items-center rounded-full text-white ${s.done ? (s.partial ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200 text-slate-500'} ${running && s.name === job.step ? 'animate-pulse ring-2 ring-sky-400' : ''}`}>
-								{s.done ? <Check className="size-4" /> : i + 1}
+							<div className={`mx-auto mb-1 grid size-7 place-items-center rounded-full text-white ${running && s.name === job.step ? 'bg-sky-500 ring-2 ring-sky-300' : s.done ? (s.partial ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200 text-slate-500'}`}>
+								{running && s.name === job.step ? <RefreshCw className="size-4 animate-spin" /> : s.done ? <Check className="size-4" /> : i + 1}
 							</div>
 							<span className={`rounded px-1 ${stepSel === i ? 'bg-slate-800/10 font-medium' : ''}`}>{s.name.replace(' and ', ' & ')}</span>
 						</li>
