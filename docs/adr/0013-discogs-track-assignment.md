@@ -1,6 +1,6 @@
 # ADR 0013: Discogs release search and track assignment
 
-- **Status**: Accepted (a real catalogue number replaces `none`: [0047](0047-a-real-catalogue-number-replaces-none.md); medleys are one release track now: [0046](0046-discogs-medleys-are-one-release-track.md)) (an assignment also refreshes the Discogs-owned tags at once: [0043](0043-assignment-refreshes-the-discogs-tags.md))
+- **Status**: Accepted (re-assigning replaces what the previous release filled: [0048](0048-reassignment-replaces-what-the-previous-release-filled.md); a real catalogue number replaces `none`: [0047](0047-a-real-catalogue-number-replaces-none.md); medleys are one release track now: [0046](0046-discogs-medleys-are-one-release-track.md)) (an assignment also refreshes the Discogs-owned tags at once: [0043](0043-assignment-refreshes-the-discogs-tags.md))
 - **Date**: 2026-11-08
 
 ## Context

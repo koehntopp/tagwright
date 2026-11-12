@@ -1435,11 +1435,41 @@ def tracks_apply(body: dict) -> dict:
 	log = []
 	filled: dict[str, int] = {}
 
+	prev_vals: dict[
+		str, list[str]
+	] = {}  # what the file's previous Discogs release would have filled
+	prev_cache: dict[str, dict[str, list[str]]] = {}
+
+	def release_level(rid: str) -> dict[str, list[str]]:
+		"""The release-level tags an assignment fills from release `rid` ({} when it cannot be read)."""
+		if rid not in prev_cache:
+			found: dict[str, list[str]] = {}
+			try:
+				r = release_tracks(rid)
+				if raw := raw_releases.get(rid):
+					found = {
+						'CATALOGNUMBER': [r['catno']],
+						'ALBUM_FORMAT': [release_format(raw)],
+						'ALBUMARTIST': [r['artist']],
+						'ALBUM': [release_album_title(r)],
+						**{
+							k: v
+							for k, v in release_tags(raw)[0].items()
+							if k not in ('PRODUCER', 'ENGINEER')
+						},
+					}
+			except HTTPException:
+				pass
+			prev_cache[rid] = {k: v for k, v in found.items() if v and v != ['']}
+		return prev_cache[rid]
+
 	def fill(a: FLAC, key: str, value: str | list[str], *alts: str) -> None:
 		# Tags the tagger used to import from Discogs (the pipeline reads some as user input): filled when empty,
-		# never overwritten (discogs ADR 0002 section 1 and 2).
+		# never overwritten (discogs ADR 0002 section 1 and 2), except a value the file's previous Discogs
+		# release itself would have filled: that follows the release (ADR 0048).
 		values = [value] if isinstance(value, str) else value
-		if values and not tag(a.tags, key, *alts):
+		stale = key in prev_vals and list(a.tags.get(key) or []) == prev_vals[key]
+		if values and (not tag(a.tags, key, *alts) or stale):
 			a[key] = values
 			filled[key] = filled.get(key, 0) + 1
 
@@ -1458,6 +1488,10 @@ def tracks_apply(body: dict) -> dict:
 		a = FLAC(album / fn)
 		if a.tags is None:
 			a.add_tags()
+		before = tag(a.tags, 'DISCOGS_RELEASE_ID')
+		prev_vals.clear()
+		if before and before != rel['id']:
+			prev_vals.update(release_level(before))
 		a['DISCOGS_RELEASE_ID'] = [rel['id']]
 		if rel['catno'].lower() != 'none' and tag(a.tags, *CATALOG_KEYS).lower() == 'none':
 			for k in CATALOG_KEYS:  # Discogs' own 'none' is a placeholder, a real catalogue number replaces it (ADR 0047)
@@ -1468,7 +1502,7 @@ def tracks_apply(body: dict) -> dict:
 		fill(a, 'ARTIST', t['artist'])
 		if not tag(a.tags, 'ALBUM_ARTIST_OVERRIDE'):
 			fill(a, 'ALBUMARTIST', rel['artist'])
-		if not tag(a.tags, 'ALBUM_TITLE_OVERRIDE') and not tag(a.tags, 'ALBUM'):
+		if not tag(a.tags, 'ALBUM_TITLE_OVERRIDE'):
 			fill(a, 'ALBUM', release_album_title(rel))
 		for key, values in player.items():
 			if key not in ('PRODUCER', 'ENGINEER'):

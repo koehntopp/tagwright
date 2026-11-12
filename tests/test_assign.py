@@ -175,3 +175,29 @@ def test_a_real_catalogue_number_replaces_the_placeholder_none(
 	got = {f.name: FLAC(f)['CATALOGNUMBER'] for f in (first, second)}
 	assert got[first.name] == ['CAT-9']  # 'none' was a placeholder
 	assert got[second.name] == ['USER-1']  # a value the owner set stays
+
+
+def test_values_the_previous_release_filled_follow_the_new_release(
+	client: TestClient, album: Path, stubbed: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	"""A re-assignment replaces release-level tags equal to what the old release gives; a value of the owner's stays."""
+	monkeypatch.setattr(tagwright, 'fix_album', lambda path, cfg: fixtags.FixResult(2, 'X', 'V'))
+	old = {**REL, 'id': '555', 'catno': 'OLD-1', 'artist': 'Old Artist', 'title': 'Old Title'}
+	monkeypatch.setattr(tagwright, 'release_tracks', lambda rid: REL if rid == '777' else old)
+	monkeypatch.setitem(tagwright.raw_releases, '555', {'id': 555, 'formats': [{'name': 'File'}]})
+	monkeypatch.setitem(
+		tagwright.raw_releases,
+		'777',
+		{'id': 777, 'title': 'New Release', 'formats': [{'name': 'CD'}]},
+	)
+	first, second = sorted(album.glob('*.flac'))
+	for f, fmt in ((first, 'File'), (second, 'Mine')):
+		a = FLAC(f)
+		a['DISCOGS_RELEASE_ID'] = ['555']
+		a['ALBUM_FORMAT'] = [fmt]
+		a['CATALOGNUMBER'] = ['OLD-1']
+		a.save()
+	apply(client, album)
+	assert FLAC(first)['ALBUM_FORMAT'] == ['CD']  # the old release's value
+	assert FLAC(first)['CATALOGNUMBER'] == ['CAT-9']
+	assert FLAC(second)['ALBUM_FORMAT'] == ['Mine']  # not what release 555 gives: the owner's
