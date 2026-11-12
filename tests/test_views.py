@@ -348,3 +348,12 @@ def test_discogs_search_marks_the_releases_the_musicbrainz_release_links(
 	assert [(r['id'], r['match']) for r in rows] == [('2', 'MusicBrainz'), ('1', ''), ('3', '')]
 	rows = client.get('/api/discogs/search', params={'q': 'x y'}).json()  # no album: plain results
 	assert [r['match'] for r in rows] == ['', '', '']
+
+
+def test_a_missing_folder_variable_is_a_startup_error(monkeypatch: pytest.MonkeyPatch) -> None:
+	monkeypatch.delenv('STAGING_FOLDER', raising=False)
+	with pytest.raises(SystemExit, match='STAGING_FOLDER is not set'):
+		tagwright.env_path('STAGING_FOLDER')
+	monkeypatch.setenv('STAGING_FOLDER', 'relative/path')
+	with pytest.raises(SystemExit, match='absolute'):
+		tagwright.env_path('STAGING_FOLDER')

@@ -43,6 +43,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0051](0051-run-a-single-pipeline-step.md) | A double click on a pipeline step runs only that step | Accepted |
 | [0053](0053-discogs-search-and-assignment-consolidated.md) | Discogs release search and track assignment (consolidated: 0013, 0043, 0046, 0047, 0048, 0052) | Accepted |
 | [0054](0054-album-status-and-steps-consolidated.md) | Album status, pipeline steps and issue lines (consolidated: 0006, 0039, 0049, 0050) | Accepted |
+| [0055](0055-no-default-paths.md) | No default paths: staging, library and data folders must be set | Accepted |
 
 ## History: superseded ADRs
 

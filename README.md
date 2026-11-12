@@ -88,14 +88,14 @@ STAGING_FOLDER=/path/to/staging LIBRARY_FOLDER=/path/to/library DATA_DIR=./data 
 
 Open <http://localhost:8080>. In Settings enter your **Discogs API key** (required for the Discogs step). It lives in `DATA_DIR/settings.json` and is never logged or returned by the API. lrclib.net needs no key: Tagwright identifies itself with its registered application ID.
 
-| Variable | Default | Meaning |
-|---|---|---|
-| `STAGING_FOLDER` | `/staging` | Staging folder |
-| `LIBRARY_FOLDER` | `/flac/ingest` | Library folder |
-| `DATA_DIR` | `./data` | Settings, library index, MusicBrainz cache |
-| `PORT` | `8080` | HTTP port |
+| Variable | Meaning |
+|---|---|
+| `STAGING_FOLDER` | Staging folder (required) |
+| `LIBRARY_FOLDER` | Library folder (required) |
+| `DATA_DIR` | Settings, library index, MusicBrainz cache (required) |
+| `PORT` | HTTP port (optional, 8080) |
 
-Paths must be absolute. Staging, library and every path the API accepts are checked against these two folders. They are not editable in Settings, which shows them read-only, as host paths (the bind-mounted path or the NFS export) when it can tell.
+There are no default paths: Tagwright refuses to start when one of the three is missing. Paths must be absolute. Staging, library and every path the API accepts are checked against these two folders. They are not editable in Settings, which shows them read-only, as host paths (the bind-mounted path or the NFS export) when it can tell.
 
 ### Docker
 
@@ -103,7 +103,7 @@ Paths must be absolute. Staging, library and every path the API accepts are chec
 docker compose up -d
 ```
 
-[compose.yaml](compose.yaml) mounts staging at `/staging`, the library at `/flac/ingest` and `./data` at `/data`. The image contains Python, `fpcalc`, `drcalc` and a source-built `rsgain`. `./deploy-linux.sh` builds an amd64 image, copies it to a Linux host and recreates a Dockge stack (edit the host and stack name at the top).
+Set `STAGING_HOST_PATH` and `LIBRARY_HOST_PATH` in a `.env` file next to [compose.yaml](compose.yaml); it mounts them at `/staging` and `/library`, and `./data` at `/data`. The image contains Python, `fpcalc`, `drcalc` and a source-built `rsgain`. `./deploy-linux.sh` builds an amd64 image, copies it to a Linux host and recreates a Dockge stack (edit the host and stack name at the top).
 
 Tagwright has no authentication. Run it on a trusted network or behind a reverse proxy that authenticates (ADR 0007).
 

@@ -5,8 +5,8 @@
 # ///
 """Tagwright: web UI and the fix pipeline for FLAC albums (the pipeline is the package pipeline/).
 
-Env: STAGING_FOLDER (default /staging), LIBRARY_FOLDER (default /flac/ingest),
-DATA_DIR (settings, default ./data), PORT (8080). The pipeline is the package pipeline/ (ADR 0036).
+Env, all three required (no default paths, ADR 0055): STAGING_FOLDER, LIBRARY_FOLDER, DATA_DIR (settings).
+PORT (default 8080). The pipeline is the package pipeline/ (ADR 0036).
 """
 
 import io
@@ -54,19 +54,19 @@ from pipeline.tagio import Tags, channels_from_title, tag
 from pipeline.tools import Context, Stopped
 
 
-def env_path(name: str, default: str) -> Path:
-	"""Read a path from the environment; ~ is expanded, relative paths are a startup error."""
-	p = Path(os.environ.get(name, default)).expanduser()
+def env_path(name: str) -> Path:
+	"""Read a required path from the environment; ~ is expanded, a missing or relative path is a startup error."""
+	if not os.environ.get(name):
+		raise SystemExit(f'{name} is not set: give it as an absolute path')
+	p = Path(os.environ[name]).expanduser()
 	if not p.is_absolute():
 		raise SystemExit(f'{name}={p} must be an absolute path (missing leading slash?)')
 	return p.resolve()
 
 
-ROOT = env_path('STAGING_FOLDER', '/staging')
-INGEST = env_path('LIBRARY_FOLDER', '/flac/ingest')
-DATA = env_path(
-	'DATA_DIR', str(Path(__file__).parent / 'data')
-)  # settings.json and generated config overlay
+ROOT = env_path('STAGING_FOLDER')
+INGEST = env_path('LIBRARY_FOLDER')
+DATA = env_path('DATA_DIR')  # settings.json, library.db, the MusicBrainz cache
 SETTINGS_FILE = DATA / 'settings.json'
 KEYS = ('discogs_api_key',)
 settings: dict = {}

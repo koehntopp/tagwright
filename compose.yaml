@@ -1,3 +1,6 @@
+# Set the two host paths in a .env file next to this file (or in the environment):
+#   STAGING_HOST_PATH=/path/to/staging
+#   LIBRARY_HOST_PATH=/path/to/library
 services:
   tagwright:
     build: .
@@ -5,8 +8,8 @@ services:
     ports: ["8080:8080"]
     environment:
       - STAGING_FOLDER=/staging
-      - LIBRARY_FOLDER=/flac/ingest
+      - LIBRARY_FOLDER=/library
     volumes:
-      - /path/to/staging:/staging          # the staging folder
-      - /srv/flac/ingest:/flac/ingest   # the library folder (the watcher keeps it in the layout)
-      - ./data:/data                    # settings.json (includes API keys), library.db, the MusicBrainz cache
+      - ${STAGING_HOST_PATH:?set STAGING_HOST_PATH}:/staging   # the staging folder
+      - ${LIBRARY_HOST_PATH:?set LIBRARY_HOST_PATH}:/library   # the library folder (the watcher keeps it in the layout)
+      - ./data:/data                                           # settings.json (includes API keys), library.db, the MusicBrainz cache

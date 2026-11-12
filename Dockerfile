@@ -48,6 +48,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY pipeline/ pipeline/
 COPY library/ library/
 COPY static/ static/
-ENV DATA_DIR=/data STAGING_FOLDER=/staging LIBRARY_FOLDER=/flac/ingest
+# The image's own data mount point; the two media folders come from compose (ADR 0055)
+ENV DATA_DIR=/data
 EXPOSE 8080
 CMD ["python", "app.py"]
