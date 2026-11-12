@@ -13,7 +13,7 @@ The cover box shows the embedded front cover, else a folder image (`cover.jpg`, 
 - The red circle-x is shown whenever the album has a cover, embedded or a folder image.
 - `DELETE /api/cover?path=` removes the front and untyped (type 0 and 3) pictures from every FLAC, keeping other picture types, and deletes the folder image files named above from the album folder. Other files in the folder are not touched. Refused (409) while a job runs.
 - The in-app confirmation names what goes: the embedded cover and any folder image.
-- The album then has no cover, so the minimum-size rule applies ([0006](0006-status-model-and-pipeline-steps.md)).
+- The album then has no cover, so the minimum-size rule applies ([0054](0054-album-status-and-steps-consolidated.md)).
 
 ## Consequences
 

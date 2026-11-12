@@ -2,7 +2,7 @@
 
 - **Status**: Accepted
 - **Date**: 2026-11-12
-- **Supersedes**: the rule in [0007](0007-trust-boundary-and-secrets.md) that `safe()` accepts paths under the input folder only (it now accepts the staging and the library folder), and the Filenames step and rename of [0006](0006-status-model-and-pipeline-steps.md) / [0010](0010-bliss-file-naming.md) where they say the name is the bliss name (it is the file name row of the layout template, which is the bliss name by default)
+- **Supersedes**: the rule in [0007](0007-trust-boundary-and-secrets.md) that `safe()` accepts paths under the input folder only (it now accepts the staging and the library folder), and the Filenames step and rename of [0054](0054-album-status-and-steps-consolidated.md) / [0010](0010-bliss-file-naming.md) where they say the name is the bliss name (it is the file name row of the layout template, which is the bliss name by default)
 
 ## Context
 

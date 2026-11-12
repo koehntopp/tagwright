@@ -5,7 +5,7 @@
 
 ## Context
 
-[0004](0004-pipeline-engine-reuses-discogs-scripts.md) forbids editing the discogs repository unless the owner asks. The owner asked. `calculate_fp.py` called `acoustid.fingerprint_file(..., maxlength=10000)`, which makes `fpcalc` decode the whole file. On `Billy_Joel/Songs_In_The_Attic_2013_DR12_MFSL_SACD_UDSACD_2092/01_05_She_s_Got_A_Way.flac` (88.2 kHz, 24 bit) that decode ends with "Error decoding audio frame" and exit status 3, every run, so the Fingerprints step ([0006](0006-status-model-and-pipeline-steps.md)) stayed at 10 of 11 tracks. `flac -t` and `ffmpeg` decode the file without errors.
+[0004](0004-pipeline-engine-reuses-discogs-scripts.md) forbids editing the discogs repository unless the owner asks. The owner asked. `calculate_fp.py` called `acoustid.fingerprint_file(..., maxlength=10000)`, which makes `fpcalc` decode the whole file. On `Billy_Joel/Songs_In_The_Attic_2013_DR12_MFSL_SACD_UDSACD_2092/01_05_She_s_Got_A_Way.flac` (88.2 kHz, 24 bit) that decode ends with "Error decoding audio frame" and exit status 3, every run, so the Fingerprints step ([0054](0054-album-status-and-steps-consolidated.md)) stayed at 10 of 11 tracks. `flac -t` and `ffmpeg` decode the file without errors.
 
 ## Decision
 

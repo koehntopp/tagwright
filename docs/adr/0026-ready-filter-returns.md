@@ -1,6 +1,6 @@
 # ADR 0026: The Ready filter returns to the top bar
 
-- **Status**: Accepted (the label "Ready" is now "Incomplete": [0039](0039-incomplete-and-what-is-missing.md)) (the Ready filter is in the top bar again, [0031](0031-top-bar-again.md))
+- **Status**: Accepted (the label "Ready" is now "Incomplete": [0054](0054-album-status-and-steps-consolidated.md)) (the Ready filter is in the top bar again, [0031](0031-top-bar-again.md))
 - **Date**: 2026-11-09
 - **Supersedes**: the statement in [0022](0022-top-bar-instead-of-sidebar.md) that there is no Ready filter (the rest of 0022 stands)
 
@@ -10,5 +10,5 @@ The Ready box was dropped from the top bar when it ran out of room. With the ful
 
 ## Decision
 
-- The navigation entries are **All albums**, **Needs input**, **Ready**, **Fixed**, each with a count. Ready lists albums with status `ready` ([0006](0006-status-model-and-pipeline-steps.md)): no blocking issue, fewer than 6 steps done.
+- The navigation entries are **All albums**, **Needs input**, **Ready**, **Fixed**, each with a count. Ready lists albums with status `ready` ([0054](0054-album-status-and-steps-consolidated.md)): no blocking issue, fewer than 6 steps done.
 - Styling is unchanged from the other entries ([0022](0022-top-bar-instead-of-sidebar.md)).

@@ -5,7 +5,7 @@
 
 ## Context
 
-`nzbfix.py` ran `rsgain easy -S` (skip existing, setting `rsgain_skip`). `-S` skips every file that has any ReplayGain tag, so an album with track gain but no `REPLAYGAIN_ALBUM_GAIN` was never scanned and the ReplayGain step ([0006](0006-status-model-and-pipeline-steps.md), which checks `REPLAYGAIN_ALBUM_GAIN`) stayed open (found on `Wham/Last_Christmas_Everything_She_Wants`). The owner agreed to change `nzbfix.py` in the discogs repository ([0004](0004-pipeline-engine-reuses-discogs-scripts.md)).
+`nzbfix.py` ran `rsgain easy -S` (skip existing, setting `rsgain_skip`). `-S` skips every file that has any ReplayGain tag, so an album with track gain but no `REPLAYGAIN_ALBUM_GAIN` was never scanned and the ReplayGain step ([0054](0054-album-status-and-steps-consolidated.md), which checks `REPLAYGAIN_ALBUM_GAIN`) stayed open (found on `Wham/Last_Christmas_Everything_She_Wants`). The owner agreed to change `nzbfix.py` in the discogs repository ([0004](0004-pipeline-engine-reuses-discogs-scripts.md)).
 
 ## Decision
 

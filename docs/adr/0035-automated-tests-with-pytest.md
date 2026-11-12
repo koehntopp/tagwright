@@ -6,7 +6,7 @@
 
 ## Context
 
-Verification was manual ([0018](0018-verification.md)). The status model ([0006](0006-status-model-and-pipeline-steps.md)), bliss naming ([0010](0010-bliss-file-naming.md)), the job model ([0008](0008-job-model.md)) and the move ([0011](0011-ingestion-move.md)) are rules that regress quietly. They can be checked on small synthetic files, without the real tools and without the network.
+Verification was manual ([0018](0018-verification.md)). The status model ([0054](0054-album-status-and-steps-consolidated.md)), bliss naming ([0010](0010-bliss-file-naming.md)), the job model ([0008](0008-job-model.md)) and the move ([0011](0011-ingestion-move.md)) are rules that regress quietly. They can be checked on small synthetic files, without the real tools and without the network.
 
 ## Decision
 

@@ -5,7 +5,7 @@
 
 ## Context
 
-[0005](0005-technology-stack-and-conventions.md) says the spaced keys `DYNAMIC RANGE` and `ALBUM DYNAMIC RANGE` are not read by Tagwright. The discogs scripts still accepted them: `calculate_dr.py` counted a track with `DYNAMIC RANGE` as done and never wrote `DYNAMIC_RANGE`, so the DR step ([0006](0006-status-model-and-pipeline-steps.md)) stayed open for such albums (found on `Wham/Last_Christmas_Everything_She_Wants`). The owner asked to remove the code for the old tags (a discogs repository change, [0004](0004-pipeline-engine-reuses-discogs-scripts.md)).
+[0005](0005-technology-stack-and-conventions.md) says the spaced keys `DYNAMIC RANGE` and `ALBUM DYNAMIC RANGE` are not read by Tagwright. The discogs scripts still accepted them: `calculate_dr.py` counted a track with `DYNAMIC RANGE` as done and never wrote `DYNAMIC_RANGE`, so the DR step ([0054](0054-album-status-and-steps-consolidated.md)) stayed open for such albums (found on `Wham/Last_Christmas_Everything_She_Wants`). The owner asked to remove the code for the old tags (a discogs repository change, [0004](0004-pipeline-engine-reuses-discogs-scripts.md)).
 
 ## Decision
 
