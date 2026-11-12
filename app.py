@@ -1247,9 +1247,13 @@ def release_tracks(rid: str) -> dict:
 			if h := re.match(r'^(?:CD|DVD|Disc|Disk)\s*(\d+)\b', t.get('title', ''), re.I):
 				head = int(h[1])  # plain positions 1, 2, ... restart under each 'Disc N' heading
 			continue
-		if t.get('type_') != 'track':
+		if t.get('type_') == 'index' and t.get('sub_tracks'):
+			# a medley: one entry with its parts as sub-tracks (CD3-6.1, CD3-6.2, ...), usually one file (ADR 0046)
+			pos = re.sub(r'\.\d+$', '', t['sub_tracks'][0].get('position', ''))
+		elif t.get('type_') == 'track':
+			pos = t.get('position', '')
+		else:
 			continue
-		pos = t.get('position', '')
 		m = re.match(r'^(?:CD|DVD)?(\d+)[-.](\d+)$', pos, re.I)
 		if not m and head and pos.isdigit():
 			m = (None, head, pos)
@@ -1489,6 +1493,10 @@ def tracks_apply(body: dict) -> dict:
 	if cover:
 		embed_cover(album, cover, only_missing=True)
 		filled['cover'] = 1
+	for f in flacs(album):  # a skipped file keeps its own release; say so, the album then has two
+		other = tag(FLAC(f).tags, 'DISCOGS_RELEASE_ID')
+		if f.name not in chosen and other and other != rel['id']:
+			log.append(f'{f.name} was skipped and keeps Discogs release {other}, not {rel["id"]}')
 	log.append(f'Discogs-owned tags written: {len(discogs_tags) + 1} per file')
 	if filled:
 		log.append(
