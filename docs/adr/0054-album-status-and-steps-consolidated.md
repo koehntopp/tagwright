@@ -79,7 +79,7 @@ Adding a rule here means adding it to `album_issues()` and this table. A check t
 
 ### Displayed values
 
-Album DR is `ALBUM_DR`, falling back to the rounded mean of the track `DYNAMIC_RANGE` values. Artist is `ALBUMARTIST`, else `ARTIST`. The inspector's header line ends with the release country's flag (emoji, from `DISCOGS_ALBUM_RELEASECOUNTRY`, else `COUNTRY`, else the MusicBrainz country code; no flag for regions without one, the country name is the tooltip), the year and the media type (`ALBUM_FORMAT`, shown as `CD` when unset, the format `fixtags` assumes). "New folder" shows the library path from the layout for information only; Tagwright does not rename album folders in staging ([0010](0010-bliss-file-naming.md)).
+Album DR is `ALBUM_DR`, falling back to the rounded mean of the track `DYNAMIC_RANGE` values. Artist is `ALBUMARTIST`, else `ARTIST`. The inspector's header line starts with the release country's flag (emoji, from `DISCOGS_ALBUM_RELEASECOUNTRY`, else `COUNTRY`, else the MusicBrainz country code; no flag for regions without one, the country name is the tooltip), then the `VERSION` string, which already holds year, DR, format and catalogue number. Before `VERSION` exists it shows the year, the media type (`ALBUM_FORMAT`, `CD` when unset, the format `fixtags` assumes) and the catalogue number. "New folder" shows the library path from the layout for information only; Tagwright does not rename album folders in staging ([0010](0010-bliss-file-naming.md)).
 
 ### Scan cache
 

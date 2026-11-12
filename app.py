@@ -297,6 +297,7 @@ def summarize(album: Path) -> dict:
 			t0, 'DISCOGS_ALBUM_RELEASECOUNTRY', 'COUNTRY', 'MUSICBRAINZ_ALBUM_RELEASECOUNTRY'
 		),
 		'media': tag(t0, 'ALBUM_FORMAT'),
+		'version': tag(t0, 'VERSION'),
 		'discogs': did,
 		'mbid': mid,
 		'tracks': len(files),
@@ -529,6 +530,7 @@ def unreadable_summary(a: Path, error: str) -> dict:
 		'catalog': '',
 		'country': '',
 		'media': '',
+		'version': '',
 		'edition': '',
 		'discogs': '',
 		'mbid': '',

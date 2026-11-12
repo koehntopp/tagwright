@@ -170,8 +170,10 @@ export function Inspector(p: Props) {
 						<button onClick={p.openAlbum} className="ml-1 align-middle" title="Edit album artist and title"><Pencil className="inline size-3" /></button>
 						<CopyBtn text={title(a)} />
 					</h2>
-					<div className="mt-0.5 text-xs text-slate-500">
-						{[a.edition, a.year || a.country ? <span key="y" title={a.country || undefined}>{flagOf(a.country) ? flagOf(a.country) + ' ' : ''}{a.year}</span> : '', a.media || 'CD'].filter(Boolean).map((x, i) => <span key={i}>{i ? ' · ' : ''}{x}</span>)}
+					<div className="mt-0.5 text-xs text-slate-500" title={a.country || undefined}>
+						{/* the version string already holds year, DR, format and catalogue number: nothing is shown twice */}
+						{flagOf(a.country) && <span className="mr-1">{flagOf(a.country)}</span>}
+						{a.version || [a.year, a.media || 'CD', a.catalog].filter(Boolean).join(' · ')}
 					</div>
 					<div className="mt-2 flex flex-wrap items-center gap-1">
 						<IdBadge l="D" v={a.discogs} />
