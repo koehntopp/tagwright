@@ -48,6 +48,7 @@ export default function Page() {
 	const [job, setJob] = useState<Job>({ state: 'idle', path: null, queue: [] })
 	const lib = useLibrary()
 	const [mv, setMv] = useState<MovePreview | null>(null)
+	const [working, setWorking] = useState<{ path: string; steps: string[] } | null>(null)
 	const [log, setLog] = useState<LogLine[]>([])
 	const [dlg, setDlg] = useState<{ kind: string; tab?: string; file?: string; path?: string } | null>(null)
 	const [tagTab, setTagTab] = useState<string | null>(null)
@@ -277,7 +278,7 @@ export default function Page() {
 			</main>
 			<aside className="w-[600px] shrink-0 overflow-y-auto border-l bg-white min-[1600px]:w-[720px]">
 				{a ? (
-					<Inspector key={a.path} a={a} job={job} log={log} inLibrary={area === 'library'} refresh={() => refreshOne(a.path)} run={run} move={() => { setCerr(''); setDlg({ kind: 'move' }) }}
+					<Inspector key={a.path} a={a} job={job} working={working?.path === a.path ? working.steps : undefined} log={log} inLibrary={area === 'library'} refresh={() => refreshOne(a.path)} run={run} move={() => { setCerr(''); setDlg({ kind: 'move' }) }}
 						openEditor={tab => setTagTab(tab)} openAlbum={() => setDlg({ kind: 'album' })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })}
 						openLyrics={file => setDlg({ kind: 'lyrics', file, path: a.path })} playing={playing} play={play} delCover={() => { setCerr(''); setDlg({ kind: 'cover' }) }} putCover={putCover} />
 				) : <div className="p-6 text-slate-500">Select an album.</div>}
@@ -286,7 +287,7 @@ export default function Page() {
 
 			<CoverDelete open={dk === 'cover'} onClose={() => setDlg(null)} onOk={delCover} err={cerr} />
 			<AlbumEdit a={dk === 'album' ? a : null} onClose={() => setDlg(null)} done={done} />
-			<TagEditor a={tagTab ? a : null} tab={tagTab || 'album'} reload={kreload} onClose={() => setTagTab(null)} done={done}
+			<TagEditor a={tagTab ? a : null} tab={tagTab || 'album'} reload={kreload} onClose={() => setTagTab(null)} done={done} begin={(path, steps) => { setWorking({ path, steps }); return () => setWorking(w => (w?.path === path ? null : w)) }}
 				openLyrics={(path, file) => setDlg({ kind: 'lyrics', path, file })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })} />
 			<LyricsEdit target={dk === 'lyrics' && dlg?.path ? { path: dlg.path, file: dlg.file! } : null} onClose={() => setDlg(null)} done={refreshOne} />
 			<Shell open={dk === 'move'} onClose={() => setDlg(null)} title="Move to the library?" wide="sm:max-w-[40rem]" err={cerr} save={move} saveLabel="Move" saveDisabled={!mv?.can_move}>

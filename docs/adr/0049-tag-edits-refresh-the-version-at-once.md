@@ -13,6 +13,7 @@
 - Saving the tag editor with a changed `ALBUM_EDITION`, `ALBUM_FORMAT` or `CATALOGNUMBER` on an album with a Discogs release ID removes `VERSION`, writes the other edits, then runs the Discogs tag step (`fix_album`, as the assignment does) so `VERSION` is rewritten before the response. The files are renamed afterwards as always ([0010](0010-bliss-file-naming.md)). The log says "Discogs tags refreshed: ... [version]".
 - If the step cannot run (no key, Discogs down) the removed `VERSION` stays removed: "Tags & cover" reopens and the album is Ready until a run, as before, and the log says "not refreshed".
 - Saving without such a change does not call Discogs.
+- The tag editor closes when Save is pressed and the inspector's step circles spin ([0030](0030-ui-layout-and-design-system-v2.md)): *Tags & cover* and *Filenames* after a format, catalog # or edition edit, *Filenames* alone otherwise, until the server answers. A failed save shows its error as a toast.
 
 ## Consequences
 

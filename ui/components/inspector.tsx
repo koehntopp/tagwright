@@ -90,6 +90,7 @@ type Props = {
 	log: LogLine[]
 	refresh: () => void
 	run: () => void
+	working?: string[]  // steps a save is rewriting right now (not a pipeline job)
 	move: () => void
 	inLibrary?: boolean
 	openEditor: (tab: string) => void
@@ -120,6 +121,7 @@ export function Inspector(p: Props) {
 		return () => { live = false }
 	}, [a.path, a.discogs, a.mbid, a.mtime])
 	const running = job.state === 'running' && job.path === a.path
+	const spinning = (name: string) => (running && name === job.step) || !!p.working?.includes(name)
 
 	const cov = a.cover
 	return (
@@ -244,8 +246,8 @@ export function Inspector(p: Props) {
 				<ol className="grid grid-cols-6 gap-1 text-center text-[11px] leading-tight">
 					{a.steps.map((s, i) => (
 						<li key={s.name} title={s.note} className="cursor-pointer" onClick={() => { setStep(stepSel === i ? null : i); setTracksOpen(true) }}>
-							<div className={`mx-auto mb-1 grid size-7 place-items-center rounded-full text-white ${running && s.name === job.step ? 'bg-sky-500 ring-2 ring-sky-300' : s.done ? (s.partial ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200 text-slate-500'}`}>
-								{running && s.name === job.step ? <RefreshCw className="size-4 animate-spin" /> : s.done ? <Check className="size-4" /> : i + 1}
+							<div className={`mx-auto mb-1 grid size-7 place-items-center rounded-full text-white ${spinning(s.name) ? 'bg-sky-500 ring-2 ring-sky-300' : s.done ? (s.partial ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200 text-slate-500'}`}>
+								{spinning(s.name) ? <RefreshCw className="size-4 animate-spin" /> : s.done ? <Check className="size-4" /> : i + 1}
 							</div>
 							<span className={`rounded px-1 ${stepSel === i ? 'bg-slate-800/10 font-medium' : ''}`}>{s.name.replace(' and ', ' & ')}</span>
 						</li>

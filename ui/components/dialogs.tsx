@@ -184,8 +184,9 @@ export function LyricsEdit({ target, onClose, done }: { target: { path: string; 
 
 const KTRACK: [string, string, string][] = [['disc', 'Disc', 'w-14'], ['track', 'Track', 'w-14'], ['title', 'Title', 'min-w-40'], ['artist', 'Artist', 'min-w-32'], ['subtitle', 'Disc subtitle', 'min-w-28']]
 
-export function TagEditor({ a, tab, reload, onClose, done, openLyrics, openDiscogs, openMb }: {
+export function TagEditor({ a, tab, reload, onClose, done, begin, openLyrics, openDiscogs, openMb }: {
 	a: Album | null; tab: string; reload: number; onClose: () => void; done: (path: string) => void
+	begin: (path: string, steps: string[]) => () => void  // marks pipeline steps as working while the save runs; returns the end call
 	openLyrics: (path: string, file: string) => void; openDiscogs: () => void; openMb: () => void
 }) {
 	const [d, setD] = useState<any>(null), [fields, setFields] = useState<Record<string, string>>({}), [tracks, setTracks] = useState<any[]>([]), [t, setT] = useState('album'), [err, setErr] = useState('')
@@ -203,8 +204,13 @@ export function TagEditor({ a, tab, reload, onClose, done, openLyrics, openDisco
 		if ('ALBUM_FORMAT' in changed && !changed.ALBUM_FORMAT.trim()) return setErr('Album format must not be empty (for example CD, SACD, Vinyl).')
 		if ('CATALOGNUMBER' in changed && !changed.CATALOGNUMBER.trim()) return setErr("Add a catalog number (enter 'none' if the release has none).")
 		if (edited.some(x => !['title', 'disc', 'track'].every(k => String(x[k]).trim()))) return setErr('Title, disc and track must not be empty.')
-		try { await post('/api/tags', { path: a.path, fields: changed, tracks: edited }); toast.success('Tags saved'); onClose(); done(a.path) }
-		catch (e: any) { setErr(e.message) }
+		// The dialog closes at once; the step circles of the inspector spin until the server answers (a format, catalog # or
+		// edition edit rewrites the Discogs tags, ADR 0049, and every save renames the files)
+		const end = begin(a.path, ['ALBUM_FORMAT', 'CATALOGNUMBER', 'ALBUM_EDITION'].some(k => k in changed) ? ['Tags and cover', 'Filenames'] : ['Filenames'])
+		onClose()
+		try { await post('/api/tags', { path: a.path, fields: changed, tracks: edited }); toast.success('Tags saved'); done(a.path) }
+		catch (e: any) { toast.error(e.message) }
+		finally { end() }
 	}
 	const mbid = fields.MUSICBRAINZ_ALBUMID
 	const dval = (k: string) => d.discogs.find((r: any) => r.key === k)?.value ?? ''
