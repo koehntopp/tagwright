@@ -7,3 +7,4 @@ ui/.next/
 ui/out/
 ui/*.tsbuildinfo
 *.tar
+deploy-linux.sh

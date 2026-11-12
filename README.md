@@ -103,7 +103,7 @@ There are no default paths: Tagwright refuses to start when one of the three is 
 docker compose up -d
 ```
 
-Set `STAGING_HOST_PATH` and `LIBRARY_HOST_PATH` in a `.env` file next to [compose.yaml](compose.yaml); it mounts them at `/staging` and `/library`, and `./data` at `/data`. The image contains Python, `fpcalc`, `drcalc` and a source-built `rsgain`. `./deploy-linux.sh` builds an amd64 image, copies it to a Linux host and recreates a Dockge stack (edit the host and stack name at the top).
+Set `STAGING_HOST_PATH` and `LIBRARY_HOST_PATH` in a `.env` file next to [compose.yaml](compose.yaml); it mounts them at `/staging` and `/library`, and `./data` at `/data`. The image contains Python, `fpcalc`, `drcalc` and a source-built `rsgain`.
 
 Tagwright has no authentication. Run it on a trusted network or behind a reverse proxy that authenticates (ADR 0007).
 
