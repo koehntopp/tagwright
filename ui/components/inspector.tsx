@@ -245,7 +245,7 @@ export function Inspector(p: Props) {
 				<h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">Pipeline</h4>
 				<ol className="grid grid-cols-6 gap-1 text-center text-[11px] leading-tight">
 					{a.steps.map((s, i) => (
-						<li key={s.name} title={(s.note ? s.note + ' ' : '') + 'Double-click to run only this step.'} className="cursor-pointer select-none" onClick={() => { setStep(stepSel === i ? null : i); setTracksOpen(true) }} onDoubleClick={() => { if (a.status !== 'needs' && job.state !== 'running') p.run(s.name) }}>
+						<li key={s.name} title={(s.note ? s.note + ' ' : '') + 'Double-click to run only this step.'} className="cursor-pointer select-none" onClick={() => { setStep(stepSel === i ? null : i); setTracksOpen(true) }} onDoubleClick={() => { if ((a.status !== 'needs' || ['Dynamic range', 'ReplayGain', 'Fingerprints'].includes(s.name)) && job.state !== 'running') p.run(s.name) }}>
 							<div className={`mx-auto mb-1 grid size-7 place-items-center rounded-full text-white ${spinning(s.name) ? 'bg-sky-500 ring-2 ring-sky-300' : s.done ? (s.partial ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200 text-slate-500'}`}>
 								{spinning(s.name) ? <RefreshCw className="size-4 animate-spin" /> : s.done ? <Check className="size-4" /> : i + 1}
 							</div>

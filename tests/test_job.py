@@ -441,3 +441,28 @@ def test_a_single_step_runs_alone_and_the_others_do_not(
 	wait_for_end(client)
 	assert ran == ['rg']  # no pipeline step
 	assert sorted(f.name for f in album.glob('*.flac')) != ['track1.flac', 'track2.flac']  # renamed
+
+
+def test_audio_steps_run_on_an_album_that_needs_input_the_others_do_not(
+	client: TestClient, make_flac: MakeFlac, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	ran: list[str] = []
+	use_steps(
+		monkeypatch,
+		('Dynamic range', lambda a, c: ran.append('dr')),
+		('Lyrics', lambda a, c: ran.append('lyrics')),
+	)
+	album = open_album(make_flac, 'No Discogs')
+	for f in album.glob('*.flac'):
+		a = FLAC(f)
+		del a['DISCOGS_RELEASE_ID']
+		a.save()
+	assert tagwright.summarize(album)['status'] == 'needs'
+	assert (
+		client.post('/api/run', json={'path': str(album), 'step': 'Dynamic range'}).status_code
+		== 200
+	)
+	wait_for_end(client)
+	assert ran == ['dr']
+	assert client.post('/api/run', json={'path': str(album), 'step': 'Lyrics'}).status_code == 409
+	assert client.post('/api/run', json={'path': str(album)}).status_code == 409

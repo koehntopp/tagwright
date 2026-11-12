@@ -674,6 +674,10 @@ PIPELINE_OF = {
 }
 
 
+# Steps that measure the audio and need no tags: they run on an album that still needs input (ADR 0051).
+AUDIO_STEPS = ('Dynamic range', 'ReplayGain', 'Fingerprints')
+
+
 def runner(path: Path, ctx: Context, only: str = '') -> int:
 	"""Run the pipeline for one album (or just the UI step `only`), then rename files where that applies.
 	Returns 0, or 1 when a step failed (-1 if stopped)."""
@@ -737,7 +741,7 @@ def run(body: dict) -> dict:
 	raw = body.get('paths') or [body.get('path', '')]
 	paths = [safe(p) for p in raw]
 	for path in paths:
-		if get_summary(path)['status'] == 'needs':
+		if only not in AUDIO_STEPS and get_summary(path)['status'] == 'needs':
 			raise HTTPException(
 				409, f'{path.name} is not ready: fix the problems listed for it first'
 			)
