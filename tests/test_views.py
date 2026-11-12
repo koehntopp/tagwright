@@ -188,6 +188,10 @@ def test_mount_source_names_the_nfs_export_or_the_bind_mount_path(tmp_path: Path
 	assert tagwright.mount_source(Path('/staging'), tmp_path / 'missing') == ''
 
 
+def test_the_summary_carries_the_catalog_number(album: Path) -> None:
+	assert tagwright.summarize(album)['catalog'] == 'TST-001'
+
+
 def test_the_page_itself_is_never_cached(client: TestClient) -> None:
 	r = client.get('/')
 	assert r.status_code == 200

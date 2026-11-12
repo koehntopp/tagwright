@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Album, api, channelLabel, mmss, post } from '@/lib/api'
-import { ChannelBadge } from '@/components/inspector'
+import { ChannelBadge, CopyBtn } from '@/components/inspector'
 import { Shell } from '@/components/dialogs'
 
 type Sort = { key: '' | 'year' | 'tracks'; dir: 1 | -1 }
@@ -152,7 +152,7 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 	const [rel, setRel] = useState<any>(null), [busy, setBusy] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState('')
 	useEffect(() => {
 		if (!a) return
-		setRows(null); setRel(null); setErr(''); setBusy(false); setWhat(''); setQ(a.mbid || [a.artist, a.album].filter(Boolean).join(' '))
+		setRows(null); setRel(null); setErr(''); setBusy(false); setWhat(''); setQ([a.artist, a.album].filter(Boolean).join(' '))
 		if (a.mbid) pick(a.mbid)
 	}, [a?.path])  // eslint-disable-line react-hooks/exhaustive-deps
 	if (!a) return null
@@ -180,6 +180,9 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a MusicBrainz release ID" />
 				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search MusicBrainz</Button>
 			</form>
+			<div className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
+				{([['Artist', a.artist], ['Album', a.album], ['Year', a.year], ['Catalog #', a.catalog]] as const).filter(([, v]) => v).map(([k, v]) => <span key={k} className="inline-flex items-center">{k}: {v}<CopyBtn text={v} /></span>)}
+			</div>
 			<div className="relative min-h-48">
 			{busy && <Busy text={what} />}
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>

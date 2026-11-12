@@ -23,6 +23,7 @@ export type Album = {
 	new_title: string
 	folder?: string
 	year: string
+	catalog: string
 	edition: string
 	discogs: string
 	mbid: string
