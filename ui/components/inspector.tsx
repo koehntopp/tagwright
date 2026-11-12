@@ -9,8 +9,22 @@ import { Alert } from '@/components/ui/alert'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Album, Job, LogLine, TrackFile, api, channelLabel, coverUrl, fmtBytes, mmss, title } from '@/lib/api'
 
+// navigator.clipboard exists only in secure contexts (https or localhost); over plain http on the LAN the
+// textarea and execCommand route is the one that works.
+function copyViaTextarea(text: string): boolean {
+	const t = document.createElement('textarea')
+	t.value = text
+	t.style.position = 'fixed'
+	t.style.opacity = '0'
+	;(document.querySelector('[role=dialog]') ?? document.body).appendChild(t) // inside an open dialog: the rest of the page is inert
+	t.select()
+	try { return document.execCommand('copy') } catch { return false } finally { t.remove() }
+}
 export function copy(text: string) {
-	navigator.clipboard.writeText(text).then(() => toast.success('Copied'), () => toast.error('Copy failed'))
+	const done = () => toast.success('Copied'), fail = () => toast.error('Copy failed')
+	if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, () => (copyViaTextarea(text) ? done() : fail()))
+	else if (copyViaTextarea(text)) done()
+	else fail()
 }
 export const CopyBtn = ({ text }: { text: string }) => (
 	<button
