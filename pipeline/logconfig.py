@@ -12,6 +12,7 @@ import sys
 from collections.abc import Mapping
 
 LOGGERS = ('app', 'pipeline', 'library')
+POLLS = ('/api/library', '/api/job')  # the page asks these every few seconds
 MARK = '_tagwright_handler'
 IDENT = 'tagwright: '
 
@@ -79,3 +80,28 @@ def configure(env: Mapping[str, str]) -> None:
 		log.info(
 			'logging to syslog %s:%d over %s', where[0], where[1], 'tcp' if where[2] else 'udp'
 		)
+
+
+class QuietPolls(logging.Filter):
+	"""Drops uvicorn's access line for a successful poll of the library or job status (ADR 0065); every other request
+	and every failed poll stays."""
+
+	def filter(self, record: logging.LogRecord) -> bool:
+		args = record.args
+		if isinstance(args, tuple) and len(args) == 5:
+			_, method, path, _, status = args
+			if method == 'GET' and str(path).split('?')[0] in POLLS and 200 <= int(status) < 400:
+				return False
+		return True
+
+
+def uvicorn_config() -> dict:
+	"""uvicorn's own logging set-up with the polling lines filtered out of the access log."""
+	import copy
+
+	from uvicorn.config import LOGGING_CONFIG
+
+	config = copy.deepcopy(LOGGING_CONFIG)
+	config.setdefault('filters', {})['quiet_polls'] = {'()': f'{__name__}.QuietPolls'}
+	config['handlers']['access'].setdefault('filters', []).append('quiet_polls')
+	return config

@@ -2301,4 +2301,9 @@ def index() -> FileResponse:
 if __name__ == '__main__':
 	logconfig.configure(os.environ)
 	log.info('Tagwright started: staging %s, library %s', ROOT, INGEST)
-	uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', '8080')))
+	uvicorn.run(
+		app,
+		host='0.0.0.0',
+		port=int(os.environ.get('PORT', '8080')),
+		log_config=logconfig.uvicorn_config(),
+	)

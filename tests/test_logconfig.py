@@ -120,3 +120,39 @@ def test_saving_the_settings_logs_the_event_but_never_a_key(
 		)
 	assert r.status_code == 200
 	assert 'settings saved' in caplog.text and secret not in caplog.text
+
+
+def access(method: str, path: str, status: int) -> logging.LogRecord:
+	return logging.LogRecord(
+		'uvicorn.access',
+		logging.INFO,
+		'',
+		0,
+		'%s - "%s %s HTTP/%s" %d',
+		('1.2.3.4:5', method, path, '1.1', status),
+		None,
+	)
+
+
+@pytest.mark.parametrize(
+	('method', 'path', 'status', 'kept'),
+	[
+		('GET', '/api/library', 200, False),
+		('GET', '/api/job?since=12', 200, False),
+		('GET', '/api/job', 304, False),
+		('GET', '/api/library', 500, True),  # a failing poll is worth seeing
+		('POST', '/api/library/rescan', 200, True),
+		('GET', '/api/albums', 200, True),
+		('POST', '/api/run', 200, True),
+	],
+)
+def test_successful_polls_are_dropped_from_the_access_log(
+	method: str, path: str, status: int, kept: bool
+) -> None:
+	assert logconfig.QuietPolls().filter(access(method, path, status)) is kept
+
+
+def test_uvicorn_gets_the_filter_on_its_access_handler() -> None:
+	config = logconfig.uvicorn_config()
+	assert 'quiet_polls' in config['handlers']['access']['filters']
+	assert config['filters']['quiet_polls']['()'] == 'pipeline.logconfig.QuietPolls'

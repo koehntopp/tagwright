@@ -102,7 +102,7 @@ There are no default paths: Tagwright refuses to start when one of the three is 
 
 ### Logging
 
-The program logs jobs, moves, assignments and saves to standard output (`docker logs`). Set `SYSLOG_HOST` to send the same lines to a syslog server too. API keys are never logged ([ADR 0064](docs/adr/0064-logging-and-syslog.md)).
+The program logs jobs, moves, assignments and saves to standard output (`docker logs`). Set `SYSLOG_HOST` to send the same lines to a syslog server too (not needed when Docker's syslog log driver already ships the container output). Successful status polls of the page are left out of the access log. API keys are never logged ([ADR 0064](docs/adr/0064-logging-and-syslog.md)).
 
 ### Docker
 
