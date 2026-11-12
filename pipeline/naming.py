@@ -8,10 +8,10 @@ import unicodedata
 from collections.abc import Callable
 from pathlib import Path
 
-from mutagen.flac import FLAC
 from pathvalidate import sanitize_filename
 from slugify import slugify
 
+from pipeline.audio import open_audio
 from pipeline.layout import flacs
 from pipeline.tagio import Tags, tag
 
@@ -52,7 +52,7 @@ def rename_files(album: Path, name_of: Callable[[Tags], str | None] = bliss_name
 	"""Rename FLACs in place to the name `name_of` gives (the bliss pattern by default). Returns log lines."""
 	out = []
 	for f in flacs(album):
-		new = name_of(FLAC(f).tags or {})
+		new = name_of(open_audio(f).tags or {})
 		if new is None:
 			out.append(f'skip {f.name}: title or track number is empty')
 			continue

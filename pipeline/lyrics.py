@@ -19,9 +19,9 @@ from functools import partial
 from pathlib import Path
 
 from mutagen import MutagenError
-from mutagen.flac import FLAC
 
 from pipeline import lrclib
+from pipeline.audio import open_audio
 from pipeline.layout import flacs
 from pipeline.lrc_format import (
 	apply_headers,
@@ -113,7 +113,7 @@ def fetch_one(path: Path, lookup: Lookup) -> Result:
 	if not path.is_file():
 		return Result(path)
 	try:
-		song = FLAC(path)
+		song = open_audio(path)
 		tags = song.tags or {}
 		artist = resolve_artist(first(tags, 'ALBUMARTIST'), first(tags, 'ARTIST'))
 		title = first(tags, 'TITLE')
@@ -222,7 +222,7 @@ def collect_tracks(album: Path) -> list[Path]:
 	tracks: list[Path] = []
 	for files in by_dir.values():
 		try:
-			int(first(FLAC(files[0]).tags or {}, 'DISCOGS_RELEASE_ID'))
+			int(first(open_audio(files[0]).tags or {}, 'DISCOGS_RELEASE_ID'))
 		except ValueError, TypeError, MutagenError, OSError:
 			continue
 		tracks.extend(files)
@@ -238,7 +238,9 @@ def write_lyrics(result: Result, stats: dict[str, int]) -> None:
 		return
 	stats['new' if result.action == 'new' else 'fixed'] += 1
 	try:
-		audio = FLAC(result.path)  # reopened: tags may have been written since the lookup started
+		audio = open_audio(
+			result.path
+		)  # reopened: tags may have been written since the lookup started
 		if audio.tags is None:
 			audio.add_tags()
 		audio['LYRICS'] = [result.lyrics]

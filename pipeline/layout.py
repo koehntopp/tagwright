@@ -8,6 +8,8 @@ import os
 import re
 from pathlib import Path
 
+from pipeline.audio import is_audio
+
 DISC_DIR_RE = re.compile(r'^(?:Disc|CD)\s*(\d+)$', re.IGNORECASE)
 
 
@@ -27,9 +29,7 @@ def find_flacs(base: Path) -> list[Path]:
 	found = []
 	for root, dirs, files in os.walk(base):
 		dirs[:] = sorted(d for d in dirs if not d.startswith('.'))
-		found += [
-			Path(root) / f for f in files if f.lower().endswith('.flac') and not f.startswith('.')
-		]
+		found += [Path(root) / f for f in files if is_audio(f) and not f.startswith('.')]
 	return sorted(found)
 
 
@@ -44,7 +44,7 @@ def flacs(album: Path) -> list[Path]:
 	for e in entries:
 		if e.name.startswith('.'):
 			continue
-		if e.is_file(follow_symlinks=False) and e.name.lower().endswith('.flac'):
+		if e.is_file(follow_symlinks=False) and is_audio(e.name):
 			found.append(Path(e.path))
 		elif e.is_dir(follow_symlinks=False) and is_disc_dir(e.name):
 			found += find_flacs(Path(e.path))

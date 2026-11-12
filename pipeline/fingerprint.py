@@ -11,8 +11,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from mutagen import MutagenError
-from mutagen.flac import FLAC
 
+from pipeline.audio import open_audio
 from pipeline.layout import flacs
 from pipeline.tagio import touch
 from pipeline.tools import Context, StepError, tail, tool
@@ -57,7 +57,7 @@ def run(album: Path, ctx: Context) -> None:
 
 	def needs_fp(path: Path) -> bool:
 		try:
-			return not existing(FLAC(path).tags)
+			return not existing(open_audio(path).tags)
 		except MutagenError, OSError:
 			return False  # unreadable: the loop below logs it
 
@@ -72,7 +72,7 @@ def run(album: Path, ctx: Context) -> None:
 				continue
 			try:
 				fp = futures[path].result()
-				audio = FLAC(path)  # reopen: see the module docstring
+				audio = open_audio(path)  # reopen: see the module docstring
 				if audio.tags is None:
 					audio.add_tags()
 				audio[TAG] = [fp]

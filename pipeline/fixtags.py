@@ -28,9 +28,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from mutagen import MutagenError
-from mutagen.flac import FLAC
 
 from pipeline import covers, discogs, languages
+from pipeline.audio import Audio, open_audio
 from pipeline.config import Config
 from pipeline.http import ApiError
 from pipeline.layout import flacs
@@ -274,7 +274,7 @@ def plan_tags(
 	return Plan(tags=tags, album_name=album_name, version=version)
 
 
-def stale_tags(audio: FLAC, plan: Plan) -> list[str]:
+def stale_tags(audio: Audio, plan: Plan) -> list[str]:
 	"""Tags of a file that this step owns but no longer has a value for."""
 	return [
 		key
@@ -289,7 +289,7 @@ def stale_tags(audio: FLAC, plan: Plan) -> list[str]:
 
 def update_file(path: Path, plan: Plan, mb_release: dict | None) -> bool:
 	"""Bring one file in line with the plan; True when it was rewritten."""
-	audio = FLAC(path)
+	audio = open_audio(path)
 	if audio.tags is None:  # an existing but empty Vorbis comment is fine; add_tags() would raise
 		audio.add_tags()
 
@@ -350,7 +350,7 @@ def fix_album(
 	if not files:
 		return FixResult(0, skipped='no flac files')
 	try:
-		first = FLAC(files[0])
+		first = open_audio(files[0])
 		first_tags = upper_tags(first)
 		first_rate = first.info.sample_rate if first.info else 44100
 	except (MutagenError, OSError) as e:
@@ -367,7 +367,7 @@ def fix_album(
 
 	def rate(path: Path) -> int:
 		try:
-			return FLAC(path).info.sample_rate
+			return open_audio(path).info.sample_rate
 		except MutagenError, OSError, AttributeError:
 			return 0
 

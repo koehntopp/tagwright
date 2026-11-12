@@ -2,9 +2,8 @@
 
 import logging
 
-from mutagen.flac import FLAC
-
 from pipeline import musicbrainz
+from pipeline.audio import Audio
 from pipeline.config import Config
 
 log = logging.getLogger(__name__)
@@ -46,7 +45,7 @@ def _leading_int(value: str, default: int) -> int:
 		return default
 
 
-def apply_language(audio: FLAC, release: dict | None) -> bool:
+def apply_language(audio: Audio, release: dict | None) -> bool:
 	"""Set (or remove) LYRICS_LANGUAGE on one file from the MusicBrainz release; True if it changed.
 
 	A file that cannot be matched to a MusicBrainz track (another edition of the album) keeps whatever

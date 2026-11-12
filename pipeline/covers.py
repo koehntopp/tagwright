@@ -5,9 +5,9 @@ import logging
 from pathlib import Path
 
 from mutagen import MutagenError
-from mutagen.flac import FLAC, Picture
 from PIL import Image, ImageFile
 
+from pipeline.audio import Cover, new_cover, open_audio
 from pipeline.layout import flacs
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True  # a cut-off download is better resized than skipped
@@ -26,7 +26,7 @@ def resize_covers(album: Path, max_size: int) -> int:
 	rewritten = 0
 	for flac_path in flacs(album):
 		try:
-			audio = FLAC(flac_path)
+			audio = open_audio(flac_path)
 			if not audio.pictures:
 				continue
 			changed = False
@@ -47,7 +47,7 @@ def resize_covers(album: Path, max_size: int) -> int:
 	return rewritten
 
 
-def resized(pic: Picture, max_size: int, path: Path) -> Picture:
+def resized(pic: Cover, max_size: int, path: Path) -> Cover:
 	"""The picture itself when it is small enough (or not a JPEG/PNG it can decode), else a JPEG at most
 	max_size on either side."""
 	if (
@@ -67,7 +67,7 @@ def resized(pic: Picture, max_size: int, path: Path) -> Picture:
 	img.thumbnail((max_size, max_size), Image.LANCZOS)
 	buf = io.BytesIO()
 	img.convert('RGB').save(buf, format='JPEG', quality=90)
-	new = Picture()
+	new = new_cover()
 	new.type = pic.type
 	new.desc = pic.desc
 	new.mime = 'image/jpeg'

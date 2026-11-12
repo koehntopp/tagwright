@@ -13,10 +13,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from mutagen import MutagenError
-from mutagen.flac import FLAC
 
 from library.index import Index
 from library.template import INDEXED_TAGS
+from pipeline.audio import is_audio, open_audio
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class Stats:
 def read_tags(path: Path) -> tuple[dict[str, str], str]:
 	"""The tags the library needs (first values, upper-case keys); an error message instead if the file is unreadable."""
 	try:
-		audio = FLAC(path)
+		audio = open_audio(path)
 	except (MutagenError, OSError) as e:
 		return {}, str(e) or type(e).__name__
 	found = {k.upper(): str(v[0]) for k, v in (audio.tags or {}).items() if v}
@@ -45,7 +45,7 @@ def read_tags(path: Path) -> tuple[dict[str, str], str]:
 
 
 def is_music(name: str) -> bool:
-	return name.lower().endswith('.flac') and not name.startswith('._')
+	return is_audio(name) and not name.startswith('._')
 
 
 def scan(

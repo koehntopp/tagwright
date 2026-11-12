@@ -30,7 +30,6 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from mutagen.flac import FLAC, Picture
 from PIL import Image, UnidentifiedImageError
 from starlette.types import Scope
 
@@ -44,6 +43,7 @@ from library.watcher import Settings as LibrarySettings
 from pipeline import covers, lrclib
 from pipeline import discogs as discogs_api
 from pipeline import musicbrainz as mb_api
+from pipeline.audio import Audio, Cover, is_audio, new_cover, open_audio
 from pipeline.config import Config
 from pipeline.fixtags import DISCOGS_TAG_PREFIXES, fix_album
 from pipeline.http import ApiError
@@ -213,7 +213,7 @@ def track_files(
 COVER_FILES = ('cover.jpg', 'folder.jpg', 'cover.png', 'folder.png')
 
 
-def cover_info(a: FLAC, album: Path) -> dict | None:
+def cover_info(a: Audio, album: Path) -> dict | None:
 	"""Size of the cover that /api/cover serves (embedded front cover first, else a folder image)."""
 	pics = a.pictures
 	pic = next((p for p in pics if p.type == 3), pics[0] if pics else None)
@@ -275,7 +275,7 @@ def summarize(album: Path) -> dict:
 	files = flacs(album)
 	if not files:
 		raise HTTPException(404, 'no flac files')
-	audio = [FLAC(f) for f in files]
+	audio = [open_audio(f) for f in files]
 	tags = [a.tags or {} for a in audio]
 	t0 = tags[0]
 	did = tag(t0, 'DISCOGS_RELEASE_ID')
@@ -570,7 +570,7 @@ def album(path: str) -> dict:
 	return get_summary(safe(path))
 
 
-def make_picture(data: bytes) -> Picture:
+def make_picture(data: bytes) -> Cover:
 	"""Front-cover Picture from image bytes: JPEG and PNG are kept, anything else becomes JPEG, and an image larger
 	than the cover limit (1500 px) is scaled down (400 if unreadable)."""
 	try:
@@ -582,7 +582,7 @@ def make_picture(data: bytes) -> Picture:
 				data, fmt, mode = buf.getvalue(), 'JPEG', 'RGB'
 	except (OSError, UnidentifiedImageError) as e:
 		raise HTTPException(400, 'not a readable image') from e
-	pic = Picture()
+	pic = new_cover()
 	pic.type, pic.mime, pic.desc, pic.width, pic.height, pic.data = (
 		3,
 		f'image/{fmt.lower()}',
@@ -596,10 +596,10 @@ def make_picture(data: bytes) -> Picture:
 	return covers.resized(pic, Config(data_dir=DATA).cover_max_size, Path('cover'))
 
 
-def embed_cover(album: Path, pic: Picture, only_missing: bool = False) -> None:
+def embed_cover(album: Path, pic: Cover, only_missing: bool = False) -> None:
 	"""Replace the front and untyped covers of every file (back cover etc. stay); only_missing: files without any picture."""
 	for f in flacs(album):
-		a = FLAC(f)
+		a = open_audio(f)
 		if only_missing and a.pictures:
 			continue
 		keep = [p for p in a.pictures if p.type not in (0, 3)]
@@ -627,7 +627,7 @@ def delete_cover(path: str) -> dict:
 		raise HTTPException(409, 'a job is running')
 	album = safe(path)
 	for f in flacs(album):
-		a = FLAC(f)
+		a = open_audio(f)
 		keep = [p for p in a.pictures if p.type not in (0, 3)]
 		if len(keep) != len(a.pictures):
 			a.clear_pictures()
@@ -643,7 +643,7 @@ def delete_cover(path: str) -> dict:
 def cover(path: str) -> Response:
 	album = safe(path)
 	for f in flacs(album)[:1]:
-		pics = FLAC(f).pictures
+		pics = open_audio(f).pictures
 		pic = next((p for p in pics if p.type == 3), pics[0] if pics else None)
 		if pic:
 			return Response(pic.data, media_type=pic.mime or 'image/jpeg')
@@ -1409,7 +1409,7 @@ def norm_title(s: str) -> str:
 def album_files(album: Path) -> list[dict]:
 	out = []
 	for f in flacs(album):
-		a = FLAC(f)
+		a = open_audio(f)
 		t = a.tags or {}
 		out.append(
 			{
@@ -1518,7 +1518,7 @@ def tracks_apply(body: dict) -> dict:
 			prev_cache[rid] = {k: v for k, v in found.items() if v and v != ['']}
 		return prev_cache[rid]
 
-	def fill(a: FLAC, key: str, value: str | list[str], *alts: str) -> None:
+	def fill(a: Audio, key: str, value: str | list[str], *alts: str) -> None:
 		# Tags the tagger used to import from Discogs (the pipeline reads some as user input): filled when empty,
 		# never overwritten (discogs ADR 0002 section 1 and 2), except a value the file's previous Discogs
 		# release itself would have filled: that follows the release (ADR 0048).
@@ -1532,7 +1532,7 @@ def tracks_apply(body: dict) -> dict:
 	writers = by_role(raw_releases[rel['id']].get('extraartists') or [], *WRITER_ROLES)
 
 	cover = None
-	if not FLAC(flacs(album)[0]).pictures and rel['image']:
+	if not open_audio(flacs(album)[0]).pictures and rel['image']:
 		try:
 			cover = make_picture(discogs_image(rel['image']))
 		except HTTPException as e:
@@ -1540,7 +1540,7 @@ def tracks_apply(body: dict) -> dict:
 	for fn, i in picked:
 		t = rel['tracks'][i]
 		d, n = final[fn]
-		a = FLAC(album / fn)
+		a = open_audio(album / fn)
 		if a.tags is None:
 			a.add_tags()
 		before = tag(a.tags, 'DISCOGS_RELEASE_ID')
@@ -1587,7 +1587,7 @@ def tracks_apply(body: dict) -> dict:
 		embed_cover(album, cover, only_missing=True)
 		filled['cover'] = 1
 	for f in flacs(album):  # a skipped file keeps its own release; say so, the album then has two
-		other = tag(FLAC(f).tags, 'DISCOGS_RELEASE_ID')
+		other = tag(open_audio(f).tags, 'DISCOGS_RELEASE_ID')
 		if f.name not in chosen and other and other != rel['id']:
 			log.append(f'{f.name} was skipped and keeps Discogs release {other}, not {rel["id"]}')
 	log.append(f'Discogs-owned tags written: {len(discogs_tags) + 1} per file')
@@ -1616,7 +1616,7 @@ def refresh_discogs_tags(album: Path) -> str:
 
 def track_path(album: str, file: str) -> Path:
 	f = safe(str(safe(album) / file))
-	if f.suffix.lower() != '.flac' or not f.is_file():
+	if not is_audio(f.name) or not f.is_file():
 		raise HTTPException(404, 'no such track')
 	return f
 
@@ -1628,7 +1628,7 @@ def audio(path: str, file: str) -> FileResponse:
 
 @app.get('/api/track')
 def get_track(path: str, file: str) -> dict:
-	f = FLAC(track_path(path, file))
+	f = open_audio(track_path(path, file))
 	t = f.tags or {}
 	return {
 		'title': tag(t, 'TITLE'),
@@ -1645,7 +1645,7 @@ def set_track(body: dict) -> dict:
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	album = safe(body.get('path', ''))
-	a = FLAC(track_path(body.get('path', ''), body.get('file', '')))
+	a = open_audio(track_path(body.get('path', ''), body.get('file', '')))
 	if a.tags is None:
 		a.add_tags()
 	lyrics = str(body.get('lyrics', ''))
@@ -1854,7 +1854,7 @@ def musicbrainz_check(path: str) -> dict:
 	"""
 	album = safe(path)
 	files = flacs(album)
-	t0 = FLAC(files[0]).tags if files else None
+	t0 = open_audio(files[0]).tags if files else None
 	rid, mbid = (
 		tag(t0 or {}, 'DISCOGS_RELEASE_ID'),
 		tag(t0 or {}, 'MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID'),
@@ -1920,7 +1920,7 @@ def musicbrainz_apply(body: dict) -> dict:
 	filled: dict[str, int] = {}
 	log, per_file = [], 0
 	for f in flacs(album):
-		a = FLAC(f)
+		a = open_audio(f)
 		if a.tags is None:
 			a.add_tags()
 		for k in [k for k in a.tags.keys() if k.upper() in MB_ALBUM_KEYS]:
@@ -2054,7 +2054,7 @@ def other_tags(files: list[Path]) -> list[dict]:
 	seen: dict[str, list[str]] = {}
 	count: dict[str, int] = {}
 	for f in files:
-		for k, v in (FLAC(f).tags or {}).items():
+		for k, v in (open_audio(f).tags or {}).items():
 			key = k.upper()
 			if key in shown or key.startswith(('MUSICBRAINZ', *DISCOGS_PREFIXES)):
 				continue
@@ -2079,7 +2079,7 @@ def get_tags(path: str) -> dict:
 	files = flacs(album)
 	if not files:
 		raise HTTPException(404, 'no flac files')
-	t0 = FLAC(files[0]).tags or {}
+	t0 = open_audio(files[0]).tags or {}
 	keys = {k.upper(): k for k in t0.keys()}
 	fixed = [k for k in DISCOGS_FIXED if k in keys]
 	extra = sorted(k for k in keys if k.startswith(DISCOGS_PREFIXES) and k != 'DISCOGS_RELEASE_ID')
@@ -2092,7 +2092,7 @@ def get_tags(path: str) -> dict:
 	mb += [k for k in ('BARCODE', 'ASIN') if k in keys]
 	tracks = []
 	for f in files:
-		audio = FLAC(f)
+		audio = open_audio(f)
 		t = audio.tags or {}
 		tracks.append(
 			{
@@ -2136,7 +2136,7 @@ def discogs_defaults(rid: str) -> dict[str, str]:
 def write_album_fields(album: Path, fields: dict) -> bool:
 	"""Write album-level fields to every file; blank removes. Clearing an override that is set restores the Discogs value."""
 	files = flacs(album)
-	first = FLAC(files[0]).tags or {}
+	first = open_audio(files[0]).tags or {}
 	clearing = [
 		k for k in OVERRIDES if k in fields and not str(fields[k]).strip() and tag(first, k)
 	]
@@ -2156,7 +2156,7 @@ def write_album_fields(album: Path, fields: dict) -> bool:
 		for k in ('ALBUM_EDITION', 'ALBUM_FORMAT', 'CATALOGNUMBER')
 	)
 	for f in files:
-		a = FLAC(f)
+		a = open_audio(f)
 		if a.tags is None:
 			a.add_tags()
 		if stale and 'VERSION' in a.tags:
@@ -2197,7 +2197,7 @@ def set_tags(body: dict) -> dict:
 	stale = write_album_fields(album, fields) if fields else False
 	log = [f'album: {k} = {v or "(removed)"}' for k, v in fields.items()]
 	for tr in body.get('tracks', []):
-		a = FLAC(track_path(body.get('path', ''), tr.get('file', '')))
+		a = open_audio(track_path(body.get('path', ''), tr.get('file', '')))
 		if a.tags is None:
 			a.add_tags()
 		a['TITLE'] = [str(tr['title']).strip()]

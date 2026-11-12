@@ -6,7 +6,7 @@ import re
 from collections.abc import Mapping
 from pathlib import Path
 
-from mutagen.flac import FLAC
+from pipeline.audio import Audio
 
 log = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def tag(t: Tags, *keys: str) -> str:
 	return ''
 
 
-def upper_tags(audio: FLAC) -> dict[str, list[str]]:
+def upper_tags(audio: Audio) -> dict[str, list[str]]:
 	"""All tags of a file with upper-cased keys and string values (empty without a Vorbis comment)."""
 	return {k.upper(): [str(x) for x in v] for k, v in audio.tags.items()} if audio.tags else {}
 
