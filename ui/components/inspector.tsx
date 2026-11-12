@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, Copy, Ellipsis, Pause, Pencil, Play, RefreshCw, Search, Trash2, TriangleAlert, Upload } from 'lucide-react'
+import { ChartColumn, Check, ChevronDown, Copy, Ellipsis, Fingerprint, FileText, Mic, Pause, Pencil, Play, RefreshCw, Search, Tags, Trash2, TriangleAlert, Upload, Volume2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -104,6 +104,9 @@ type Props = {
 	delCover: () => void
 	putCover: (f: File) => void
 }
+
+const STEP_ICON: Record<string, typeof Check> = { 'Dynamic range': ChartColumn, ReplayGain: Volume2, Fingerprints: Fingerprint, 'Tags and cover': Tags, Lyrics: Mic, Filenames: FileText }
+const OPTIONAL_STEP = 'Lyrics'  // ADR 0054
 
 export function Inspector(p: Props) {
 	const { a, job } = p
@@ -265,14 +268,23 @@ export function Inspector(p: Props) {
 			<div>
 				<h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">Pipeline</h4>
 				<ol className="grid grid-cols-6 gap-1 text-center text-[11px] leading-tight">
-					{a.steps.map((s, i) => (
-						<li key={s.name} title={(s.note ? s.note + ' ' : '') + 'Double-click to run only this step.'} className="cursor-pointer select-none" onClick={() => { setStep(stepSel === i ? null : i); setTracksOpen(true) }} onDoubleClick={() => { if ((a.status !== 'needs' || ['Dynamic range', 'ReplayGain', 'Fingerprints'].includes(s.name)) && job.state !== 'running') p.run(s.name) }}>
-							<div className={`mx-auto mb-1 grid size-7 place-items-center rounded-full text-white ${spinning(s.name) ? 'bg-sky-500 ring-2 ring-sky-300' : s.done ? (s.partial ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200 text-slate-500'}`}>
-								{spinning(s.name) ? <RefreshCw className="size-4 animate-spin" /> : s.done ? <Check className="size-4" /> : i + 1}
-							</div>
-							<span className={`rounded px-1 ${stepSel === i ? 'bg-slate-800/10 font-medium' : ''}`}>{s.name.replace(' and ', ' & ')}</span>
-						</li>
-					))}
+					{a.steps.map((s, i) => {
+						const Icon = STEP_ICON[s.name] ?? Check, busy = spinning(s.name)
+						return (
+							<li key={s.name} title={(s.note ? s.note + ' ' : '') + 'Double-click to run only this step.'} className="relative cursor-pointer select-none" onClick={() => { setStep(stepSel === i ? null : i); setTracksOpen(true) }} onDoubleClick={() => { if ((a.status !== 'needs' || ['Dynamic range', 'ReplayGain', 'Fingerprints'].includes(s.name)) && job.state !== 'running') p.run(s.name) }}>
+								{i > 0 && <span aria-hidden className="absolute right-1/2 top-[17px] -z-0 h-0.5 w-full bg-slate-200" />}
+								<div className={`relative z-10 mx-auto mb-1 grid size-9 place-items-center rounded-full ${busy ? 'bg-sky-500 text-white ring-2 ring-sky-300' : s.done ? (s.partial ? 'bg-amber-400 text-amber-950' : 'bg-emerald-500 text-white') : `border bg-white text-slate-400 ${s.name === OPTIONAL_STEP ? 'border-dashed' : ''}`}`}>
+									{busy ? <RefreshCw className="size-[18px] animate-spin" /> : <Icon className="size-[18px]" />}
+									{!busy && s.done && (
+										<span className={`absolute -bottom-0.5 -right-0.5 grid size-[15px] place-items-center rounded-full border-[1.5px] border-white text-white ${s.partial ? 'bg-amber-700' : 'bg-emerald-700'}`}>
+											{s.partial ? <TriangleAlert className="size-2.5" /> : <Check className="size-2.5" />}
+										</span>
+									)}
+								</div>
+								<span className={`rounded px-1 ${stepSel === i ? 'bg-slate-800/10 font-medium' : ''}`}>{s.name.replace(' and ', ' & ')}</span>
+							</li>
+						)
+					})}
 				</ol>
 			</div>
 
