@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { RefreshCw, Search, Settings } from 'lucide-react'
+import { RefreshCw, Search, Settings, Square } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -170,6 +170,17 @@ export default function Page() {
 			setDlg(null); addLog(['cover removed']); toast.success('Cover removed'); await refreshOne(a.path)
 		} catch (e: any) { setCerr(e.message) }
 	}
+	const stopPlayback = useCallback(() => {
+		player.pause()
+		player.removeAttribute('src')
+		player.load()
+		setPlaying(null)
+	}, [])
+	// The album that is playing is gone from the list (the watcher moved it, a corrected artist name): its track list is no
+	// longer on screen to stop it, so stop here. A renamed file keeps the album, and the Stop button in the top bar remains.
+	useEffect(() => {
+		if (playing && !albums.some(x => playing.startsWith(x.path + '|'))) stopPlayback()
+	}, [albums, playing, stopPlayback])
 	const play = (f: TrackFile) => {
 		if (!a) return
 		const key = a.path + '|' + f.file
@@ -214,6 +225,12 @@ export default function Page() {
 					<Input ref={searchRef} type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search" title="Search albums, artists, IDs (⌘K)" className="h-9 rounded-full border-slate-300 bg-white pl-9 pr-12" />
 					<kbd className="absolute right-3 top-2 hidden rounded bg-slate-100 px-1.5 text-xs text-slate-500 min-[1600px]:block">⌘K</kbd>
 				</div>
+				{playing && (
+					<button onClick={stopPlayback} title="Stop playback" aria-label="Stop playback" className="mr-1 flex h-9 shrink-0 items-center gap-2 rounded-full border border-yellow-400 bg-yellow-100 px-3 text-[15px] text-slate-800 hover:bg-yellow-200">
+						<span className="flex h-4 items-center gap-0.5">{[0, 0.25, 0.5, 0.15].map(d => <i key={d} className="eq-bar block w-0.5 rounded-sm bg-slate-900" style={{ animationDelay: `${d}s` }} />)}</span>
+						<Square className="size-3.5 fill-current" />Stop
+					</button>
+				)}
 				<button onClick={() => setDlg({ kind: 'settings' })} title="Settings" aria-label="Settings" className="mr-3 grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-white/60"><Settings className="size-5" /></button>
 				<div className="ml-2 flex h-full w-[600px] shrink-0 items-center gap-2 border-l px-4 text-[15px] min-[1600px]:w-[720px]">
 					<LibraryIndicator st={lib.st} open={() => setDlg({ kind: 'library' })} />

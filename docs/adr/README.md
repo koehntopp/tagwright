@@ -56,6 +56,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0065](0065-quiet-polling-lines.md) | Successful polls of /api/library and /api/job stay out of the access log | Accepted |
 | [0066](0066-more-application-events-and-log-level.md) | Renames, tag edits and lyrics edits are logged; LOG_LEVEL | Accepted |
 | [0067](0067-stored-album-summaries.md) | Album summaries are stored in SQLite and the library is listed from the index | Accepted |
+| [0068](0068-playback-can-always-be-stopped.md) | Playback can always be stopped: a Stop button in the top bar, and it stops when the album is gone | Accepted |
 
 ## History: superseded ADRs
 
