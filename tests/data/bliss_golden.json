@@ -1,0 +1,279 @@
+[
+ {
+  "name": "single disc",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "The Band",
+     "ALBUM": "Record",
+     "VERSION": "2020 DR10 CD",
+     "TITLE": "One",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "1"
+    },
+    "expected": "The_Band/Record_2020_DR10_CD/01_01_One.flac"
+   },
+   {
+    "tags": {
+     "ALBUMARTIST": "The Band",
+     "ALBUM": "Record",
+     "VERSION": "2020 DR10 CD",
+     "TITLE": "Two",
+     "TRACKNUMBER": "2",
+     "DISCNUMBER": "1"
+    },
+    "expected": "The_Band/Record_2020_DR10_CD/01_02_Two.flac"
+   }
+  ]
+ },
+ {
+  "name": "version already in album",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "X",
+     "ALBUM": "Rec 2020 DR10 CD",
+     "VERSION": "2020 DR10 CD",
+     "TITLE": "A",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "1"
+    },
+    "expected": "X/Rec_2020_DR10_CD/01_01_A.flac"
+   }
+  ]
+ },
+ {
+  "name": "no version",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "X",
+     "ALBUM": "Rec",
+     "TITLE": "A",
+     "TRACKNUMBER": "3/12",
+     "DISCNUMBER": "1/1"
+    },
+    "expected": "X/Rec/01_03_A.flac"
+   }
+  ]
+ },
+ {
+  "name": "two discs by number",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "X",
+     "ALBUM": "Box",
+     "VERSION": "V",
+     "TITLE": "A",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "1"
+    },
+    "expected": "X/Box_V/Disc 1/01_01_A.flac"
+   },
+   {
+    "tags": {
+     "ALBUMARTIST": "X",
+     "ALBUM": "Box",
+     "VERSION": "V",
+     "TITLE": "B",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "2"
+    },
+    "expected": "X/Box_V/Disc 2/02_01_B.flac"
+   }
+  ]
+ },
+ {
+  "name": "two discs by total",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "X",
+     "ALBUM": "Total",
+     "TITLE": "A",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "1/2"
+    },
+    "expected": "X/Total/Disc 1/01_01_A.flac"
+   },
+   {
+    "tags": {
+     "ALBUMARTIST": "X",
+     "ALBUM": "Total",
+     "TITLE": "B",
+     "TRACKNUMBER": "2",
+     "DISCNUMBER": "1/2"
+    },
+    "expected": "X/Total/Disc 1/01_02_B.flac"
+   }
+  ]
+ },
+ {
+  "name": "disctotal tag",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "X",
+     "ALBUM": "DT",
+     "TITLE": "A",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "1",
+     "DISCTOTAL": "3"
+    },
+    "expected": "X/DT/Disc 1/01_01_A.flac"
+   }
+  ]
+ },
+ {
+  "name": "totaldiscs tag",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "X",
+     "ALBUM": "TD",
+     "TITLE": "A",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "1",
+     "TOTALDISCS": "2"
+    },
+    "expected": "X/TD/Disc 1/01_01_A.flac"
+   }
+  ]
+ },
+ {
+  "name": "disc 10",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "X",
+     "ALBUM": "Big",
+     "TITLE": "A",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "10"
+    },
+    "expected": "X/Big/Disc 10/10_01_A.flac"
+   }
+  ]
+ },
+ {
+  "name": "padded disc",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "X",
+     "ALBUM": "Pad",
+     "TITLE": "A",
+     "TRACKNUMBER": "01",
+     "DISCNUMBER": "02"
+    },
+    "expected": "X/Pad/Disc 2/02_01_A.flac"
+   }
+  ]
+ },
+ {
+  "name": "umlauts",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "Mötley Crüe",
+     "ALBUM": "Größe & Maß",
+     "TITLE": "Über den Wolken",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "1"
+    },
+    "expected": "Motley_Crue/Grosse_Mass/01_01_Uber_den_Wolken.flac"
+   }
+  ]
+ },
+ {
+  "name": "punctuation",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "AC/DC",
+     "ALBUM": "Back: In \"Black\"",
+     "TITLE": "What?! (Live: 2020/21) <x>",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "1"
+    },
+    "expected": "AC_DC/Back_In_Black/01_01_What_Live_2020_21_x.flac"
+   }
+  ]
+ },
+ {
+  "name": "unicode",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "Beyoncé",
+     "ALBUM": "Ça va",
+     "TITLE": "Café ☕ 日本語",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "1"
+    },
+    "expected": "Beyonce/Ca_va/01_01_Cafe_Ri_Ben_Yu.flac"
+   }
+  ]
+ },
+ {
+  "name": "apostrophes",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "Guns N' Roses",
+     "ALBUM": "Appetite's",
+     "TITLE": "Don't Stop",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "1"
+    },
+    "expected": "Guns_N_Roses/Appetite_s/01_01_Don_t_Stop.flac"
+   }
+  ]
+ },
+ {
+  "name": "long track number",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "X",
+     "ALBUM": "Long",
+     "TITLE": "A",
+     "TRACKNUMBER": "123",
+     "DISCNUMBER": "1"
+    },
+    "expected": "X/Long/01_123_A.flac"
+   }
+  ]
+ },
+ {
+  "name": "case only artist",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "Chris de Burgh",
+     "ALBUM": "Case",
+     "TITLE": "A",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "1"
+    },
+    "expected": "Chris_de_Burgh/Case/01_01_A.flac"
+   }
+  ]
+ },
+ {
+  "name": "spaces",
+  "files": [
+   {
+    "tags": {
+     "ALBUMARTIST": "  Spacey  ",
+     "ALBUM": "  Sp  ace ",
+     "TITLE": "  A  B  ",
+     "TRACKNUMBER": "1",
+     "DISCNUMBER": "1"
+    },
+    "expected": "Spacey/Sp_ace/01_01_A_B.flac"
+   }
+  ]
+ }
+]
