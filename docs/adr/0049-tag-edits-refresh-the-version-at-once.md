@@ -1,6 +1,6 @@
 # ADR 0049: Editing format, catalog # or edition refreshes the Discogs tags at once
 
-- **Status**: Accepted
+- **Status**: Superseded by [0054](0054-album-status-and-steps-consolidated.md) (consolidated; kept as history)
 - **Date**: 2026-11-12
 - **Supersedes in part**: [0006](0006-status-model-and-pipeline-steps.md) (an edit of `ALBUM_EDITION`, `ALBUM_FORMAT` or `CATALOGNUMBER` leaves the album Ready until the next run)
 

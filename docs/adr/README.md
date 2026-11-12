@@ -8,7 +8,6 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0002](0002-purpose-scope-and-use-cases.md) | Purpose, scope and use cases (UC-1 to UC-15) | Accepted |
 | [0003](0003-deployment-web-app-in-docker.md) | Deployment: a web app in Docker on a Linux server | Accepted |
 | [0005](0005-technology-stack-and-conventions.md) | Technology stack and code conventions | Accepted (frontend parts superseded by 0029, Style bullet by 0034, one-file backend by 0036) |
-| [0006](0006-status-model-and-pipeline-steps.md) | Status comes from FLAC tags; six pipeline steps | Accepted |
 | [0007](0007-trust-boundary-and-secrets.md) | Trust boundary, no authentication, secrets | Accepted |
 | [0008](0008-job-model.md) | Job model: one job at a time, queue, polling, write lock | Accepted |
 | [0009](0009-settings-and-api-keys.md) | Settings and API keys | Accepted |
@@ -36,16 +35,14 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0036](0036-standalone-pipeline-package.md) | A standalone pipeline package; the discogs repository is no longer needed | Accepted |
 | [0037](0037-library-watcher-and-layout.md) | The library folder: layout template, watcher, status | Accepted |
 | [0038](0038-staging-and-library-views.md) | Staging and Library views; one name for each folder | Accepted |
-| [0039](0039-incomplete-and-what-is-missing.md) | "Incomplete" instead of "Ready", and showing what is missing | Accepted |
 | [0040](0040-channel-badges.md) | Channel badges (Mono, Stereo, 5.1, 7.1) on tracks | Accepted |
 | [0041](0041-wider-inspector.md) | A wider inspector on wide screens | Accepted |
 | [0042](0042-covers-are-scaled-on-upload.md) | A dropped or fetched cover is scaled to the limit at once | Accepted |
 | [0044](0044-lrclib-application-id-no-key-setting.md) | lrclib.net is reached with the application ID; no key setting | Accepted |
 | [0045](0045-folders-from-the-environment-only.md) | Staging and library folders come from the environment only; Settings shows their host paths | Accepted |
-| [0049](0049-tag-edits-refresh-the-version-at-once.md) | Editing format, catalog # or edition refreshes the Discogs tags (VERSION) at once | Accepted |
-| [0050](0050-lyrics-are-optional.md) | Missing lyrics are an optional, blue notice; they do not block `fixed` or the move | Accepted |
 | [0051](0051-run-a-single-pipeline-step.md) | A double click on a pipeline step runs only that step | Accepted |
 | [0053](0053-discogs-search-and-assignment-consolidated.md) | Discogs release search and track assignment (consolidated: 0013, 0043, 0046, 0047, 0048, 0052) | Accepted |
+| [0054](0054-album-status-and-steps-consolidated.md) | Album status, pipeline steps and issue lines (consolidated: 0006, 0039, 0049, 0050) | Accepted |
 
 ## History: superseded ADRs
 
@@ -54,15 +51,19 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | ADR | Title | Status |
 |-----|-------|--------|
 | [0004](0004-pipeline-engine-reuses-discogs-scripts.md) | The pipeline engine is the unchanged discogs scripts | Superseded by 0036 |
+| [0006](0006-status-model-and-pipeline-steps.md) | Status comes from FLAC tags; six pipeline steps | Superseded by 0054 |
 | [0012](0012-language-and-performance.md) | Stay in Python; speed up compute inside the discogs scripts | Superseded by 0036 |
 | [0013](0013-discogs-track-assignment.md) | Discogs release search and track assignment | Superseded by 0053 |
 | [0017](0017-ui-layout-and-design-system.md) | UI layout and design system | Superseded by 0030 |
 | [0019](0019-version-control-and-releases.md) | Version control and releases | Superseded by 0020 |
 | [0022](0022-top-bar-instead-of-sidebar.md) | Top bar instead of a sidebar | Superseded by 0030 |
+| [0039](0039-incomplete-and-what-is-missing.md) | "Incomplete" instead of "Ready", and showing what is missing | Superseded by 0054 |
 | [0043](0043-assignment-refreshes-the-discogs-tags.md) | Assigning a Discogs release refreshes the Discogs-owned tags at once | Superseded by 0053 |
 | [0046](0046-discogs-medleys-are-one-release-track.md) | A Discogs medley (index entry with sub-tracks) is one release track | Superseded by 0053 |
 | [0047](0047-a-real-catalogue-number-replaces-none.md) | A real catalogue number replaces the placeholder `none` on assignment | Superseded by 0053 |
 | [0048](0048-reassignment-replaces-what-the-previous-release-filled.md) | Re-assigning replaces the release-level tags the previous release filled | Superseded by 0053 |
+| [0049](0049-tag-edits-refresh-the-version-at-once.md) | Editing format, catalog # or edition refreshes the Discogs tags (VERSION) at once | Superseded by 0054 |
+| [0050](0050-lyrics-are-optional.md) | Missing lyrics are an optional, blue notice; they do not block `fixed` or the move | Superseded by 0054 |
 | [0052](0052-discogs-search-by-attributes-and-musicbrainz-match.md) | The Discogs search starts with artist and album and marks MusicBrainz matches | Superseded by 0053 |
 
 ## Which ADR covers what
@@ -71,17 +72,17 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 |------------------|-----------|
 | what the app is for, a new feature | 0002 |
 | Docker, environment variables, mounts | 0003 |
-| Run fixes, the pipeline steps, `drcalc`, anything that used to be a discogs script | 0036, 0006 |
+| Run fixes, the pipeline steps, `drcalc`, anything that used to be a discogs script | 0036, 0054 |
 | backend dependencies | 0005 |
 | Python formatting, linting, annotations, `pyproject.toml` | 0034 |
 | tests, fixtures, the `test` dependency group | 0035, 0018 |
 | the `pipeline/` package, API clients, Discogs tags, `drcalc` | 0036, 0014, 0053 |
 | the output folder layout, the watcher, the Library tab, the status indicator, Move to library | 0037, 0010, 0011 |
 | the Staging / Library switch, folder names, which folders the UI may read | 0038, 0007 |
-| status names, the Missing box, the missing badges on cards | 0039, 0006 |
+| status names, the Missing box, the missing badges on cards | 0054 |
 | track rows and the badges on them (channels) | 0040, 0015 |
 | frontend stack, `ui/`, building `static/ui/` | 0029 |
-| statuses, steps, lyrics rules, scan cache | 0006 |
+| statuses, steps, lyrics rules, optional lyrics, scan cache, what is missing | 0054 |
 | paths, endpoints, secrets, access | 0007 |
 | jobs, queue, log, endpoints that write | 0008 |
 | settings dialog, API keys, config overlay | 0009, 0044 (no lrclib key), 0045 (folders read-only) |

@@ -1,6 +1,6 @@
 # ADR 0050: Missing lyrics are an optional, blue notice
 
-- **Status**: Accepted
+- **Status**: Superseded by [0054](0054-album-status-and-steps-consolidated.md) (consolidated; kept as history)
 - **Date**: 2026-11-12
 - **Supersedes in part**: [0006](0006-status-model-and-pipeline-steps.md) (`fixed` needs all six steps), [0039](0039-incomplete-albums-and-missing-lists.md) (every open step is a red "missing" entry)
 
