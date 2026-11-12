@@ -49,7 +49,7 @@ from pipeline.fixtags import DISCOGS_TAG_PREFIXES, fix_album
 from pipeline.http import ApiError
 from pipeline.layout import album_dirs, flacs, is_disc_dir
 from pipeline.naming import bliss_album, rename_files
-from pipeline.run import run_album
+from pipeline.run import only_steps, run_album
 from pipeline.tagio import Tags, channels_from_title, tag
 from pipeline.tools import Context, Stopped
 
@@ -663,25 +663,42 @@ class JobLog(logging.Handler):
 		job['lines'].append(self.format(record))
 
 
-def runner(path: Path, ctx: Context) -> int:
-	"""Run the pipeline for one album, then rename files. Returns 0, or 1 when a step failed (-1 if stopped)."""
+# The pipeline step(s) behind a step of the UI's pipeline row, for running one step alone (ADR 0051); Filenames has none.
+PIPELINE_OF = {
+	'Dynamic range': ['Dynamic range'],
+	'ReplayGain': ['ReplayGain'],
+	'Fingerprints': ['Fingerprints'],
+	'Tags and cover': ['Discogs tags'],
+	'Lyrics': ['Lyrics'],
+	'Filenames': [],
+}
+
+
+def runner(path: Path, ctx: Context, only: str = '') -> int:
+	"""Run the pipeline for one album (or just the UI step `only`), then rename files where that applies.
+	Returns 0, or 1 when a step failed (-1 if stopped)."""
 	job['path'] = str(path)
 	job['lines'].append(f'=== {path.name} ===')
 	try:
-		ok = run_album(path, ctx, on_step=lambda name: job.update(step=UI_STEP.get(name, '')))
+		steps = only_steps(*PIPELINE_OF[only]) if only else None
+		ok = run_album(
+			path, ctx, steps, on_step=lambda name: job.update(step=UI_STEP.get(name, ''))
+		)
 	except Stopped:
 		job['lines'].append('-- stopped by user')
 		return -1
 	except Exception as e:  # the job thread must survive anything; the message goes to the log pane
 		job['lines'].append(f'pipeline failed: {e}')
 		return -1
+	if only and only not in ('Filenames', 'Tags and cover'):
+		return 0 if ok else 1
 	job['step'] = 'Filenames'
 	job['lines'].append('-- rename files')
 	job['lines'].extend(rename_files(path, file_name))
 	return 0 if ok else 1
 
 
-def worker(paths: list[Path], ctx: Context) -> None:
+def worker(paths: list[Path], ctx: Context, only: str = '') -> None:
 	"""Process the queue one album at a time; a failure is logged and the queue continues."""
 	failed = 0
 	handler = JobLog()
@@ -694,7 +711,7 @@ def worker(paths: list[Path], ctx: Context) -> None:
 			if job['stop']:
 				break
 			job['queue'] = [str(x) for x in paths[paths.index(p) + 1 :]]
-			if runner(p, ctx) != 0:
+			if runner(p, ctx, only) != 0:
 				failed += 1
 	finally:
 		pipeline_log.removeHandler(handler)
@@ -712,7 +729,11 @@ def worker(paths: list[Path], ctx: Context) -> None:
 
 @app.post('/api/run')
 def run(body: dict) -> dict:
-	"""Body: {path} for one album or {paths: [...]} for a queue (the UI starts one album at a time)."""
+	"""Body: {path} for one album or {paths: [...]} for a queue (the UI starts one album at a time); an optional
+	{step: <UI step name>} runs only that step (ADR 0051)."""
+	only = str(body.get('step') or '')
+	if only and only not in PIPELINE_OF:
+		raise HTTPException(400, f'unknown step: {only}')
 	raw = body.get('paths') or [body.get('path', '')]
 	paths = [safe(p) for p in raw]
 	for path in paths:
@@ -732,7 +753,7 @@ def run(body: dict) -> dict:
 			ctx=ctx,
 			queue=[str(x) for x in paths[1:]],
 		)
-	threading.Thread(target=worker, args=(paths, ctx), daemon=True).start()
+	threading.Thread(target=worker, args=(paths, ctx, only), daemon=True).start()
 	return {'ok': True, 'count': len(paths)}
 
 

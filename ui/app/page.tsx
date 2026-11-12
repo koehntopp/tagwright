@@ -127,11 +127,11 @@ export default function Page() {
 	}, [albums, filter, q, sort])
 
 	const cycleSort = () => { const n = SORT_KEYS[(SORT_KEYS.indexOf(sort) + 1) % SORT_KEYS.length]; setSort(n); toast(`Sorted by ${SORT_NAMES[n]}`) }
-	const run = async () => {
+	const run = async (step?: string) => {
 		if (!a) return
 		try {
-			await post('/api/run', { paths: [a.path] })
-			toast.success(`Running fixes on ${title(a)}…`)
+			await post('/api/run', { paths: [a.path], ...(step ? { step } : {}) })
+			toast.success(step ? `Running ${step.replace(' and ', ' & ')} on ${title(a)}…` : `Running fixes on ${title(a)}…`)
 			setJob({ state: 'running', path: a.path, queue: [] }); tick()
 		} catch (e: any) { toast.error(e.message) }
 	}

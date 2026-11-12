@@ -89,7 +89,7 @@ type Props = {
 	job: Job
 	log: LogLine[]
 	refresh: () => void
-	run: () => void
+	run: (step?: string) => void
 	working?: string[]  // steps a save is rewriting right now (not a pipeline job)
 	move: () => void
 	inLibrary?: boolean
@@ -182,7 +182,7 @@ export function Inspector(p: Props) {
 
 			<div className="flex gap-2">
 				<Button className="flex-1 bg-slate-800 text-white hover:bg-slate-700" onClick={() => p.openEditor('album')}>Tag Editor</Button>
-				<Button className="flex-1" variant="outline" disabled={a.status === 'needs' || job.state === 'running'} onClick={p.run}>Run fixes</Button>
+				<Button className="flex-1" variant="outline" disabled={a.status === 'needs' || job.state === 'running'} onClick={() => p.run()}>Run fixes</Button>
 				<Button className="flex-1" variant="outline" disabled={p.inLibrary || a.status !== 'fixed' || a.issues.some(i => i.level === 'ingest') || job.state === 'running'} title={p.inLibrary ? 'This album is already in the library' : undefined} onClick={p.move}>Move to library</Button>
 			</div>
 
@@ -245,7 +245,7 @@ export function Inspector(p: Props) {
 				<h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">Pipeline</h4>
 				<ol className="grid grid-cols-6 gap-1 text-center text-[11px] leading-tight">
 					{a.steps.map((s, i) => (
-						<li key={s.name} title={s.note} className="cursor-pointer" onClick={() => { setStep(stepSel === i ? null : i); setTracksOpen(true) }}>
+						<li key={s.name} title={(s.note ? s.note + ' ' : '') + 'Double-click to run only this step.'} className="cursor-pointer select-none" onClick={() => { setStep(stepSel === i ? null : i); setTracksOpen(true) }} onDoubleClick={() => { if (a.status !== 'needs' && job.state !== 'running') p.run(s.name) }}>
 							<div className={`mx-auto mb-1 grid size-7 place-items-center rounded-full text-white ${spinning(s.name) ? 'bg-sky-500 ring-2 ring-sky-300' : s.done ? (s.partial ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200 text-slate-500'}`}>
 								{spinning(s.name) ? <RefreshCw className="size-4 animate-spin" /> : s.done ? <Check className="size-4" /> : i + 1}
 							</div>

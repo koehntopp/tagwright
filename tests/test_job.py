@@ -414,3 +414,30 @@ def test_move_preview_for_an_album_that_is_not_fixed(
 
 def test_move_preview_outside_the_root_is_refused(client: TestClient, tmp_path: Path) -> None:
 	assert client.get('/api/move/preview', params={'path': str(tmp_path)}).status_code == 400
+
+
+def test_a_single_step_runs_alone_and_the_others_do_not(
+	client: TestClient, make_flac: MakeFlac, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	"""ADR 0051: {step} runs only that step; Dynamic range alone does not rename the files."""
+	ran: list[str] = []
+	use_steps(
+		monkeypatch,
+		('Dynamic range', lambda a, c: ran.append('dr')),
+		('ReplayGain', lambda a, c: ran.append('rg')),
+		('Lyrics', lambda a, c: ran.append('lyrics')),
+	)
+	album = open_album(make_flac)
+	r = client.post('/api/run', json={'path': str(album), 'step': 'ReplayGain'})
+	assert r.status_code == 200
+	wait_for_end(client)
+	assert ran == ['rg']
+	assert sorted(f.name for f in album.glob('*.flac')) == [
+		'track1.flac',
+		'track2.flac',
+	]  # no rename
+	assert client.post('/api/run', json={'path': str(album), 'step': 'Nope'}).status_code == 400
+	r = client.post('/api/run', json={'path': str(album), 'step': 'Filenames'})
+	wait_for_end(client)
+	assert ran == ['rg']  # no pipeline step
+	assert sorted(f.name for f in album.glob('*.flac')) != ['track1.flac', 'track2.flac']  # renamed

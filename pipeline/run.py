@@ -40,6 +40,11 @@ STEPS: list[tuple[str, StepFn]] = [
 ]
 
 
+def only_steps(*names: str) -> list[tuple[str, StepFn]]:
+	"""The listed steps, in pipeline order (for running a single step on request, ADR 0051)."""
+	return [s for s in STEPS if s[0] in names]
+
+
 def run_album(
 	album: Path,
 	ctx: Context,
