@@ -218,8 +218,8 @@ export function TagEditor({ a, tab, reload, onClose, done, begin, openLyrics, op
 	return (
 		<Shell open onClose={onClose} wide="sm:max-w-[72rem]" title="Tag editor" err={err} save={save}
 			header={
-				<Tabs value={t} onValueChange={setT} className="ml-auto">
-					<TabsList><TabsTrigger value="album">Album</TabsTrigger><TabsTrigger value="tracks">Tracks</TabsTrigger><TabsTrigger value="discogs">Discogs / Musicbrainz</TabsTrigger></TabsList>
+				<Tabs value={t} onValueChange={setT} className="ml-auto mr-8">
+					<TabsList><TabsTrigger value="album">Album</TabsTrigger><TabsTrigger value="tracks">Tracks</TabsTrigger><TabsTrigger value="discogs">Discogs</TabsTrigger><TabsTrigger value="musicbrainz">MusicBrainz</TabsTrigger><TabsTrigger value="other">Other</TabsTrigger></TabsList>
 				</Tabs>
 			}>
 			<div className="max-h-[62vh] overflow-y-auto pr-1">
@@ -259,21 +259,35 @@ export function TagEditor({ a, tab, reload, onClose, done, begin, openLyrics, op
 					</div>
 				)}
 				{t === 'tracks' && <TrackTable rows={tracks} setRows={setTracks} openLyrics={file => openLyrics(a.path, file)} />}
-				{t === 'discogs' && (
+				{(t === 'discogs' || t === 'musicbrainz') && (() => {
+					const rows: { key: string; value: string }[] = t === 'discogs' ? d.discogs : d.musicbrainz
+					return (
+						<>
+							<p className="mb-3 text-[13px] text-slate-600">{t === 'discogs' ? 'Written from the Discogs release, so edit the release choice rather than these values. The overrides on the Album tab take precedence over ALBUM and ALBUMARTIST.' : 'Written by the MusicBrainz release choice; the release ID itself is on the Album tab.'}</p>
+							<table className="w-full text-sm">
+								<tbody>
+									{rows.length ? rows.map(r => (
+										<tr key={r.key} className="border-b text-slate-700"><td className="w-72 py-1 align-top font-mono text-xs">{r.key}</td><td className="whitespace-pre-wrap break-words">{r.value}</td></tr>
+									)) : <tr><td className="text-slate-500">{t === 'discogs' ? 'No Discogs tags yet. Run fixes to write them.' : 'No MusicBrainz tags yet. Choose a MusicBrainz release.'}</td></tr>}
+								</tbody>
+							</table>
+						</>
+					)
+				})()}
+				{t === 'other' && (
 					<>
-						<p className="mb-3 text-[13px] text-slate-600">Written from the Discogs and MusicBrainz releases, so edit the release choice rather than these values. The overrides on the Album tab take precedence over ALBUM and ALBUMARTIST.</p>
-						{([['Discogs', d.discogs, 'No Discogs tags yet. Run fixes to write them.'], ['MusicBrainz', d.musicbrainz, 'No MusicBrainz tags yet. Choose a MusicBrainz release.']] as [string, { key: string; value: string }[], string][]).map(([name, rows, none]) => (
-							<div key={name} className="mb-4">
-								<h4 className="mb-1 text-xs font-medium uppercase tracking-wider text-slate-500">{name}</h4>
-								<table className="w-full text-sm">
-									<tbody>
-										{rows.length ? rows.map(r => (
-											<tr key={r.key} className="border-b text-slate-700"><td className="w-72 py-1 align-top font-mono text-xs">{r.key}</td><td className="whitespace-pre-wrap break-words">{r.value}</td></tr>
-										)) : <tr><td className="text-slate-500">{none}</td></tr>}
-									</tbody>
-								</table>
-							</div>
-						))}
+						<p className="mb-3 text-[13px] text-slate-600">Every other tag in the files, as the first file has it. Lyrics are edited per track. These are read-only.</p>
+						<table className="w-full text-sm">
+							<tbody>
+								{d.other.length ? d.other.map((r: { key: string; value: string; files: number; of: number; varies: boolean }) => (
+									<tr key={r.key} className="border-b text-slate-700">
+										<td className="w-72 py-1 align-top font-mono text-xs">{r.key}</td>
+										<td className="break-all" title={r.value}><span className="line-clamp-2">{r.value}</span></td>
+										<td className="w-36 whitespace-nowrap pl-2 text-right align-top text-xs text-slate-500">{[r.files < r.of ? `${r.files} of ${r.of} files` : '', r.varies ? 'differs' : ''].filter(Boolean).join(' · ')}</td>
+									</tr>
+								)) : <tr><td className="text-slate-500">No other tags.</td></tr>}
+							</tbody>
+						</table>
 					</>
 				)}
 			</div>

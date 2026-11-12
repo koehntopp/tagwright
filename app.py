@@ -2028,6 +2028,51 @@ DISCOGS_FIXED = (
 DISCOGS_PREFIXES = (*DISCOGS_TAG_PREFIXES, 'DISCOGS_')
 
 
+def other_tags(files: list[Path]) -> list[dict]:
+	"""Every tag the other tabs of the tag editor do not show (ADR 0057): key, the first file's value, in how many files
+	it is set and whether the values differ. Read-only."""
+	shown = {
+		*ALBUM_FIELDS,
+		*(
+			a
+			for alts in ALBUM_FIELDS.values()
+			if alts != ('ALBUMARTIST',) and alts != ('ALBUM',)
+			for a in alts
+		),
+		*CATALOG_KEYS,
+		*DISCOGS_FIXED,
+		'TITLE',
+		'ARTIST',
+		'TRACKNUMBER',
+		'DISCNUMBER',
+		'DISCSUBTITLE',
+		'SET SUBTITLE',
+		'LYRICS',  # edited per track, with its own editor
+		'BARCODE',
+		'ASIN',
+	}
+	seen: dict[str, list[str]] = {}
+	count: dict[str, int] = {}
+	for f in files:
+		for k, v in (FLAC(f).tags or {}).items():
+			key = k.upper()
+			if key in shown or key.startswith(('MUSICBRAINZ', *DISCOGS_PREFIXES)):
+				continue
+			value = ' / '.join(str(x) for x in v)
+			seen.setdefault(key, []).append(value)
+			count[key] = count.get(key, 0) + 1
+	return [
+		{
+			'key': k,
+			'value': vals[0],
+			'files': count[k],
+			'of': len(files),
+			'varies': len(set(vals)) > 1,
+		}
+		for k, vals in sorted(seen.items())
+	]
+
+
 @app.get('/api/tags')
 def get_tags(path: str) -> dict:
 	album = safe(path)
@@ -2061,6 +2106,7 @@ def get_tags(path: str) -> dict:
 			}
 		)
 	return {
+		'other': other_tags(files),
 		'fields': {
 			k: tag(t0, k) if k in OVERRIDES else tag(t0, k, *alts)
 			for k, alts in ALBUM_FIELDS.items()

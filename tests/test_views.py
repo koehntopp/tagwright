@@ -178,8 +178,7 @@ def test_mount_source_names_the_nfs_export_or_the_bind_mount_path(tmp_path: Path
 		'4 1 259:1 /srv/with\\040space /data rw - ext4 /dev/nvme0n1p2 rw\n'
 	)
 	assert (
-		tagwright.mount_source(Path('/staging/Artist/Album'), info)
-		== '192.0.2.10:/volume1/staging'
+		tagwright.mount_source(Path('/staging/Artist/Album'), info) == '192.0.2.10:/volume1/staging'
 	)
 	assert tagwright.mount_source(Path('/plain'), info) == '10.0.0.5:/export'
 	assert tagwright.mount_source(Path('/flac/ingest'), info) == '/srv/flac/ingest'
@@ -357,3 +356,30 @@ def test_a_missing_folder_variable_is_a_startup_error(monkeypatch: pytest.Monkey
 	monkeypatch.setenv('STAGING_FOLDER', 'relative/path')
 	with pytest.raises(SystemExit, match='absolute'):
 		tagwright.env_path('STAGING_FOLDER')
+
+
+def test_the_other_tab_lists_the_tags_no_other_tab_shows(client: TestClient, album: Path) -> None:
+	first, second = sorted(album.glob('*.flac'))
+	for f, genre in ((first, 'Pop'), (second, 'Rock')):
+		a = FLAC(f)
+		a['GENRE'] = [genre]
+		a['LYRICS'] = ['la']
+		a['MUSICBRAINZ_ALBUMID'] = ['x']
+		a['DISCOGS_MASTER_ID'] = ['m1']
+		a.save()
+	FLAC(first)  # ReplayGain is set on both files by the fixture
+	other = {
+		r['key']: r for r in client.get('/api/tags', params={'path': str(album)}).json()['other']
+	}
+	assert other['GENRE'] == {'key': 'GENRE', 'value': 'Pop', 'files': 2, 'of': 2, 'varies': True}
+	assert 'REPLAYGAIN_ALBUM_GAIN' in other and 'ALBUMARTIST' in other
+	for shown_elsewhere in (
+		'TITLE',
+		'LYRICS',
+		'ALBUM_FORMAT',
+		'CATALOGNUMBER',
+		'MUSICBRAINZ_ALBUMID',
+		'DISCOGS_MASTER_ID',
+		'DISCOGS_RELEASE_ID',
+	):
+		assert shown_elsewhere not in other
