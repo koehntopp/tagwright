@@ -27,7 +27,7 @@ function Results({ rows, sort, setSort, count, pick }: { rows: any[]; sort: Sort
 					<tr key={r.id} className="cursor-pointer border-t hover:bg-slate-50" onClick={() => pick(r.id)}>
 						<td className="w-12 py-1">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={r.thumb} alt="" className="size-10 rounded bg-slate-100 object-cover" onError={e => e.currentTarget.remove()} /></td>
 						<td>
-							<div className="font-medium">{r.title}{r.match && <Badge className="ml-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100" title="Same as the Discogs release of this album">{r.match} match</Badge>}</div>
+							<div className="font-medium">{r.title}{r.match && <Badge className="ml-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100" title={r.match === 'MusicBrainz' ? 'Linked from the MusicBrainz release of this album' : 'Same as the Discogs release of this album'}>{r.match} match</Badge>}</div>
 							<div className="text-xs text-slate-500">{[r.country, r.format, r.label, r.barcode].filter(Boolean).join(' · ')}</div>
 						</td>
 						<td className="w-20 tabular-nums">{r.year}</td>
@@ -55,7 +55,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 	const token = useRef<object>({})
 	useEffect(() => {
 		if (!a) return
-		setRows(null); setRel(null); setErr(''); setBusy(false); setWhat(''); setQ(a.discogs || [a.artist, a.album].filter(Boolean).join(' '))
+		setRows(null); setRel(null); setErr(''); setBusy(false); setWhat(''); setQ([a.artist, a.album].filter(Boolean).join(' '))
 		if (a.discogs) pick(a.discogs)
 	}, [a?.path])  // eslint-disable-line react-hooks/exhaustive-deps
 	if (!a) return null
@@ -72,7 +72,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 		if (!q.trim()) return
 		setBusy(true); setWhat('Searching Discogs…'); setErr('')
 		try {
-			const rs: any[] = await api('/api/discogs/search?q=' + encodeURIComponent(q.trim()))
+			const rs: any[] = await api('/api/discogs/search?q=' + encodeURIComponent(q.trim()) + '&path=' + encodeURIComponent(a!.path))
 			setRel(null); setRows(rs); setBusy(false); counts(rs)
 		} catch (e: any) { setErr(e.message); setBusy(false) }
 	}
@@ -109,6 +109,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a Discogs release ID" />
 				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search Discogs</Button>
 			</form>
+			<AlbumFacts a={a} />
 			<div className="relative min-h-48">
 			{busy && <Busy text={what} />}
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>
@@ -141,6 +142,15 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 			</div>
 			</div>
 		</Shell>
+	)
+}
+
+/** What is known about the album, for searching by hand: each value with a copy icon. */
+function AlbumFacts({ a }: { a: Album }) {
+	return (
+		<div className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
+			{([['Artist', a.artist], ['Album', a.album], ['Year', a.year], ['Catalog #', a.catalog]] as const).filter(([, v]) => v).map(([k, v]) => <span key={k} className="inline-flex items-center">{k}: {v}<CopyBtn text={v} /></span>)}
+		</div>
 	)
 }
 
@@ -180,9 +190,7 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a MusicBrainz release ID" />
 				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search MusicBrainz</Button>
 			</form>
-			<div className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
-				{([['Artist', a.artist], ['Album', a.album], ['Year', a.year], ['Catalog #', a.catalog]] as const).filter(([, v]) => v).map(([k, v]) => <span key={k} className="inline-flex items-center">{k}: {v}<CopyBtn text={v} /></span>)}
-			</div>
+			<AlbumFacts a={a} />
 			<div className="relative min-h-48">
 			{busy && <Busy text={what} />}
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>

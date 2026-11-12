@@ -55,6 +55,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0049](0049-tag-edits-refresh-the-version-at-once.md) | Editing format, catalog # or edition refreshes the Discogs tags (VERSION) at once | Accepted |
 | [0050](0050-lyrics-are-optional.md) | Missing lyrics are an optional, blue notice; they do not block `fixed` or the move | Accepted |
 | [0051](0051-run-a-single-pipeline-step.md) | A double click on a pipeline step runs only that step | Accepted |
+| [0052](0052-discogs-search-by-attributes-and-musicbrainz-match.md) | The Discogs search starts with artist and album and marks MusicBrainz matches | Accepted |
 
 ## Which ADR covers what
 

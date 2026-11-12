@@ -332,3 +332,19 @@ def test_musicbrainz_search_puts_releases_linking_the_discogs_id_first(
 	monkeypatch.setattr(tagwright, 'musicbrainz', fake)
 	rows = client.get('/api/musicbrainz/search', params={'q': 'a b', 'path': str(album)}).json()
 	assert [(r['id'], r['match']) for r in rows] == [('linked', 'Discogs ID'), ('plain', '')]
+
+
+def test_discogs_search_marks_the_releases_the_musicbrainz_release_links(
+	monkeypatch: pytest.MonkeyPatch, client: TestClient, album: Path
+) -> None:
+	for f in sorted(album.glob('*.flac')):
+		a = FLAC(f)
+		a['MUSICBRAINZ_ALBUMID'] = ['0a1e8f85-0000-4000-8000-000000000000']
+		a.save()
+	hits = [{'id': 1, 'title': 'One'}, {'id': 2, 'title': 'Two'}, {'id': 3, 'title': 'Three'}]
+	monkeypatch.setattr(tagwright, 'discogs', lambda path, **kw: {'results': hits})
+	monkeypatch.setattr(tagwright, 'mb_release', lambda mbid: {'discogs_ids': ['2']})
+	rows = client.get('/api/discogs/search', params={'q': 'x y', 'path': str(album)}).json()
+	assert [(r['id'], r['match']) for r in rows] == [('2', 'MusicBrainz'), ('1', ''), ('3', '')]
+	rows = client.get('/api/discogs/search', params={'q': 'x y'}).json()  # no album: plain results
+	assert [r['match'] for r in rows] == ['', '', '']

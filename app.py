@@ -1360,14 +1360,28 @@ def brief(r: dict) -> dict:
 
 
 @app.get('/api/discogs/search')
-def discogs_search(q: str) -> list[dict]:
+def discogs_search(q: str, path: str = '') -> list[dict]:
+	"""Release search; with an album `path` whose MusicBrainz release links Discogs releases, those come first,
+	marked `match: 'MusicBrainz'` (ADR 0052)."""
 	q = q.strip()
 	if q.isdigit():
-		return [brief(discogs(f'/releases/{q}'))]
-	return [
-		brief(r)
-		for r in discogs('/database/search', type='release', q=q, per_page=20).get('results', [])
-	]
+		rows = [brief(discogs(f'/releases/{q}'))]
+	else:
+		rows = [
+			brief(r)
+			for r in discogs('/database/search', type='release', q=q, per_page=20).get(
+				'results', []
+			)
+		]
+	linked: list[str] = []
+	if path and (mbid := get_summary(safe(path))['mbid']):
+		try:
+			linked = mb_release(mbid)['discogs_ids']
+		except HTTPException:
+			pass  # MusicBrainz unreachable: the plain results are still right
+	for r in rows:
+		r['match'] = 'MusicBrainz' if r['id'] in linked else ''
+	return sorted(rows, key=lambda r: not r['match'])  # stable: the rest keep Discogs' order
 
 
 @app.get('/api/discogs/tracks')
