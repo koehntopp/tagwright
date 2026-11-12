@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, Copy, Pause, Pencil, Play, RefreshCw, TriangleAlert, Upload, XCircle } from 'lucide-react'
+import { Check, ChevronDown, Copy, Ellipsis, Pause, Pencil, Play, RefreshCw, Search, Trash2, TriangleAlert, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -111,6 +111,14 @@ export function Inspector(p: Props) {
 	const [tracksOpen, setTracksOpen] = useState(true)
 	const [logOpen, setLogOpen] = useState(false)
 	const [drag, setDrag] = useState(false)
+	const [menu, setMenu] = useState(false)  // the cover actions menu
+	useEffect(() => {
+		if (!menu) return
+		const close = (e: Event) => { if (!(e.target as Element).closest?.('[data-cover-menu]')) setMenu(false) }
+		const esc = (e: KeyboardEvent) => e.key === 'Escape' && setMenu(false)
+		document.addEventListener('mousedown', close); document.addEventListener('keydown', esc)
+		return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc) }
+	}, [menu])
 	const fileRef = useRef<HTMLInputElement>(null)
 	// non-consequential notes where MusicBrainz and Discogs disagree (selected album only: one cached MusicBrainz lookup)
 	const [mbNotes, setMbNotes] = useState<string[]>([])
@@ -125,12 +133,13 @@ export function Inspector(p: Props) {
 	const spinning = (name: string) => (running && name === job.step) || !!p.working?.includes(name)
 
 	const cov = a.cover
+	const coverSmall = a.issues.some(i => i.action === 'cover')  // below the minimum size, or no cover (ADR 0016)
 	return (
 		<div className="space-y-5 p-6">
 			<div className="flex gap-4">
 				<div className="w-24 shrink-0">
 					<div
-						className={`rounded-xl transition-shadow ${drag ? 'ring-4 ring-slate-800' : ''}`}
+						className={`rounded-xl transition-shadow ${drag ? 'ring-4 ring-slate-800' : coverSmall ? 'outline-dashed outline-2 outline-offset-2 outline-amber-400' : ''}`}
 						title="Drop an image here to replace the cover"
 						onDragOver={e => { e.preventDefault(); setDrag(true) }}
 						onDragLeave={() => setDrag(false)}
@@ -142,20 +151,27 @@ export function Inspector(p: Props) {
 					>
 						<CoverImg a={a} className="size-24 rounded-xl shadow" />
 					</div>
-					<div className="mt-1.5 flex items-center justify-center gap-2.5">
-						<button title="Upload a different cover" onClick={() => fileRef.current?.click()}><Upload className="size-[18px]" /></button>
-						<a href={`https://covers.musichoarders.xyz/?${new URLSearchParams({ artist: a.artist || '', album: title(a) })}`} target="_blank" rel="noopener" title="Search covers on covers.musichoarders.xyz">
-							{/* eslint-disable-next-line @next/next/no-img-element */}
-							<img src="/static/musichoarders.svg" alt="COV" className="size-3.5 rounded-sm bg-slate-800 p-px" />
-						</a>
-						<a href={`https://albumartexchange.com/covers?${new URLSearchParams({ q: [a.artist, title(a)].filter(Boolean).join(' '), fltr: 'ALL', sort: 'SCORE', status: '', size: 'any' })}`} target="_blank" rel="noopener" title="Search covers on albumartexchange.com">
-							{/* eslint-disable-next-line @next/next/no-img-element */}
-							<img src="/static/albumartexchange.ico" alt="AAE" className="size-3.5 rounded-sm" />
-						</a>
-						{cov && <button className="text-rose-600" title="Remove the cover" onClick={p.delCover}><XCircle className="size-[18px]" /></button>}
-					</div>
-					<div className="mt-1 text-center text-sm tabular-nums text-slate-500" title={cov ? `${cov.embedded ? 'Embedded cover' : 'Folder image, not embedded'}, ${fmtBytes(cov.bytes)}` : ''}>
-						{cov ? `${cov.w}×${cov.h}` : 'no cover'}
+					<div className="relative mt-2 flex items-center justify-center gap-1.5" data-cover-menu>
+						<span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] tabular-nums ${coverSmall ? 'border-amber-300 bg-amber-100 text-amber-900' : 'bg-white text-slate-500'}`}
+							title={coverSmall ? a.issues.find(i => i.action === 'cover')?.text : cov ? `${cov.embedded ? 'Embedded cover' : 'Folder image, not embedded'}, ${fmtBytes(cov.bytes)}` : ''}>
+							{coverSmall && <TriangleAlert className="size-3" />}{cov ? `${cov.w}×${cov.h}` : 'no cover'}
+						</span>
+						<button aria-label="Cover actions" aria-haspopup="menu" aria-expanded={menu} title="Cover actions" onClick={() => setMenu(m => !m)}
+							className="grid size-6 place-items-center rounded-md border bg-white text-slate-600 hover:bg-slate-50"><Ellipsis className="size-4" /></button>
+						{menu && (
+							<div role="menu" className="absolute left-0 top-8 z-20 w-56 rounded-lg border bg-white p-1 text-sm shadow-md">
+								<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { setMenu(false); fileRef.current?.click() }}><Upload className="size-4" />Upload image</button>
+								<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://covers.musichoarders.xyz/?${new URLSearchParams({ artist: a.artist || '', album: title(a) })}`} target="_blank" rel="noopener">
+									{/* eslint-disable-next-line @next/next/no-img-element */}
+									<img src="/static/musichoarders.svg" alt="" className="size-4 rounded-sm bg-slate-800 p-px" />Search musichoarders
+								</a>
+								<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://albumartexchange.com/covers?${new URLSearchParams({ q: [a.artist, title(a)].filter(Boolean).join(' '), fltr: 'ALL', sort: 'SCORE', status: '', size: 'any' })}`} target="_blank" rel="noopener">
+									{/* eslint-disable-next-line @next/next/no-img-element */}
+									<img src="/static/albumartexchange.ico" alt="" className="size-4 rounded-sm" />Search albumartexchange
+								</a>
+								{cov && <button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-rose-600 hover:bg-rose-50" onClick={() => { setMenu(false); p.delCover() }}><Trash2 className="size-4" />Remove cover</button>}
+							</div>
+						)}
 					</div>
 					<input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && p.putCover(e.target.files[0])} />
 				</div>
