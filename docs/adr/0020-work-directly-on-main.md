@@ -10,7 +10,7 @@ ADR 0019 had agents work on short-lived branches and merge after approval. The o
 
 ## Decision
 
-- **`main` is the only branch**, locally and on GitHub `koehntopp/tagwright` (private). Agents do **not** create branches, worktrees for branches, or pull requests, and do not leave any behind. A branch found other than `main` is merged or deleted on the owner's say-so, and the owner's standing wish is none.
+- **`main` is the only branch**, locally and on GitHub `koehntopp/tagwright` (public). Agents do **not** create branches, worktrees for branches, or pull requests, and do not leave any behind. A branch found other than `main` is merged or deleted on the owner's say-so, and the owner's standing wish is none.
 - Work is committed **directly on `main`** in small commits after the change has been verified ([0018](0018-verification.md)), and pushed to `origin main` right after. History stays linear.
 - `git checkout vX.Y` and `git revert` are the ways back, not branches.
 - Releases stay annotated tags `vMAJOR.MINOR` on `main` (`v0.1`, `v0.2`), created when the owner asks.
