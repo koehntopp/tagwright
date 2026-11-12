@@ -269,10 +269,10 @@ class TestUnreadableAlbum:
 	) -> None:
 		real = tagwright.get_summary
 
-		def broken(a: Path) -> dict:
+		def broken(a: Path, *args: object) -> dict:
 			if a == album:
 				raise OSError(9, 'Bad file descriptor')
-			return real(a)
+			return real(a, *args)
 
 		monkeypatch.setattr(tagwright, 'get_summary', broken)
 		row = client.get('/api/albums').json()['albums'][0]
@@ -306,7 +306,9 @@ class TestUnreadableAlbum:
 		monkeypatch.setattr(
 			tagwright,
 			'get_summary',
-			lambda a: (_ for _ in ()).throw(OSError('boom')) if a == album else real(a),
+			lambda a, *args: (
+				(_ for _ in ()).throw(OSError('boom')) if a == album else real(a, *args)
+			),
 		)
 		rows = {r['name']: r for r in client.get('/api/albums').json()['albums']}
 		assert rows[album.name]['error'] == 'boom'

@@ -181,6 +181,21 @@ class Index:
 			rows = self._db.execute('select path, mtime_ns from files').fetchall()
 		return dict(rows)
 
+	def album_signatures(self) -> dict[str, tuple[tuple[str, int, int], ...]]:
+		"""album folder -> (file path inside the album, mtime_ns, size) of each of its files, sorted. A `Disc N` folder
+		belongs to its parent (not at the root), as in `pipeline.layout.album_dirs`. This is what the stored summaries
+		are checked against: no file of the library is touched."""
+		with self._lock:
+			rows = self._db.execute('select path, dir, mtime_ns, size from files').fetchall()
+		albums: dict[str, list[tuple[str, int, int]]] = {}
+		for path, directory, mtime_ns, size in rows:
+			p = PurePosixPath(directory)
+			parent = str(p.parent)
+			album = parent if is_disc_dir(p.name) and parent != '.' else directory
+			inside = str(PurePosixPath(path).relative_to(album)) if album else path
+			albums.setdefault(album, []).append((inside, mtime_ns, size))
+		return {a: tuple(sorted(v)) for a, v in albums.items()}
+
 	def counts(self) -> tuple[int, int, int]:
 		"""(album artists, albums, tracks). An album is a folder with FLACs, a `Disc N` folder counting as its parent."""
 		with self._lock:

@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import threading
+import time
 import unicodedata
 import urllib.error
 import urllib.request
@@ -35,6 +36,7 @@ from starlette.types import Scope
 
 from library import planner as lib_planner
 from library.scanner import read_tags
+from library.summaries import SummaryStore
 from library.template import INDEXED_TAGS, PALETTE, MissingTag, Template, render_level
 from library.template import default as default_template
 from library.template import validate as validate_template
@@ -112,9 +114,13 @@ INSTRUMENTAL_RE = re.compile(
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-	"""The library watcher runs for as long as the server does (ADR 0037)."""
+	"""The library watcher runs for as long as the server does (ADR 0037), and so does the thread that keeps the
+	stored summaries of its albums current (ADR 0067)."""
 	library.start()
+	stop = threading.Event()
+	threading.Thread(target=prefill_summaries, args=(stop,), daemon=True, name='summaries').start()
 	yield
+	stop.set()
 	library.stop()
 
 
@@ -484,25 +490,94 @@ def status(s: dict) -> str:
 	return 'fixed' if all(st['done'] for st in required) else 'ready'
 
 
-cache: dict[str, tuple[tuple, dict]] = {}
+cache: dict[str, tuple[str, dict]] = {}
 
 
-def get_summary(album: Path) -> dict:
-	"""summarize() cached by (file names, mtimes, sizes); reading tags of a whole library is slow on network volumes."""
-	files = flacs(album)
-	sig = tuple((f.name, st.st_mtime_ns, st.st_size) for f in files for st in [f.stat()])
-	hit = cache.get(str(album))
-	if hit and hit[0] == sig:
+SUMMARY_VERSION = (
+	1  # bump it when summarize() returns something else: stored summaries are then read again
+)
+summaries = SummaryStore(DATA / 'summaries.db')
+
+
+def library_signatures() -> dict[str, tuple[tuple[str, int, int], ...]] | None:
+	return library.album_signatures(INGEST)
+
+
+def album_signature(album: Path, fresh: bool = False, sigs: dict | None = None) -> str:
+	"""What an album's summary depends on, as one string: its files (path inside the album), mtimes and sizes. For an
+	album of the library it comes from the watcher's index, so no file is touched; with `fresh`, or for any other
+	album, the files are stat'ed (ADR 0067). Both give the same string for the same state. A caller that handles many
+	albums passes `sigs` (the index's answer, read once): reading it for every album is slow."""
+	if sigs is None and not fresh and in_library(album):
+		sigs = library_signatures()
+	if not fresh and in_library(album) and sigs is not None:
+		rel = '' if album == INGEST else album.relative_to(INGEST).as_posix()
+		if rel in sigs:
+			return json.dumps([SUMMARY_VERSION, sigs[rel]])
+	files = []
+	for f in flacs(album):
+		st = f.stat()
+		files.append((f.relative_to(album).as_posix(), st.st_mtime_ns, st.st_size))
+	return json.dumps([SUMMARY_VERSION, sorted(files)])
+
+
+def get_summary(album: Path, fresh: bool = False, sigs: dict | None = None) -> dict:
+	"""summarize(), remembered in memory and in SQLite by the album's signature: reading the tags of a whole library
+	takes minutes on a network volume (ADR 0067)."""
+	key, sig = str(album), album_signature(album, fresh, sigs)
+	if (hit := cache.get(key)) and hit[0] == sig:
 		return hit[1]
+	if (row := summaries.get(key)) and row[0] == sig:
+		cache[key] = (sig, row[1])
+		return row[1]
 	s = summarize(album)
-	cache[str(album)] = (sig, s)
+	cache[key] = (sig, s)
+	summaries.put(key, sig, s)
 	return s
+
+
+def summary_ready(album: Path, sig: str) -> bool:
+	key = str(album)
+	if (hit := cache.get(key)) and hit[0] == sig:
+		return True
+	return bool((row := summaries.get(key)) and row[0] == sig)
+
+
+def prefill_once(stop: threading.Event | None = None) -> int:
+	"""One pass: read the albums of the library whose stored summary is missing or out of date, two at a time (the
+	share is slow, and the watcher uses it too). Returns how many were read; 0 while the index is not ready."""
+	sigs = library_signatures()
+	if sigs is None:
+		return 0
+	albums_ = [INGEST / rel if rel else INGEST for rel in sigs]
+	todo = [a for a in albums_ if not summary_ready(a, album_signature(a, sigs=sigs))]
+	summaries.keep_only({str(a) for a in albums_})
+	if todo:
+		log.info('summaries: reading %d of %d albums', len(todo), len(albums_))
+		started = time.time()
+		with ThreadPoolExecutor(2) as ex:
+			list(ex.map(lambda a: bool(stop and stop.is_set()) or safe_summary(a, sigs=sigs), todo))
+		log.info('summaries: %d albums read in %.0f s', len(todo), time.time() - started)
+	return len(todo)
+
+
+def prefill_summaries(stop: threading.Event, interval: float = 60.0) -> None:
+	"""Keep the stored summaries of the library current in the background, so that switching to the library never
+	waits for the share (ADR 0067). Runs until `stop` is set."""
+	wait = 5.0  # the first pass soon after start, once the watcher has listed the library
+	while not stop.wait(wait):
+		try:
+			prefill_once(stop)
+		except Exception:  # the thread must survive anything
+			log.exception('summaries: a pass failed')
+		wait = interval
 
 
 def fresh_summary(album: Path) -> dict:
 	"""After a write: drop the cached summary first. A write that keeps the size (it fits the FLAC padding) on a network
 	volume with coarse or cached timestamps would otherwise match the old signature and show the old state."""
 	cache.pop(str(album), None)
+	summaries.delete(str(album))
 	if in_library(album):
 		library.refresh(
 			album
@@ -553,25 +628,38 @@ def unreadable_summary(a: Path, error: str) -> dict:
 	}
 
 
-def safe_summary(a: Path) -> dict:
+def safe_summary(a: Path, fresh: bool = False, sigs: dict | None = None) -> dict:
 	try:
-		return get_summary(a)
+		return get_summary(a, fresh, sigs)
 	except Exception as e:  # one unreadable album must not break the list
 		return unreadable_summary(a, str(e) or type(e).__name__)
 
 
 @app.get('/api/albums')
-def albums(path: str = '') -> dict:
+def albums(path: str = '', fresh: bool = False) -> dict:
+	"""The albums below a folder with their summaries. For the library the album list and the check for changes
+	come from the watcher's index, not from the share; `fresh` reads the share (the refresh button, ADR 0067)."""
 	base = safe(path) if path else ROOT
+	sigs = library_signatures() if base == INGEST and not fresh else None
+	dirs = (
+		[INGEST / rel if rel else INGEST for rel in sorted(sigs)]
+		if sigs is not None
+		else album_dirs(base)
+	)
 	with ThreadPoolExecutor(8) as ex:
-		res = list(ex.map(safe_summary, album_dirs(base)))
+		res = list(ex.map(lambda a: safe_summary(a, fresh, sigs), dirs))
 	res.sort(key=lambda s: s['mtime'], reverse=True)
 	return {'base': str(base), 'albums': res}
 
 
 @app.get('/api/album')
 def album(path: str) -> dict:
-	return get_summary(safe(path))
+	p = safe(path)
+	if not p.is_dir():
+		raise HTTPException(
+			404, 'no flac files'
+		)  # the folder is gone, for example moved by the watcher
+	return get_summary(p)
 
 
 def make_picture(data: bytes) -> Cover:

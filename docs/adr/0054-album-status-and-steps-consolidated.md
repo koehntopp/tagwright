@@ -1,6 +1,6 @@
 # ADR 0054: Album status, pipeline steps and issue lines (consolidated)
 
-- **Status**: Accepted
+- **Status**: Accepted (the scan cache is stored in SQLite and checked against the watcher's index: [0067](0067-stored-album-summaries.md))
 - **Date**: 2026-11-12
 - **Supersedes**: [0006](0006-status-model-and-pipeline-steps.md), [0039](0039-incomplete-and-what-is-missing.md), [0049](0049-tag-edits-refresh-the-version-at-once.md), [0050](0050-lyrics-are-optional.md). This is the one place that states the current rules; the four stay as history. The filter and colours of the board are in [0026](0026-ready-filter-returns.md) and [0030](0030-ui-layout-and-design-system-v2.md); the move gate is [0011](0011-ingestion-move.md).
 

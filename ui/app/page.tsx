@@ -58,14 +58,15 @@ export default function Page() {
 	const since = useRef(0), ticks = useRef(0), poll = useRef<ReturnType<typeof setTimeout>>(undefined), searchRef = useRef<HTMLInputElement>(null)
 
 	const a = albums.find(x => x.path === selected) || null
-	const load = useCallback(async (path = '') => {
+	const load = useCallback(async (path = '', fresh = false, quiet = false) => {
 		if (!path && areaRef.current === 'library') path = libPath.current
-		setLoading(true)
+		if (!quiet) setLoading(true)
 		try {
-			const r = await api('/api/albums' + (path ? '?path=' + encodeURIComponent(path) : ''))
+			const q = [path ? 'path=' + encodeURIComponent(path) : '', fresh ? 'fresh=1' : ''].filter(Boolean).join('&')
+			const r = await api('/api/albums' + (q ? '?' + q : ''))
 			setAlbums(r.albums)
 			return r.albums as Album[]
-		} finally { setLoading(false) }
+		} finally { if (!quiet) setLoading(false) }
 	}, [])
 	const switchArea = async (next: 'staging' | 'library') => {
 		if (next === areaRef.current) return
@@ -74,11 +75,24 @@ export default function Page() {
 		setArea(next); setSelected(null); setAlbums([])
 		try { await load() } catch (e: any) { toast.error(e.message) }
 	}
+	// The watcher moved or removed files (a corrected artist name puts an album in another folder): the board must not
+	// keep the old card. It reloads, without the skeleton, when the library reports new activity (ADR 0067).
+	const seenActivity = useRef<number | null>(null)
+	const activity = lib.st?.recent?.[0]?.t ?? null
+	useEffect(() => {
+		if (activity === null) return
+		const first = seenActivity.current === null
+		seenActivity.current = activity
+		if (!first && areaRef.current === 'library') void load('', false, true).catch(() => {})
+	}, [activity, load])
 	const refreshOne = useCallback(async (path: string) => {
 		try {
 			const s = await api<Album>('/api/album?path=' + encodeURIComponent(path))
 			setAlbums(l => l.map(x => (x.path === path ? s : x)))
-		} catch {}
+		} catch (e: any) {
+			// the album's folder is gone (the watcher moved it): drop the card instead of keeping a stale one
+			if (/no flac files|no such|not found|outside/i.test(String(e?.message))) setAlbums(l => l.filter(x => x.path !== path))
+		}
 	}, [])
 	const addLog = (lines: string[]) => {
 		setLog(l => [...l, ...lines.map(raw => {
@@ -187,7 +201,7 @@ export default function Page() {
 					</button>
 				))}
 				</nav>
-				<button onClick={async () => { await load(); toast.success('Rescanned') }} title="Rescan folder" aria-label="Rescan folder" className="grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-white/60"><RefreshCw className="size-4" /></button>
+				<button onClick={async () => { await load('', true); toast.success('Rescanned') }} title="Rescan folder" aria-label="Rescan folder" className="grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-white/60"><RefreshCw className="size-4" /></button>
 				<button role="switch" aria-checked={area === 'library'} aria-label="Folder: staging or library" onClick={() => switchArea(area === 'library' ? 'staging' : 'library')} title={area === 'library' ? 'Showing the library; click for the staging folder' : 'Showing the staging folder; click for the library'} className="ml-auto flex h-9 w-48 shrink-0 items-center justify-between gap-2 rounded-full border border-slate-300 bg-white px-4 text-[15px] font-medium">
 					<span className={area === 'staging' ? 'text-slate-900' : 'text-slate-400'}>Staging</span>
 					<span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${area === 'library' ? 'bg-slate-700' : 'bg-slate-300'}`}>

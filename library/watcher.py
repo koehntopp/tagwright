@@ -107,6 +107,13 @@ class Library:
 		self._index.forget_tree(str(PurePosixPath(*rel.parts)) if rel.parts else '')
 		self.poke()
 
+	def album_signatures(self, root: Path) -> dict[str, tuple[tuple[str, int, int], ...]] | None:
+		"""The albums of the library and the signature of each, from the index; None until a first pass has finished
+		on this root (the index is then still being filled)."""
+		if self._index is None or self._root != root or not self._state['last_scan']:
+			return None
+		return self._index.album_signatures()
+
 	def poke(self) -> None:
 		"""Run a quick pass soon (settings changed, a file was added by Tagwright itself)."""
 		self._wake.set()

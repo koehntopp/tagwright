@@ -55,6 +55,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0064](0064-logging-and-syslog.md) | Logging to standard output, and to syslog when SYSLOG_HOST is set | Accepted |
 | [0065](0065-quiet-polling-lines.md) | Successful polls of /api/library and /api/job stay out of the access log | Accepted |
 | [0066](0066-more-application-events-and-log-level.md) | Renames, tag edits and lyrics edits are logged; LOG_LEVEL | Accepted |
+| [0067](0067-stored-album-summaries.md) | Album summaries are stored in SQLite and the library is listed from the index | Accepted |
 
 ## History: superseded ADRs
 
