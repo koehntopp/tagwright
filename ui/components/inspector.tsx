@@ -137,7 +137,7 @@ export function Inspector(p: Props) {
 	return (
 		<div className="space-y-5 p-6">
 			<div className="flex gap-4">
-				<div className="w-24 shrink-0">
+				<div className="w-36 shrink-0">
 					<div
 						className={`rounded-xl transition-shadow ${drag ? 'ring-4 ring-slate-800' : coverSmall ? 'outline-dashed outline-2 outline-offset-2 outline-amber-400' : ''}`}
 						title="Drop an image here to replace the cover"
@@ -149,7 +149,7 @@ export function Inspector(p: Props) {
 							f ? p.putCover(f) : toast.error('Drop an image file')
 						}}
 					>
-						<CoverImg a={a} className="size-24 rounded-xl shadow" />
+						<CoverImg a={a} className="size-36 rounded-xl shadow" />
 					</div>
 					<div className="relative mt-2 flex items-center justify-center gap-1.5" data-cover-menu>
 						<span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] tabular-nums ${coverSmall ? 'border-amber-300 bg-amber-100 text-amber-900' : 'bg-white text-slate-500'}`}
