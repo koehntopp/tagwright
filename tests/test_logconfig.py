@@ -1,8 +1,10 @@
 """Logging to standard output and, when SYSLOG_HOST is set, to a syslog server (ADR 0064)."""
 
 import logging
+import shutil
 import socket
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -156,3 +158,85 @@ def test_uvicorn_gets_the_filter_on_its_access_handler() -> None:
 	config = logconfig.uvicorn_config()
 	assert 'quiet_polls' in config['handlers']['access']['filters']
 	assert config['filters']['quiet_polls']['()'] == 'pipeline.logconfig.QuietPolls'
+
+
+def test_log_level_comes_from_the_environment(capsys: pytest.CaptureFixture[str]) -> None:
+	assert (
+		logconfig.level_of({}) == logging.INFO
+		and logconfig.level_of({'LOG_LEVEL': 'debug'}) == logging.DEBUG
+	)
+	with pytest.raises(SystemExit, match='LOG_LEVEL'):
+		logconfig.level_of({'LOG_LEVEL': 'chatty'})
+	logconfig.configure({'LOG_LEVEL': 'WARNING'})
+	logging.getLogger('app').info('quiet')
+	logging.getLogger('app').warning('loud')
+	out = capsys.readouterr().out
+	assert 'quiet' not in out and 'loud' in out
+	logconfig.configure({'LOG_LEVEL': 'DEBUG'})
+	logging.getLogger('pipeline.run').debug('detail')
+	assert 'detail' in capsys.readouterr().out
+
+
+def test_renames_are_one_info_line_per_album_and_one_debug_line_per_file(
+	album: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+	first, second = sorted(album.glob('*.flac'))
+	first.rename(album / 'wrong_name.flac')
+	second.rename(album / 'also_wrong.flac')
+	with caplog.at_level(logging.DEBUG, logger='app'):
+		tagwright.rename_album_files(album)
+	infos = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
+	debugs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
+	assert infos == [f'renamed 2 file(s) in {album.name}']
+	assert len(debugs) == 2 and all(album.name in d and 'renamed' in d for d in debugs)
+
+
+def test_a_rename_that_would_overwrite_is_a_warning(
+	album: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+	first, second = sorted(album.glob('*.flac'))
+	shutil.copy(
+		first, album / 'copy_of_first.flac'
+	)  # the same tags: both want the name of the first
+	with caplog.at_level(logging.DEBUG, logger='app'):
+		tagwright.rename_album_files(album)
+	assert any(
+		r.levelno == logging.WARNING and 'already exists' in r.getMessage() for r in caplog.records
+	)
+
+
+def test_a_tag_save_logs_the_fields_and_the_lyrics_edit_logs_the_file(
+	client: TestClient,
+	album: Path,
+	caplog: pytest.LogCaptureFixture,
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	from pipeline import fixtags
+
+	monkeypatch.setattr(tagwright, 'fix_album', lambda path, cfg: fixtags.FixResult(2, 'X', 'V'))
+	with caplog.at_level(logging.DEBUG, logger='app'):
+		r = client.post(
+			'/api/tags',
+			json={
+				'path': str(album),
+				'fields': {'ALBUM_FORMAT': 'SACD'},
+				'tracks': [
+					{
+						'file': '01_01_One.flac',
+						'title': 'Uno',
+						'disc': '1',
+						'track': '1',
+						'artist': 'X',
+					}
+				],
+			},
+		)
+		assert r.status_code == 200, r.text
+		client.post(
+			'/api/track',
+			json={'path': str(album), 'file': '01_02_Two.flac', 'lyrics': '[00:01.00]la'},
+		)
+	text = caplog.text
+	assert "tags saved: Test Artist-Test Album: ALBUM_FORMAT='SACD'; 1 track(s) edited" in text
+	assert "01_01_One.flac: title='Uno'" in text
+	assert 'lyrics edited (12 chars): Test Artist-Test Album / 01_02_Two.flac' in text

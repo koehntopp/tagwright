@@ -54,6 +54,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0063](0063-publish-the-image-on-ghcr.md) | The image is published on GitHub's container registry (amd64 and arm64) | Accepted |
 | [0064](0064-logging-and-syslog.md) | Logging to standard output, and to syslog when SYSLOG_HOST is set | Accepted |
 | [0065](0065-quiet-polling-lines.md) | Successful polls of /api/library and /api/job stay out of the access log | Accepted |
+| [0066](0066-more-application-events-and-log-level.md) | Renames, tag edits and lyrics edits are logged; LOG_LEVEL | Accepted |
 
 ## History: superseded ADRs
 

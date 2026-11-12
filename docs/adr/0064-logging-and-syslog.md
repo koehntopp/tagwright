@@ -1,6 +1,6 @@
 # ADR 0064: Logging to standard output, and to syslog when SYSLOG_HOST is set
 
-- **Status**: Accepted (polling access lines are dropped: [0065](0065-quiet-polling-lines.md))
+- **Status**: Accepted (polling access lines are dropped: [0065](0065-quiet-polling-lines.md); more events and `LOG_LEVEL`: [0066](0066-more-application-events-and-log-level.md))
 - **Date**: 2026-11-12
 
 ## Context

@@ -69,6 +69,7 @@ INGEST = env_path('LIBRARY_FOLDER')
 DATA = env_path('DATA_DIR')  # settings.json, library.db, the MusicBrainz cache
 SETTINGS_FILE = DATA / 'settings.json'
 log = logging.getLogger('app')  # the program's own lines (ADR 0064)
+applog = log  # the same logger, for functions that have a local list called `log`
 KEYS = ('discogs_api_key',)
 settings: dict = {}
 if SETTINGS_FILE.is_file():
@@ -691,6 +692,20 @@ PIPELINE_OF = {
 AUDIO_STEPS = ('Dynamic range', 'ReplayGain', 'Fingerprints')
 
 
+def rename_album_files(album: Path) -> list[str]:
+	"""Rename the files to the layout's names and log it: one line per album at INFO, each file at DEBUG (ADR 0066)."""
+	lines = rename_files(album, file_name)
+	done = sum(1 for x in lines if x.startswith('renamed '))
+	if done:
+		applog.info('renamed %d file(s) in %s', done, album.name)
+	for x in lines:
+		if x.startswith('skip ') and 'already exists' in x:
+			applog.warning('%s: %s', album.name, x)
+		else:
+			applog.debug('%s: %s', album.name, x)
+	return lines
+
+
 def runner(path: Path, ctx: Context, only: str = '') -> int:
 	"""Run the pipeline for one album (or just the UI step `only`), then rename files where that applies.
 	Returns 0, or 1 when a step failed (-1 if stopped)."""
@@ -715,7 +730,7 @@ def runner(path: Path, ctx: Context, only: str = '') -> int:
 		return 0 if ok else 1
 	job['step'] = 'Filenames'
 	job['lines'].append('-- rename files')
-	job['lines'].extend(rename_files(path, file_name))
+	job['lines'].extend(rename_album_files(path))
 	log.info('job finished: %s (%s)', path.name, 'ok' if ok else 'a step failed')
 	return 0 if ok else 1
 
@@ -1626,7 +1641,7 @@ def tracks_apply(body: dict) -> dict:
 	# The Discogs-owned tags of the new release (year, album title, version, label ...) at once, as a run would write
 	# them, so the card and the inspector do not keep the previous release's data (ADR 0013).
 	log.append(refresh_discogs_tags(album))
-	log += rename_files(album, file_name)
+	log += rename_album_files(album)
 	logging.getLogger('app').info(
 		'assigned Discogs release %s to %s (%d files)', rel['id'], album.name, len(picked)
 	)
@@ -1685,6 +1700,12 @@ def set_track(body: dict) -> dict:
 	elif 'LYRICS' in a.tags:
 		del a.tags['LYRICS']
 	a.save()
+	log.info(
+		'lyrics %s: %s / %s',
+		f'edited ({len(lyrics.strip())} chars)' if lyrics.strip() else 'removed',
+		album.name,
+		body['file'],
+	)
 	return {'log': [f'edited lyrics of {body["file"]}'], 'album': fresh_summary(album)}
 
 
@@ -2252,13 +2273,23 @@ def set_tags(body: dict) -> dict:
 		log.append(f'track: {tr["file"]}')
 	if stale:
 		log.append(refresh_discogs_tags(album))
-	logging.getLogger('app').info(
-		'tags saved: %s (%d fields, %d tracks)',
+	applog.info(
+		'tags saved: %s: %s; %d track(s) edited',
 		album.name,
-		len(fields),
+		', '.join(f'{k}={str(v).strip()!r}' for k, v in fields.items()) or 'no album fields',
 		len(body.get('tracks', [])),
 	)
-	return {'log': [*log, *rename_files(album, file_name)], 'album': fresh_summary(album)}
+	for tr in body.get('tracks', []):
+		applog.debug(
+			'%s: %s: title=%r disc=%s track=%s artist=%r',
+			album.name,
+			tr.get('file'),
+			tr.get('title'),
+			tr.get('disc'),
+			tr.get('track'),
+			tr.get('artist'),
+		)
+	return {'log': [*log, *rename_album_files(album)], 'album': fresh_summary(album)}
 
 
 @app.post('/api/overrides')

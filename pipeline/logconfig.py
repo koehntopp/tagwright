@@ -1,5 +1,6 @@
 """Logging set-up (ADR 0064): the program's own log lines to standard output, and to a syslog server when one is set.
 
+`LOG_LEVEL` (`DEBUG`, `INFO`, `WARNING`, `ERROR`; default `INFO`) says how much: `DEBUG` adds the per-file detail.
 `SYSLOG_HOST` turns syslog on; `SYSLOG_PORT` (default 514) and `SYSLOG_PROTOCOL` (`udp` or `tcp`, default `udp`)
 say where and how. The three loggers `app`, `pipeline` and `library` are the program's: uvicorn's access lines
 are not sent. Nothing here reads or prints a key.
@@ -52,9 +53,18 @@ def settings_of(env: Mapping[str, str]) -> tuple[str, int, bool] | None:
 	return host, port, protocol == 'tcp'
 
 
+def level_of(env: Mapping[str, str]) -> int:
+	name = env.get('LOG_LEVEL', 'INFO').strip().upper() or 'INFO'
+	if name not in ('DEBUG', 'INFO', 'WARNING', 'ERROR'):
+		raise SystemExit(f'LOG_LEVEL must be DEBUG, INFO, WARNING or ERROR, not {name!r}')
+	return int(logging.getLevelName(name))
+
+
 def configure(env: Mapping[str, str]) -> None:
 	"""Attach the handlers to the program's loggers; calling it again replaces them."""
+	level = level_of(env)
 	out = logging.StreamHandler(sys.stdout)
+	out.setLevel(level)
 	out.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
 	handlers: list[logging.Handler] = [out]
 	where = settings_of(env)
@@ -66,7 +76,7 @@ def configure(env: Mapping[str, str]) -> None:
 			problem = f'syslog {where[0]}:{where[1]} is not reachable ({e}); logging to standard output only'
 	for name in LOGGERS:
 		logger = logging.getLogger(name)
-		logger.setLevel(logging.INFO)
+		logger.setLevel(level)
 		for old in [h for h in logger.handlers if getattr(h, MARK, False)]:
 			logger.removeHandler(old)
 			old.close()

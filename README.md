@@ -94,6 +94,7 @@ Open <http://localhost:8080>. In Settings enter your **Discogs API key** (requir
 | `LIBRARY_FOLDER` | Library folder (required) |
 | `DATA_DIR` | Settings, library index, MusicBrainz cache (required) |
 | `PORT` | HTTP port (optional, 8080) |
+| `LOG_LEVEL` | `DEBUG`, `INFO`, `WARNING` or `ERROR` (optional, `INFO`); `DEBUG` adds per-file detail |
 | `SYSLOG_HOST` | Also send the log to this syslog host (optional) |
 | `SYSLOG_PORT` | Syslog port (optional, 514) |
 | `SYSLOG_PROTOCOL` | `udp` (default) or `tcp` (optional) |
@@ -102,7 +103,7 @@ There are no default paths: Tagwright refuses to start when one of the three is 
 
 ### Logging
 
-The program logs jobs, moves, assignments and saves to standard output (`docker logs`). Set `SYSLOG_HOST` to send the same lines to a syslog server too (not needed when Docker's syslog log driver already ships the container output). Successful status polls of the page are left out of the access log. API keys are never logged ([ADR 0064](docs/adr/0064-logging-and-syslog.md)).
+The program logs jobs, moves, renames, assignments, tag, lyrics and cover edits and settings saves to standard output (`docker logs`). Set `SYSLOG_HOST` to send the same lines to a syslog server too (not needed when Docker's syslog log driver already ships the container output). Successful status polls of the page are left out of the access log. API keys are never logged ([ADR 0064](docs/adr/0064-logging-and-syslog.md)).
 
 ### Docker
 
