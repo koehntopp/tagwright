@@ -1,6 +1,6 @@
 # ADR 0006: Status comes from FLAC tags; six pipeline steps
 
-- **Status**: Accepted (the label "Ready" is now "Incomplete" and, without a Discogs release ID, the red Discogs line is the only line shown, not even the cover line: [0039](0039-incomplete-and-what-is-missing.md))
+- **Status**: Accepted (an edit of format, catalog # or edition refreshes `VERSION` at once instead of leaving the album Ready: [0049](0049-tag-edits-refresh-the-version-at-once.md)) (the label "Ready" is now "Incomplete" and, without a Discogs release ID, the red Discogs line is the only line shown, not even the cover line: [0039](0039-incomplete-and-what-is-missing.md))
 - **Date**: 2026-11-08
 
 ## Context

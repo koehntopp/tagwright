@@ -201,3 +201,42 @@ def test_values_the_previous_release_filled_follow_the_new_release(
 	assert FLAC(first)['ALBUM_FORMAT'] == ['CD']  # the old release's value
 	assert FLAC(first)['CATALOGNUMBER'] == ['CAT-9']
 	assert FLAC(second)['ALBUM_FORMAT'] == ['Mine']  # not what release 555 gives: the owner's
+
+
+def test_editing_format_or_catalog_rewrites_version_at_once(
+	client: TestClient, album: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	seen: list[Path] = []
+
+	def fake(path: Path, cfg: object) -> fixtags.FixResult:
+		seen.append(path)
+		return fixtags.FixResult(2, 'Test Album', '2020 DR10 SACD (TST-001)')
+
+	monkeypatch.setattr(tagwright, 'fix_album', fake)
+	r = client.post(
+		'/api/tags', json={'path': str(album), 'fields': {'ALBUM_FORMAT': 'SACD'}, 'tracks': []}
+	)
+	assert seen == [album]
+	assert (
+		'Discogs tags refreshed: Test Album [2020 DR10 SACD (TST-001)] (2 files changed)'
+		in r.json()['log']
+	)
+	seen.clear()
+	client.post(
+		'/api/tags', json={'path': str(album), 'fields': {'ALBUM_FORMAT': 'SACD'}, 'tracks': []}
+	)
+	assert seen == []  # nothing changed
+
+
+def test_when_the_refresh_fails_the_missing_version_reopens_the_tags_step(
+	client: TestClient, album: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	def down(path: Path, cfg: object) -> fixtags.FixResult:
+		raise ApiError(502, 'Discogs unreachable')
+
+	monkeypatch.setattr(tagwright, 'fix_album', down)
+	r = client.post(
+		'/api/tags', json={'path': str(album), 'fields': {'CATALOGNUMBER': 'NEW-1'}, 'tracks': []}
+	)
+	assert r.status_code == 200
+	assert 'VERSION' not in FLAC(sorted(album.glob('*.flac'))[0]).tags

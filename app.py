@@ -1543,17 +1543,20 @@ def tracks_apply(body: dict) -> dict:
 		)
 	# The Discogs-owned tags of the new release (year, album title, version, label ...) at once, as a run would write
 	# them, so the card and the inspector do not keep the previous release's data (ADR 0013).
-	try:
-		fixed = fix_album(album, Config(data_dir=DATA))
-		log.append(
-			f'Discogs tags refreshed: {fixed.album_name} [{fixed.version}] ({fixed.changed} files changed)'
-			if not fixed.skipped
-			else f'Discogs tags not refreshed: {fixed.skipped}'
-		)
-	except ApiError as e:
-		log.append(f'Discogs tags not refreshed: {e.message}; Run fixes does it later')
+	log.append(refresh_discogs_tags(album))
 	log += rename_files(album, file_name)
 	return {'log': log, 'album': fresh_summary(album)}
+
+
+def refresh_discogs_tags(album: Path) -> str:
+	"""Write the Discogs-owned tags (year, album title, VERSION ...) now, as a run would; the log line says how it went."""
+	try:
+		fixed = fix_album(album, Config(data_dir=DATA))
+	except ApiError as e:
+		return f'Discogs tags not refreshed: {e.message}; Run fixes does it later'
+	if fixed.skipped:
+		return f'Discogs tags not refreshed: {fixed.skipped}'
+	return f'Discogs tags refreshed: {fixed.album_name} [{fixed.version}] ({fixed.changed} files changed)'
 
 
 def track_path(album: str, file: str) -> Path:
@@ -2029,7 +2032,7 @@ def discogs_defaults(rid: str) -> dict[str, str]:
 	return {'ALBUMARTIST': artist_names(r.get('artists', [])), 'ALBUM': title}
 
 
-def write_album_fields(album: Path, fields: dict) -> None:
+def write_album_fields(album: Path, fields: dict) -> bool:
 	"""Write album-level fields to every file; blank removes. Clearing an override that is set restores the Discogs value."""
 	files = flacs(album)
 	first = FLAC(files[0]).tags or {}
@@ -2044,8 +2047,9 @@ def write_album_fields(album: Path, fields: dict) -> None:
 				400, 'cannot restore the Discogs value: the album has no Discogs release ID'
 			)
 		restore = discogs_defaults(rid)  # before touching any file: a failed lookup changes nothing
-	# VERSION (year, DR, format, edition, catalogue number) and the folder name derive from these; fixtags rewrites it on
-	# the next run, and a missing VERSION reopens the Tags step (ADR 0006), so a changed value shows up as Ready again
+	# VERSION (year, DR, format, edition, catalogue number) and the folder name derive from these. It is removed here
+	# and rewritten at once by the caller (ADR 0049); if that cannot be done the missing VERSION reopens the Tags
+	# step (ADR 0006) until the next run.
 	stale = bool(tag(first, 'DISCOGS_RELEASE_ID')) and any(
 		k in fields and str(fields[k]).strip() != tag(first, k, *ALBUM_FIELDS[k])
 		for k in ('ALBUM_EDITION', 'ALBUM_FORMAT', 'CATALOGNUMBER')
@@ -2072,6 +2076,7 @@ def write_album_fields(album: Path, fields: dict) -> None:
 					if k in a.tags:
 						del a.tags[k]
 		a.save()
+	return stale
 
 
 @app.post('/api/tags')
@@ -2088,8 +2093,7 @@ def set_tags(body: dict) -> dict:
 		raise HTTPException(400, "Add a catalog number (enter 'none' if the release has none).")
 	if 'ALBUM_FORMAT' in fields and not str(fields['ALBUM_FORMAT']).strip():
 		raise HTTPException(400, 'album format must not be empty (for example CD, SACD, Vinyl)')
-	if fields:
-		write_album_fields(album, fields)
+	stale = write_album_fields(album, fields) if fields else False
 	log = [f'album: {k} = {v or "(removed)"}' for k, v in fields.items()]
 	for tr in body.get('tracks', []):
 		a = FLAC(track_path(body.get('path', ''), tr.get('file', '')))
@@ -2111,6 +2115,8 @@ def set_tags(body: dict) -> dict:
 			del a.tags['DISCSUBTITLE']
 		a.save()
 		log.append(f'track: {tr["file"]}')
+	if stale:
+		log.append(refresh_discogs_tags(album))
 	return {'log': [*log, *rename_files(album, file_name)], 'album': fresh_summary(album)}
 
 
