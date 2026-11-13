@@ -52,7 +52,7 @@ export default function Page() {
 	const [log, setLog] = useState<LogLine[]>([])
 	const [dlg, setDlg] = useState<{ kind: string; tab?: string; file?: string; path?: string } | null>(null)
 	const [tagTab, setTagTab] = useState<string | null>(null)
-	const [cerr, setCerr] = useState('')
+	const [cerr, setCerr] = useState(''), [moving, setMoving] = useState(false)
 	const [kreload, setKreload] = useState(0)
 	const [playing, setPlaying] = useState<string | null>(null)
 	const since = useRef(0), ticks = useRef(0), poll = useRef<ReturnType<typeof setTimeout>>(undefined), searchRef = useRef<HTMLInputElement>(null)
@@ -160,6 +160,7 @@ export default function Page() {
 	const move = async () => {
 		if (!a) return
 		const from = a.path
+		setMoving(true)
 		try {
 			const r = await post('/api/move', { path: from }); addLog(['moved to ' + r.moved_to]); toast.success('Moved to the library'); setSelected(null)
 			// the songs are gone from the staging folder; with the setting on, offer to delete what is left of its folder (ADR 0072)
@@ -167,6 +168,7 @@ export default function Page() {
 			await load()
 		}
 		catch (e: any) { setCerr(e.message) }
+		finally { setMoving(false) }
 	}
 	const putCover = async (f: File) => {
 		if (!a) return
@@ -335,7 +337,7 @@ export default function Page() {
 			<TagEditor a={tagTab ? a : null} tab={tagTab || 'album'} reload={kreload} onClose={() => setTagTab(null)} done={done} begin={(path, steps) => { setWorking({ path, steps }); return () => setWorking(w => (w?.path === path ? null : w)) }}
 				openLyrics={(path, file) => setDlg({ kind: 'lyrics', path, file })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })} />
 			<LyricsEdit target={dk === 'lyrics' && dlg?.path ? { path: dlg.path, file: dlg.file! } : null} onClose={() => setDlg(null)} done={refreshOne} />
-			<Shell open={dk === 'move'} onClose={() => setDlg(null)} title="Move to the library?" wide="sm:max-w-[40rem]" err={cerr} save={move} saveLabel="Move" saveDisabled={!mv?.can_move}>
+			<Shell open={dk === 'move'} onClose={() => setDlg(null)} title="Move to the library?" wide="sm:max-w-[40rem]" err={cerr} save={move} saveLabel={moving ? 'Moving…' : 'Move'} saveDisabled={!mv?.can_move || moving} danger={moving}>
 				{!mv ? <p className="text-sm text-slate-500">Checking…</p> : (
 					<div className="space-y-2 text-sm">
 						<p>&ldquo;{a ? title(a) : ''}&rdquo; moves {mv.files.length} track{mv.files.length === 1 ? '' : 's'} into the library, each to its place from the layout in Settings.</p>

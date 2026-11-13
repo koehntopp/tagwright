@@ -29,6 +29,7 @@ Everything since 0.2 (8 to 13 November 2026).
 
 ### Changed
 
+- The Move dialog's button turns red and says "Moving…" while the album is being moved, like the Delete dialog's button does.
 - In the staging folder every top-level folder is now one album, whatever its subfolders are called: a box set with folders like "Disc 1 - Nebraska Outtakes" is one album, not four. Dynamic range is calculated over the whole album [0076].
 - Fingerprints are now calculated by `fpscan` (the owner's Rust tool) instead of `fpcalc`: one run per album, FLAC and MP3, and no failures because of stray bytes after the last frame. New fingerprints differ slightly from `fpcalc`'s but match the same on AcoustID; existing ones are kept [0075].
 - **New interface** on Next.js and shadcn/ui, with a top bar instead of the sidebar; the pipeline status moved there too. The inspector grows to 720 px on wide screens [0029, 0030, 0031, 0041].

@@ -19,3 +19,5 @@
 
 - A deletion cannot be undone by Tagwright; the dialog is the only confirmation.
 - Folders of albums that were not moved by Tagwright are not offered; the dialog appears only right after a move.
+
+- While an album is being moved, the Move dialog's button is red and says "Moving…" (disabled), the same way the Delete button shows its progress.
