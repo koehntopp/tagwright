@@ -61,6 +61,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0070](0070-releases.md) | Releases: version tag, versioned image on ghcr.io, GitHub release with the changelog notes | Accepted |
 | [0071](0071-readme-and-screenshots-at-every-release.md) | The README and its screenshots are updated at every release | Accepted |
 | [0072](0072-delete-the-staging-folder-after-a-move.md) | Offer to delete the album's staging folder after a move, with a list of what is left | Accepted |
+| [0073](0073-fingerprints-despite-a-decoding-error.md) | A fingerprint that fpcalc printed despite a decoding error is used | Accepted |
 
 ## History: superseded ADRs
 

@@ -200,6 +200,9 @@ FPCALC = (
 	'\tprint("ERROR: decoding failed"); sys.exit(3)\n'
 	'if name.endswith("empty.flac"):\n'
 	'\tprint("DURATION=1"); sys.exit(0)\n'
+	'if name.endswith("trailing.flac"):\n'
+	'\tprint("ERROR: Error decoding the audio source (Invalid data found)"); print("DURATION=0.2"); '
+	'print("FINGERPRINT=FP-trailing"); sys.exit(2)\n'
 	'print("DURATION=0.2"); print("FINGERPRINT=FP-" + name.rsplit("/", 1)[-1])\n'
 )
 
@@ -277,6 +280,24 @@ class TestFingerprint:
 		assert 'generated for 2 of 4 files' in caplog.text
 		assert 'decoding failed' in caplog.text
 		assert 'printed no fingerprint' in caplog.text
+
+	def test_a_fingerprint_printed_despite_a_decoding_error_is_used(
+		self,
+		ctx: Context,
+		install: Install,
+		make_flac: MakeFlac,
+		tmp_path: Path,
+		caplog: pytest.LogCaptureFixture,
+	) -> None:
+		"""ADR 0073: a stray block after the last frame makes fpcalc exit 2, yet it printed the fingerprint."""
+		install('fpcalc', FPCALC)
+		a = tmp_path / 'a'
+		make_flac(a / 'trailing.flac')
+		with caplog.at_level(logging.INFO):
+			fingerprint.run(a, ctx)  # no StepError
+		assert FLAC(a / 'trailing.flac')['ACOUSTID_FINGERPRINT'] == ['FP-trailing']
+		assert 'exited with code 2' in caplog.text and 'fingerprint, which is used' in caplog.text
+		assert 'generated for 1 of 1 files' in caplog.text
 
 	def test_tags_written_meanwhile_are_not_lost(
 		self, ctx: Context, install: Install, make_flac: MakeFlac, tmp_path: Path

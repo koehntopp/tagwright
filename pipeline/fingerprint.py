@@ -1,7 +1,7 @@
 """Step 3, AcoustID fingerprints: `fpcalc` over the first 120 s, written as ACOUSTID_FINGERPRINT (ADR 0006, 0036).
 
 AcoustID matches on the first 120 seconds; decoding a whole file made fpcalc exit with 3 on some hi-res FLACs
-(ADR 0025). Fingerprints are computed in parallel (fpcalc is a subprocess, threads suffice) and written one file
+(ADR 0025); a fingerprint that fpcalc printed despite a decoding error is used (ADR 0073). Fingerprints are computed in parallel (fpcalc is a subprocess, threads suffice) and written one file
 at a time, reopening the file first so that tags written meanwhile are not lost (ADR 0032).
 """
 
@@ -43,9 +43,18 @@ def parse(output: str) -> str:
 
 def fingerprint(path: Path, ctx: Context, binary: str) -> str:
 	result = ctx.run([binary, '-length', str(MAX_SECONDS), str(path)])
-	if result.returncode != 0:
-		raise StepError(f'fpcalc exited with code {result.returncode}: {tail(result.stdout)}')
 	fp = parse(result.stdout)
+	if result.returncode != 0:
+		if not fp:
+			raise StepError(f'fpcalc exited with code {result.returncode}: {tail(result.stdout)}')
+		# A newer ffmpeg reports bytes after the last frame (a stray ID3v1 block on a FLAC, for example) as a decoding
+		# error and fpcalc exits non-zero, but it has read the whole audio and printed the fingerprint (ADR 0073).
+		log.warning(
+			'fpcalc exited with code %d for %s but printed a fingerprint, which is used: %s',
+			result.returncode,
+			path.name,
+			tail(result.stdout),
+		)
 	if not fp:
 		raise StepError('fpcalc printed no fingerprint')
 	return fp
