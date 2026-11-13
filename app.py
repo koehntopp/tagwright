@@ -1195,11 +1195,16 @@ def move_preview(path: str) -> dict:
 
 def folder_listing(folder: Path, limit: int = 300) -> dict:
 	"""What is in a folder, everything below it included (hidden files too, symlinks not followed): the first `limit`
-	files with their sizes, the totals, and how many audio files are among them."""
+	files with their sizes and the first `limit` subfolders (empty ones too), the totals, and how many audio files are
+	among them."""
 	files: list[dict] = []
+	folders: list[str] = []
 	count = size_total = dirs = audio = 0
 	for root, dirnames, names in os.walk(folder, followlinks=False):
 		dirs += len(dirnames)
+		for d in sorted(dirnames):
+			if len(folders) < limit:
+				folders.append((Path(root) / d).relative_to(folder).as_posix())
 		for name in sorted(names):
 			p = Path(root) / name
 			try:
@@ -1215,6 +1220,7 @@ def folder_listing(folder: Path, limit: int = 300) -> dict:
 		'path': str(folder),
 		'name': folder.name,
 		'files': files,
+		'folders': folders,
 		'count': count,
 		'bytes': size_total,
 		'dirs': dirs,

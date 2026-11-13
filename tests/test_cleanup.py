@@ -141,3 +141,12 @@ def test_the_move_dialog_text_follows_the_setting(
 	allow(monkeypatch)
 	on = client.get('/api/move/preview', params={'path': str(album)}).json()['stays']
 	assert 'asked whether to delete' in on and 'stay in the staging folder' not in on
+
+
+def test_empty_subfolders_are_listed_and_counted(client: TestClient) -> None:
+	folder = tagwright.ROOT / 'elp'
+	(folder / 'CD 1').mkdir(parents=True)
+	(folder / 'CD 2' / 'Art').mkdir(parents=True)
+	r = client.get('/api/folder', params={'path': str(folder)}).json()
+	assert (r['count'], r['audio'], r['dirs']) == (0, 0, 3)
+	assert r['folders'] == ['CD 1', 'CD 2', 'CD 2/Art']

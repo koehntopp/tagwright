@@ -320,12 +320,15 @@ export function CleanupDialog({ path, onClose, done }: { path: string | null; on
 		<Shell open={!!path} onClose={onClose} title="Delete the folder?" wide="sm:max-w-[40rem]" err={err} save={remove} saveLabel={busy ? 'Deleting…' : 'Delete'} saveDisabled={!d || busy || d.audio > 0} danger>
 			{d && (
 				<div className="space-y-3 text-sm">
-					<p>The songs of this album are in the library. <span className="font-mono">{d.name}</span> in the staging folder still holds {d.count ? `${d.count} file${d.count === 1 ? '' : 's'} (${fmtBytes(d.bytes)})` : 'nothing'}. Delete deletes the folder and all of it.</p>
+					<p>The songs of this album are in the library. <span className="font-mono">{d.name}</span> in the staging folder still holds {d.count ? `${d.count} file${d.count === 1 ? '' : 's'} (${fmtBytes(d.bytes)})` : 'no files'}{d.dirs ? ` and ${d.dirs} subfolder${d.dirs === 1 ? '' : 's'}` : ''}. Delete deletes the folder, {d.dirs ? 'its subfolders ' : ''}and everything in {d.dirs ? 'them' : 'it'}.</p>
 					{d.audio > 0 && <p className="rounded-md bg-rose-50 p-2 text-rose-800">{d.audio} song{d.audio === 1 ? ' is' : 's are'} still in this folder, so it cannot be deleted.</p>}
-					{d.count > 0 && (
+					{(d.count > 0 || d.dirs > 0) && (
 						<div className="max-h-72 overflow-y-auto rounded-md border">
 							<table className="w-full text-xs">
 								<tbody>
+									{(d.folders ?? []).map((f: string) => (
+										<tr key={'d' + f} className="border-b"><td className="break-all px-2 py-1 font-mono">{f}/</td><td className="whitespace-nowrap px-2 py-1 text-right text-slate-500">subfolder</td></tr>
+									))}
 									{d.files.map((f: { path: string; size: number }) => (
 										<tr key={f.path} className="border-b last:border-0"><td className="break-all px-2 py-1 font-mono">{f.path}</td><td className="whitespace-nowrap px-2 py-1 text-right tabular-nums text-slate-500">{fmtBytes(f.size)}</td></tr>
 									))}
