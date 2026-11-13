@@ -1,5 +1,11 @@
 # Tagwright
 
+[![Image build](https://github.com/koehntopp/tagwright/actions/workflows/image.yml/badge.svg)](https://github.com/koehntopp/tagwright/actions/workflows/image.yml)
+[![Latest release](https://img.shields.io/github/v/release/koehntopp/tagwright)](https://github.com/koehntopp/tagwright/releases/latest)
+[![Licence: GPL-3.0-or-later](https://img.shields.io/github/license/koehntopp/tagwright)](LICENSE)
+[![Container image on ghcr.io](https://img.shields.io/badge/ghcr.io-tagwright-blue)](https://github.com/koehntopp/tagwright/pkgs/container/tagwright)
+[![Python 3.14](https://img.shields.io/badge/python-3.14-blue)](https://www.python.org/)
+
 A self-hosted web app that turns freshly downloaded FLAC and MP3 albums into clean, tagged, loudness-analysed albums with lyrics, and keeps your music library in one canonical folder layout.
 
 One user, one browser tab. FastAPI backend, Next.js frontend, no database server, no account. The decisions behind every behaviour are in [docs/adr/](docs/adr/README.md).
