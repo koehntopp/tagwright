@@ -98,6 +98,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | backend dependencies | 0005 |
 | Python formatting, linting, annotations, `pyproject.toml` | 0034 |
 | tests, fixtures, the `test` dependency group | 0035, 0018 |
+| the library as CSV for other programs (`/api/library/albums.csv`) | 0077, 0067 |
 | the `pipeline/` package, API clients, Discogs tags, `drcalc` | 0036, 0014, 0053 |
 | the output folder layout, the watcher, the Library tab, the status indicator, Move to library | 0037, 0010, 0011 |
 | the Staging / Library switch, folder names, which folders the UI may read | 0038, 0007 |

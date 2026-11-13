@@ -68,6 +68,8 @@ The top bar shows album artists, albums and tracks, and what the watcher is doin
 
 ![Library status dialog](docs/screenshots/library-status.png)
 
+Other programs can read the library as CSV from `GET /api/library/albums.csv` (the columns of the discogs `albums.csv`; `?path_prefix=/Volumes/flac` rewrites the folder paths for a client that mounts the library elsewhere, ADR 0077).
+
 The **Staging | Library** switch in the top bar flips the board to the library, so you can fix details of albums that are already there.
 
 ![The board showing the library](docs/screenshots/library.png)

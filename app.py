@@ -9,6 +9,7 @@ Env, all three required (no default paths, ADR 0055): STAGING_FOLDER, LIBRARY_FO
 PORT (default 8080). The pipeline is the package pipeline/ (ADR 0036).
 """
 
+import csv
 import io
 import json
 import logging
@@ -288,6 +289,48 @@ def missing_steps(files: list[dict], steps: list[dict]) -> list[dict]:
 	return out
 
 
+EXPORT_COLUMNS = (
+	'Album Artist',
+	'Album',
+	'Version',
+	'DR',
+	'Format',
+	'Edition',
+	'Original Title',
+	'Original Date',
+	'Release Date',
+	'Catalog Number',
+	'Discogs Release ID',
+	'MusicBrainz Album ID',
+	'Subtitle',
+)
+
+
+def album_export(t: Tags) -> dict[str, str]:
+	"""The album's row of the library export (ADR 0077): the tags of its first file under the column names of the
+	discogs repository's albums.csv, which this replaces. Album is the title override, else the master title, else the
+	original title, else ALBUM without a trailing `[...]`."""
+	album = (
+		tag(t, 'ALBUM_TITLE_OVERRIDE', 'ALBUM_MASTER_TITLE', 'ORIGINAL_TITLE')
+		or tag(t, 'ALBUM').split('[')[0].strip()
+	)
+	return {
+		'Album Artist': tag(t, 'ALBUMARTIST'),
+		'Album': album,
+		'Version': tag(t, 'VERSION', 'SUBTITLE'),
+		'DR': tag(t, 'ALBUM_DR'),
+		'Format': tag(t, 'ALBUM_FORMAT'),
+		'Edition': tag(t, 'ALBUM_EDITION'),
+		'Original Title': tag(t, 'ORIGINAL_TITLE'),
+		'Original Date': tag(t, 'ORIGINALDATE'),
+		'Release Date': tag(t, 'RELEASEDATE'),
+		'Catalog Number': tag(t, *CATALOG_KEYS),
+		'Discogs Release ID': tag(t, 'DISCOGS_RELEASE_ID'),
+		'MusicBrainz Album ID': tag(t, 'MUSICBRAINZ_ALBUMID'),
+		'Subtitle': tag(t, 'SUBTITLE'),
+	}
+
+
 def summarize(album: Path) -> dict:
 	files = flacs(album)
 	if not files:
@@ -320,6 +363,7 @@ def summarize(album: Path) -> dict:
 		'tracks': len(files),
 		'edition': ' · '.join(x for x in (tag(t0, 'VERSION'), tag(t0, 'CATALOGNUMBER')) if x),
 		'mtime': max(f.stat().st_mtime for f in files),
+		'export': album_export(t0),
 	}
 	n = len(tags)
 
@@ -503,7 +547,7 @@ cache: dict[str, tuple[str, dict]] = {}
 
 
 SUMMARY_VERSION = (
-	1  # bump it when summarize() returns something else: stored summaries are then read again
+	2  # bump it when summarize() returns something else: stored summaries are then read again
 )
 summaries = SummaryStore(DATA / 'summaries.db')
 
@@ -999,6 +1043,33 @@ def parse_library(body: dict) -> dict:
 def get_library() -> dict:
 	"""What the watcher is doing and what it found (the top bar's status indicator)."""
 	return library.status()
+
+
+@app.get('/api/library/albums.csv')
+def library_albums_csv(path_prefix: str = '') -> Response:
+	"""Every album of the library as CSV, from the stored summaries (no file is read; ADR 0077). The columns are those
+	of the discogs repository's albums.csv plus `Cover Art` (WIDTHxHEIGHT) and the folder as `_DIRECTORY_PATH` and
+	`Directory`. `path_prefix` replaces the library folder at the start of those two paths, for a client that sees the
+	same files under another path (the host path of the mount)."""
+	out = io.StringIO()
+	w = csv.writer(out, lineterminator='\n')
+	w.writerow([*EXPORT_COLUMNS, 'Cover Art', '_DIRECTORY_PATH', 'Directory'])
+	for s in sorted(albums(str(INGEST))['albums'], key=lambda s: s['path']):
+		cov = s['cover'] if s['cover'] and s['cover']['embedded'] else None
+		where = (
+			str(path_prefix.rstrip('/') + s['path'][len(str(INGEST)) :])
+			if path_prefix
+			else s['path']
+		)
+		w.writerow(
+			[
+				*(s['export'][c] for c in EXPORT_COLUMNS),
+				f'{cov["w"]}x{cov["h"]}' if cov else '',
+				where,
+				where,
+			]
+		)
+	return Response(out.getvalue(), media_type='text/csv; charset=utf-8')
 
 
 @app.post('/api/library/rescan')
