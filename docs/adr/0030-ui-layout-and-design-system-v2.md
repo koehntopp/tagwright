@@ -28,3 +28,5 @@ The frontend moved to Next.js and shadcn/ui ([0029](0029-nextjs-frontend-static-
 
 - A visual change inside these rules needs no ADR; one that changes them does.
 - The old rules about the top bar (width zones, hidden ⌘K hint, 7 rem sort select) no longer apply.
+
+- **Work in progress is red**: a button whose action is running turns red and says what it does ("Moving…", "Applying…", "Deleting…", and "Running…" for Run fixes on the album being fixed).
