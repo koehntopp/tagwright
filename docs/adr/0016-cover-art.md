@@ -1,6 +1,6 @@
 # ADR 0016: Cover art: display, size warning, replacement
 
-- **Status**: Accepted (the cover controls are one menu: [0056](0056-cover-controls-in-one-menu.md); an uploaded cover is scaled at once: [0042](0042-covers-are-scaled-on-upload.md))
+- **Status**: Accepted (the limit is a setting, default 1500: [0074](0074-maximum-cover-size-setting.md); the cover controls are one menu: [0056](0056-cover-controls-in-one-menu.md); an uploaded cover is scaled at once: [0042](0042-covers-are-scaled-on-upload.md))
 - **Date**: 2026-11-08
 
 ## Context

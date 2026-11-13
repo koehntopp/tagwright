@@ -96,6 +96,14 @@ REQUIRED_TAGS = (
 MIN_COVER = int(
 	settings.get('min_cover', 1400)
 )  # px, either side; a smaller or missing cover blocks the album; 0 turns the check off
+MAX_COVER = int(
+	settings.get('max_cover', 1500)
+)  # px, either side; a larger cover is scaled down when it is uploaded, fetched or by a run (ADR 0074)
+
+
+def app_config() -> Config:
+	"""The pipeline's configuration with the settings that reach it."""
+	return Config(data_dir=DATA, cover_max_size=MAX_COVER)
 
 
 def cover_note(cov: dict | None) -> str:
@@ -664,7 +672,7 @@ def album(path: str) -> dict:
 
 def make_picture(data: bytes) -> Cover:
 	"""Front-cover Picture from image bytes: JPEG and PNG are kept, anything else becomes JPEG, and an image larger
-	than the cover limit (1500 px) is scaled down (400 if unreadable)."""
+	than the maximum cover size (a setting, 1500 px) is scaled down (400 if unreadable)."""
 	try:
 		with Image.open(io.BytesIO(data)) as im:
 			fmt, w, h, mode = im.format, im.width, im.height, im.mode
@@ -685,7 +693,7 @@ def make_picture(data: bytes) -> Cover:
 	)
 	pic.depth = {'1': 1, 'L': 8, 'P': 8, 'RGB': 24, 'RGBA': 32}.get(mode, 24)
 	# a large image is scaled at once, to the limit the pipeline uses (ADR 0016), so it never sits in the files oversized
-	return covers.resized(pic, Config(data_dir=DATA).cover_max_size, Path('cover'))
+	return covers.resized(pic, MAX_COVER, Path('cover'))
 
 
 def embed_cover(album: Path, pic: Cover, only_missing: bool = False) -> None:
@@ -869,7 +877,7 @@ def run(body: dict) -> dict:
 	with lock:  # one heavy task at a time
 		if job['state'] == 'running':
 			raise HTTPException(409, 'a job is already running')
-		ctx = Context(Config(data_dir=DATA))
+		ctx = Context(app_config())
 		job.update(
 			path=str(paths[0]),
 			state='running',
@@ -1050,6 +1058,7 @@ def get_settings() -> dict:
 		'input_source': mount_source(ROOT),
 		'output_source': mount_source(INGEST),
 		'min_cover': MIN_COVER,
+		'max_cover': MAX_COVER,
 		'delete_after_move': bool(settings.get('delete_after_move', False)),
 		'library': library_json(),
 		**{k + '_hint': hint(settings.get(k, '')) for k in KEYS},
@@ -1060,7 +1069,7 @@ def get_settings() -> dict:
 def set_settings(body: dict) -> dict:
 	"""Blank key keeps the stored key; {clear_<key>: true} removes it. The folders come from the
 	environment only (ADR 0045); `input` and `output` in the body are ignored."""
-	global MIN_COVER
+	global MIN_COVER, MAX_COVER
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	try:
@@ -1069,11 +1078,19 @@ def set_settings(body: dict) -> dict:
 		raise HTTPException(400, 'Minimum cover size must be a whole number of pixels') from e
 	if not 0 <= new_min <= 20000:
 		raise HTTPException(400, 'Minimum cover size must be between 0 and 20000 pixels')
+	try:
+		new_max = int(body.get('max_cover', MAX_COVER))
+	except (TypeError, ValueError) as e:
+		raise HTTPException(400, 'Maximum cover size must be a whole number of pixels') from e
+	if not 100 <= new_max <= 20000:
+		raise HTTPException(400, 'Maximum cover size must be between 100 and 20000 pixels')
+	if new_max < new_min:
+		raise HTTPException(400, 'Maximum cover size must not be below the minimum cover size')
 	new_library = parse_library(body['library']) if isinstance(body.get('library'), dict) else None
 	template_changed = new_library is not None and new_library.get('template') != (
 		settings.get('library') or {}
 	).get('template')
-	settings.update(min_cover=new_min)
+	settings.update(min_cover=new_min, max_cover=new_max)
 	if 'delete_after_move' in body:
 		settings['delete_after_move'] = bool(body['delete_after_move'])
 	settings.pop('input', None)  # ADR 0045: the folders are no longer settings
@@ -1089,7 +1106,7 @@ def set_settings(body: dict) -> dict:
 	DATA.mkdir(parents=True, exist_ok=True)
 	SETTINGS_FILE.write_text(json.dumps(settings, indent=2))
 	SETTINGS_FILE.chmod(0o600)
-	MIN_COVER = new_min
+	MIN_COVER, MAX_COVER = new_min, new_max
 	cache.clear()
 	if template_changed:
 		library.rescan()  # a new layout applies to everything
@@ -1809,7 +1826,7 @@ def tracks_apply(body: dict) -> dict:
 def refresh_discogs_tags(album: Path) -> str:
 	"""Write the Discogs-owned tags (year, album title, VERSION ...) now, as a run would; the log line says how it went."""
 	try:
-		fixed = fix_album(album, Config(data_dir=DATA))
+		fixed = fix_album(album, app_config())
 	except ApiError as e:
 		return f'Discogs tags not refreshed: {e.message}; Run fixes does it later'
 	if fixed.skipped:

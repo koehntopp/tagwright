@@ -8,6 +8,7 @@ Everything since 0.2 (8 to 13 November 2026).
 
 ### Added
 
+- **Maximum cover size** in Settings (default 1500 px), next to the minimum: covers larger than this are scaled down when uploaded or fetched and by Run fixes. It cannot be set below the minimum [0074].
 - **Delete the leftover folder after a move**: a setting (off by default) makes Tagwright open a dialog after a successful "Move to library" that lists everything still in the album's folder of the staging folder, with sizes, and deletes the folder only when you press Delete [0072].
 - A **copy button next to the catalogue number** in the inspector header, below the album art, copies just the number (not shown when the catalogue number is `none`).
 - **Library**: a watcher keeps the library folder in the canonical artist/album/disc/file layout, waiting for files to settle before it moves anything. The layout is set in Settings by dragging tags into rows, with a live preview on a real album; a status indicator in the top bar shows artists, albums, tracks and activity, with a Re-analyze button [0037].

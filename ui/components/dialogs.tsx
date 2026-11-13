@@ -80,7 +80,7 @@ export function SettingsDialog({ open, onClose, saved }: { open: boolean; onClos
 	const [s, setS] = useState<any>(null), [f, setF] = useState<any>({}), [lib, setLib] = useState<any>(null), [err, setErr] = useState(''), [tab, setTab] = useState('general')
 	useEffect(() => {
 		if (!open) return
-		api('/api/settings').then(r => { setS(r); setLib(r.library); setF({ min_cover: r.min_cover, delete_after_move: !!r.delete_after_move, discogs_api_key: '' }); setErr(''); setTab('general') }, e => toast.error(e.message))
+		api('/api/settings').then(r => { setS(r); setLib(r.library); setF({ min_cover: r.min_cover, max_cover: r.max_cover, delete_after_move: !!r.delete_after_move, discogs_api_key: '' }); setErr(''); setTab('general') }, e => toast.error(e.message))
 	}, [open])
 	const save = async () => {
 		try {
@@ -97,6 +97,7 @@ export function SettingsDialog({ open, onClose, saved }: { open: boolean; onClos
 					<Field label="Staging folder" help="Albums to fix are read from here. Set with STAGING_FOLDER."><div className="rounded-md border bg-muted/40 px-3 py-2 font-mono text-sm">{s.input_source || s.input}</div></Field>
 					<Field label="Library folder" help="Fixed albums are placed here in the library layout, and a watcher keeps this folder in that layout (see the Library tab). Set with LIBRARY_FOLDER."><div className="rounded-md border bg-muted/40 px-3 py-2 font-mono text-sm">{s.output_source || s.output}</div></Field>
 					<Field label="Minimum cover size (pixels)" help="An album whose cover is smaller than this on either side, or has none, cannot be moved to the library. 0 turns the check off."><Input type="number" min={0} max={20000} step={50} className="w-40 font-mono" value={f.min_cover} onChange={set('min_cover')} /></Field>
+					<Field label="Maximum cover size (pixels)" help="A cover larger than this on either side is scaled down to it: when you upload or fetch one, and by Run fixes. Default 1500."><Input type="number" min={100} max={20000} step={50} className="w-40 font-mono" value={f.max_cover} onChange={set('max_cover')} /></Field>
 					<label className="flex items-start gap-2 text-sm">
 						<input type="checkbox" className="mt-1" checked={!!f.delete_after_move} onChange={e => setF({ ...f, delete_after_move: e.target.checked })} />
 						<span><span className="font-medium">Offer to delete the album's folder after a move</span><span className="block text-xs text-slate-500">After all songs of an album have moved to the library, a dialog lists what is left in its folder of the staging folder (cover, logs, scans) with the sizes, and deletes the folder only when you press Delete.</span></span>

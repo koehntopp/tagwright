@@ -1,6 +1,6 @@
 # ADR 0042: A dropped or fetched cover is scaled to the limit at once
 
-- **Status**: Accepted
+- **Status**: Accepted (the limit is a setting, default 1500: [0074](0074-maximum-cover-size-setting.md))
 - **Date**: 2026-11-12
 - **Supersedes**: the sentence in [0016](0016-cover-art.md) that an uploaded cover larger than `cover_max_size` is reduced only on a later run
 

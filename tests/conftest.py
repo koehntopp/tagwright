@@ -57,6 +57,7 @@ def sandbox(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 	monkeypatch.setattr(tagwright, 'ROOT', root)
 	monkeypatch.setattr(tagwright, 'INGEST', ingest)
 	monkeypatch.setattr(tagwright, 'MIN_COVER', 0)
+	monkeypatch.setattr(tagwright, 'MAX_COVER', 1500)
 	monkeypatch.setattr(tagwright, 'settings', {})
 	tagwright.cache.clear()
 	tagwright.job.update(
