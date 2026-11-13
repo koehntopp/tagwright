@@ -51,7 +51,7 @@ const Busy = ({ text }: { text: string }) => (
 
 export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: () => void; done: (path: string) => void }) {
 	const [q, setQ] = useState(''), [rows, setRows] = useState<any[] | null>(null), [sort, setSort] = useState<Sort>({ key: '', dir: 1 })
-	const [rel, setRel] = useState<any>(null), [rid, setRid] = useState(''), [files, setFiles] = useState<any[]>([]), [busy, setBusy] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState('')
+	const [rel, setRel] = useState<any>(null), [rid, setRid] = useState(''), [files, setFiles] = useState<any[]>([]), [busy, setBusy] = useState(false), [applying, setApplying] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState('')
 	const token = useRef<object>({})
 	useEffect(() => {
 		if (!a) return
@@ -96,15 +96,15 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 	const dup = Object.values(used).some(n => n > 1), n = Object.keys(used).length
 	const upd = (k: number, p: any) => setFiles(files.map((f, i) => (i === k ? { ...f, ...p } : f)))
 	const apply = async () => {
-		setBusy(true); setWhat('Assigning the tracks…')
+		setBusy(true); setApplying(true); setWhat('Assigning the tracks…')
 		try {
 			await post('/api/tracks/apply', { path: a.path, release_id: rid, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at })) })
-			toast.success('Tracks assigned'); setBusy(false); onClose(); done(a.path)
-		} catch (e: any) { setErr(e.message); setBusy(false) }
+			toast.success('Tracks assigned'); setBusy(false); setApplying(false); onClose(); done(a.path)
+		} catch (e: any) { setErr(e.message); setBusy(false); setApplying(false) }
 	}
 	return (
 		<Shell open onClose={onClose} wide="sm:max-w-[64rem]" title="Assign tracks to a release" err={dup ? 'A release track is assigned to more than one file.' : err}
-			save={apply} saveLabel={rel ? `Apply (${n} of ${files.length})` : 'Apply'} saveDisabled={!rel || dup || n === 0}>
+			save={apply} saveLabel={applying ? 'Applying…' : rel ? `Apply (${n} of ${files.length})` : 'Apply'} saveDisabled={!rel || dup || n === 0 || busy} danger={applying}>
 			<form className="flex gap-2" onSubmit={search}>
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a Discogs release ID" />
 				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search Discogs</Button>
@@ -159,7 +159,7 @@ const L = ({ kind, id, text }: { kind: string; id: string; text: string }) => <a
 
 export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () => void; done: (path: string) => void }) {
 	const [q, setQ] = useState(''), [rows, setRows] = useState<any[] | null>(null), [sort, setSort] = useState<Sort>({ key: '', dir: 1 })
-	const [rel, setRel] = useState<any>(null), [busy, setBusy] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState('')
+	const [rel, setRel] = useState<any>(null), [busy, setBusy] = useState(false), [applying, setApplying] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState('')
 	useEffect(() => {
 		if (!a) return
 		setRows(null); setRel(null); setErr(''); setBusy(false); setWhat(''); setQ([a.artist, a.album].filter(Boolean).join(' '))
@@ -179,13 +179,13 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 		setBusy(false)
 	}
 	const apply = async () => {
-		setBusy(true); setWhat('Writing the MusicBrainz tags…')
-		try { await post('/api/musicbrainz/apply', { path: a.path, id: rel.id }); toast.success('MusicBrainz release applied'); setBusy(false); onClose(); done(a.path) }
-		catch (e: any) { setErr(e.message); setBusy(false) }
+		setBusy(true); setApplying(true); setWhat('Writing the MusicBrainz tags…')
+		try { await post('/api/musicbrainz/apply', { path: a.path, id: rel.id }); toast.success('MusicBrainz release applied'); setBusy(false); setApplying(false); onClose(); done(a.path) }
+		catch (e: any) { setErr(e.message); setBusy(false); setApplying(false) }
 	}
 	const commas = (xs: any[]) => xs.map((x, i) => <span key={x.id}>{i ? ', ' : ''}<L kind="artist" id={x.id} text={x.name} /></span>)
 	return (
-		<Shell open onClose={onClose} wide="sm:max-w-[64rem]" title="Choose a MusicBrainz release" err={err} save={apply} saveDisabled={!rel}>
+		<Shell open onClose={onClose} wide="sm:max-w-[64rem]" title="Choose a MusicBrainz release" err={err} save={apply} saveLabel={applying ? 'Applying…' : 'Save'} saveDisabled={!rel || busy} danger={applying}>
 			<form className="flex gap-2" onSubmit={search}>
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a MusicBrainz release ID" />
 				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search MusicBrainz</Button>

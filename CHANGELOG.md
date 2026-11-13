@@ -31,6 +31,7 @@ Everything since 0.2 (8 to 13 November 2026).
 
 ### Changed
 
+- Applying a Discogs or MusicBrainz release: the dialog's button turns red and says "Applying…" while the tags are written, like the Move and Delete buttons [0053, 0023].
 - Dropping or uploading a cover now shows progress: a spinner over the cover, "Processing…" in the size pill and a spinning Tags and cover step, until the cover is scaled and embedded [0056].
 - The Move dialog's button turns red and says "Moving…" while the album is being moved, like the Delete dialog's button does.
 - In the staging folder every top-level folder is now one album, whatever its subfolders are called: a box set with folders like "Disc 1 - Nebraska Outtakes" is one album, not four. Dynamic range is calculated over the whole album [0076].

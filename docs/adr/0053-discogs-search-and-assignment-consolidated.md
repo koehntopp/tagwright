@@ -84,3 +84,5 @@ The result is logged as `filled from Discogs: ...`. A cover that cannot be fetch
 
 - MusicBrainz tracklists are not supported; MusicBrainz release search is [0023](0023-musicbrainz-release-search.md).
 - Requires a Discogs key ([0009](0009-settings-and-api-keys.md)).
+
+- While the apply runs (the tags are written, and the Discogs tags and file names refreshed), the dialog's Apply button is red and says "Applying…" (disabled), like the Delete and Move buttons; a search in the dialog does not turn it red.

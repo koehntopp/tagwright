@@ -60,3 +60,5 @@ It needs one MusicBrainz lookup (cached for the life of the process, rate limite
 - No MusicBrainz tracklist assignment ([0002](0002-purpose-scope-and-use-cases.md) out of scope): picking a release never renumbers or retitles files.
 - The thumbnails and the cover images come from coverartarchive.org straight to the browser; a release without art gives a 404 in the browser console that the app cannot avoid.
 - Possible later additions, not built: original release date from the release group, label and catalogue number when empty, and the track IDs (needs a track assignment).
+
+- While the apply runs (the MusicBrainz tags are written), the dialog's Save button is red and says "Saveing…" (disabled), like the Delete and Move buttons; a search in the dialog does not turn it red.
