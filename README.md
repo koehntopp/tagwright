@@ -107,7 +107,7 @@ The program logs jobs, moves, renames, assignments, tag, lyrics and cover edits 
 
 ### Docker
 
-A published image (amd64 and arm64) is on GitHub's registry:
+A published image (amd64 and arm64) is on GitHub's registry; each release also has its own tag (for example `:0.3`, [ADR 0070](docs/adr/0070-releases.md)):
 
 ```bash
 docker pull ghcr.io/koehntopp/tagwright:latest

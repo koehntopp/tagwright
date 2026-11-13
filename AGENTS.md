@@ -100,7 +100,7 @@ Avoid `Any`. If it is genuinely necessary, add a comment saying why.
 
 ## 6. Git (ADR 0020)
 
-- **Never create a branch.** Work and commit directly on `main`, then push to `origin main`. `main` is the only branch; if any other exists, tell the owner. Do not tag unless asked.
+- **Never create a branch.** Work and commit directly on `main`, then push to `origin main`. `main` is the only branch; if any other exists, tell the owner. Do not tag unless asked; when the owner asks for a release, follow [ADR 0070](docs/adr/0070-releases.md) (changelog heading, tag `vX.Y.Z`, versioned image from the workflow, GitHub release with the changelog notes).
 - Never commit `data/`, `node_modules/`, `__pycache__/`, keys or music files.
 - Keep commits focused. Verify first ([ADR 0018](docs/adr/0018-verification.md)); there is no branch to catch a bad change.
 - **Every commit gets a detailed description** ([ADR 0069](docs/adr/0069-release-notes-and-commit-descriptions.md)): a subject line (imperative, what changed, up to about 72 characters) and a body with four parts: *why* (the request or the bug, in the owner's terms), *what* (the behaviour that changed and the main code or files), *how it was checked* (tests, what was run, what was **not** verified) and *which ADRs apply*. A one-line commit message is not acceptable, not even for a small fix.
