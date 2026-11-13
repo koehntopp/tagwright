@@ -103,7 +103,13 @@ export default function Page() {
 	}
 	const tick = useCallback(async () => {
 		clearTimeout(poll.current)
-		const j = await api('/api/job?since=' + since.current)
+		let j
+		try {
+			j = await api('/api/job?since=' + since.current)
+		} catch {
+			poll.current = setTimeout(tick, 2000)  // the server is restarting or the network blinked: keep asking (ADR 0008)
+			return
+		}
 		since.current = j.next
 		setJob({ state: j.state, path: j.path, queue: j.queue || [], step: j.step || '' })
 		addLog(j.lines)
@@ -112,7 +118,9 @@ export default function Page() {
 			poll.current = setTimeout(tick, 1000)
 		} else {
 			await load()
-			toast[j.state === 'failed' ? 'error' : j.state === 'stopped' ? 'warning' : 'success'](j.state === 'failed' ? 'Run finished with errors' : j.state === 'stopped' ? 'Run stopped' : 'Run finished')
+			// 'idle' after a run was going: the server restarted and the run died with it
+			const kind = j.state === 'failed' ? 'error' : j.state === 'stopped' || j.state === 'idle' ? 'warning' : 'success'
+			toast[kind](j.state === 'failed' ? 'Run finished with errors' : j.state === 'stopped' ? 'Run stopped' : j.state === 'idle' ? 'The run was interrupted: the server restarted' : 'Run finished')
 		}
 	}, [load, refreshOne])
 

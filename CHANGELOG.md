@@ -36,6 +36,7 @@ Everything since 0.2 (8 to 13 November 2026).
 
 ### Fixed
 
+- A run that was going when the server restarted (for example a redeploy) left the page showing it as running for ever. The page now keeps asking while the server is away, and when it is back it clears the run and says it was interrupted.
 - An album that cannot be read (for example after a network error) no longer breaks the whole board; its card says what failed.
 - After the watcher moved an album (a corrected artist name), the board kept an old card with no files. It now reloads when the library changes and drops cards whose folder is gone [0067].
 - Playback could not be stopped once its album had moved [0068].
