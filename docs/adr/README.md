@@ -59,6 +59,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0068](0068-playback-can-always-be-stopped.md) | Playback can always be stopped: a Stop button in the top bar, and it stops when the album is gone | Accepted |
 | [0069](0069-release-notes-and-commit-descriptions.md) | Release notes in CHANGELOG.md for every functional change; detailed commit descriptions | Accepted |
 | [0070](0070-releases.md) | Releases: version tag, versioned image on ghcr.io, GitHub release with the changelog notes | Accepted |
+| [0071](0071-readme-and-screenshots-at-every-release.md) | The README and its screenshots are updated at every release | Accepted |
 
 ## History: superseded ADRs
 
@@ -117,4 +118,4 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | top bar navigation entries | 0031, 0026 |
 | layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar) |
 | how to test | 0018 |
-| commits, pushing, tags (no branches), release notes, commit descriptions, making a release | 0020, 0069, 0070 |
+| commits, pushing, tags (no branches), release notes, commit descriptions, making a release, README and screenshots | 0020, 0069, 0070, 0071 |

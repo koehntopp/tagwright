@@ -10,7 +10,7 @@ Versions 0.1 and 0.2 were tagged early without release notes or images. Release 
 ## Decision
 
 - A release is made only when the owner asks. Versions are `vMAJOR.MINOR.PATCH` tags on `main`.
-- Steps: (1) in `CHANGELOG.md` rename `## Unreleased` to `## X.Y.Z (date)` and add a new empty `## Unreleased` above it; commit and push. (2) Create the tag `vX.Y.Z` on that commit and push it. (3) The push starts the image workflow, which publishes `ghcr.io/koehntopp/tagwright:X.Y.Z` and `:X.Y` and moves `:latest`. (4) Create the GitHub release for the tag with the changelog section of that version as its notes (`gh release create vX.Y.Z --notes-file ...`) and mark it as the latest.
+- Steps (see [0071](0071-readme-and-screenshots-at-every-release.md) for step 0, the README and its screenshots): (1) in `CHANGELOG.md` rename `## Unreleased` to `## X.Y.Z (date)` and add a new empty `## Unreleased` above it; commit and push. (2) Create the tag `vX.Y.Z` on that commit and push it. (3) The push starts the image workflow, which publishes `ghcr.io/koehntopp/tagwright:X.Y.Z` and `:X.Y` and moves `:latest`. (4) Create the GitHub release for the tag with the changelog section of that version as its notes (`gh release create vX.Y.Z --notes-file ...`) and mark it as the latest.
 - Releases 0.1 and 0.2 exist as GitHub releases with notes from the changelog; they have no versioned image, because they were tagged before the image was published. Only `latest` and the images of later versions exist.
 - The weekly workflow run and a manual run rebuild `latest` only.
 
