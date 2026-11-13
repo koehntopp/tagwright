@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlbumEdit, CleanupDialog, CoverDelete, LyricsEdit, SettingsDialog, Shell, TagEditor } from '@/components/dialogs'
+import { AlbumEdit, CleanupDialog, CoverDelete, JobRunning, LyricsEdit, SettingsDialog, Shell, TagEditor } from '@/components/dialogs'
 import { CopyBtn, CoverImg, IdBadge, Inspector } from '@/components/inspector'
 import { LibraryDialog, LibraryIndicator, useLibrary } from '@/components/library'
 import { DiscogsDialog, MbDialog } from '@/components/releases'
@@ -219,6 +219,7 @@ export default function Page() {
 	}, [dk, a?.path])  // eslint-disable-line react-hooks/exhaustive-deps
 
 	return (
+		<JobRunning.Provider value={job.state === 'running'}>
 		<div className="flex h-screen flex-col overflow-hidden bg-[#f1f4f9] text-[14px] text-slate-900">
 			<header className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-[#e9edf3] pl-6">
 				<div className="mr-2 flex items-center gap-2 font-serif text-xl font-semibold tracking-tight">
@@ -364,5 +365,6 @@ export default function Page() {
 			<SettingsDialog open={dk === 'settings'} onClose={() => setDlg(null)} saved={async () => { setSelected(null); try { const r = await api('/api/settings'); libPath.current = r.output; offerDelete.current = !!r.delete_after_move } catch {} load('') }} />
 			<CleanupDialog path={dk === 'cleanup' ? dlg?.path ?? null : null} onClose={() => setDlg(null)} done={() => void load()} />
 		</div>
+		</JobRunning.Provider>
 	)
 }

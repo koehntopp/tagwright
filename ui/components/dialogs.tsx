@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -15,7 +15,12 @@ import { TrackTable } from '@/components/track-table'
 import { LibraryTab } from '@/components/library'
 
 type Shell = { open: boolean; onClose: () => void; title: React.ReactNode; wide?: string; err?: string; save?: () => void; saveLabel?: string; saveDisabled?: boolean; danger?: boolean; cancelLabel?: string; children: React.ReactNode; header?: React.ReactNode }
+// True while a job runs; lets a dialog drop a stale 'a job is running' error once the job is over.
+export const JobRunning = createContext(false)
+
 export function Shell({ open, onClose, title, wide = 'sm:max-w-[40rem]', err, save, saveLabel = 'Save', saveDisabled, danger, cancelLabel = 'Cancel', children, header }: Shell) {
+	const running = useContext(JobRunning)
+	if (err === 'a job is running' && !running) err = ''
 	return (
 		<Dialog open={open} onOpenChange={o => !o && onClose()}>
 			<DialogContent className={`${wide} gap-0 rounded-2xl`}>

@@ -4,6 +4,10 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+### Fixed
+
+- A dialog no longer keeps showing "a job is running" after the job has finished.
+
 ## 0.3.0 (2026-11-13)
 
 Everything since 0.2 (8 to 13 November 2026).
