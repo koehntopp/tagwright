@@ -10,7 +10,7 @@ One user, one browser tab. FastAPI backend, Next.js frontend, no database server
 
 You point Tagwright at two folders: a **staging folder** (where downloads land) and a **library folder** (what your music server reads). It then helps you take an album from one to the other.
 
-1. **See what each album needs.** Every album in the staging folder is a card with cover, artist, album, year, Discogs ID, dynamic range, lyrics and a pipeline progress bar. The top bar filters: *Needs input*, *Incomplete*, *Fixed*.
+1. **See what each album needs.** Every folder directly in the staging folder is one album, with everything below it (a box set with `Disc 1 - ...` subfolders is one card, ADR 0076), shown as a card with cover, artist, album, year, Discogs ID, dynamic range, lyrics and a pipeline progress bar. The top bar filters: *Needs input*, *Incomplete*, *Fixed*.
 2. **Fix it.** *Run fixes* runs the pipeline on the album and streams a live log.
 3. **Correct what automation cannot.** Choose the Discogs and MusicBrainz release, edit tags, fix lyrics, replace the cover.
 4. **Move it to the library.** *Move to library* places the files in the library layout.
@@ -42,7 +42,7 @@ Tags Tagwright writes are never read back as input, tags owned by Discogs are re
 
 ## Editing
 
-**Tag editor** has four tabs: Album, Tracks, Discogs and MusicBrainz. Tracks lets you change disc, track number, title, artist and disc subtitle, reorder by drag and drop, and see whether a track is Stereo, Mono, 5.1 or 7.1.
+**Tag editor** has five tabs: Album, Tracks, Discogs, MusicBrainz and Other (every tag not shown elsewhere). Tracks lets you change disc, track number, title, artist and disc subtitle, reorder by drag and drop, and see whether a track is Stereo, Mono, 5.1 or 7.1.
 
 ![Tag editor, Tracks tab](docs/screenshots/tag-editor-tracks.png)
 
@@ -52,11 +52,11 @@ Tags Tagwright writes are never read back as input, tags owned by Discogs are re
 
 ![Lyrics editor](docs/screenshots/lyrics-editor.png)
 
-**Cover**: the pixel size is shown and a small cover is flagged. Drop an image on the cover or use the upload button; it is scaled to 1500 px and embedded. Links open cover searches on external sites.
+**Cover**: the pixel size is shown and a small cover is flagged. Drop an image on the cover or use the upload button; it is scaled down to the maximum cover size (Settings, 1500 px by default) and embedded; a cover below the minimum size (1400 px by default) keeps the album from moving. Links open cover searches on external sites.
 
 ## Moving to the library
 
-*Move to library* shows exactly what will happen first: the album folder and every file name, from your layout. Only `fixed` albums can move, nothing is overwritten and nothing is merged into an existing folder (ADR 0011).
+*Move to library* shows exactly what will happen first: the album folder and every file name, from your layout. Only `fixed` albums can move, nothing is overwritten and nothing is merged into an existing folder (ADR 0011). An optional setting offers to delete what is left of the album's staging folder afterwards, after listing it (ADR 0072).
 
 ![Move dialog with preview](docs/screenshots/move.png)
 
@@ -71,6 +71,12 @@ The top bar shows album artists, albums and tracks, and what the watcher is doin
 The **Staging | Library** switch in the top bar flips the board to the library, so you can fix details of albums that are already there.
 
 ![The board showing the library](docs/screenshots/library.png)
+
+### Settings
+
+Settings shows the two folders (read-only, from the environment), the minimum and maximum cover size, the option to delete the leftover staging folder after a move, and the Discogs API key. Tab *Library* holds the layout.
+
+![Settings, General tab](docs/screenshots/settings-general.png)
 
 ### The layout
 
