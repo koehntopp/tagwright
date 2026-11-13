@@ -67,7 +67,7 @@ export const IdBadge = ({ l, v, full, q }: { l: 'D' | 'MB'; v: string; full?: bo
 			{!full && v.length > 13 ? v.slice(0, 8) : v}
 		</a>
 	) : q ? (
-		<a href={(l === 'D' ? 'https://www.discogs.com/search/?type=release&q=' : 'https://musicbrainz.org/search?type=release&method=indexed&query=') + encodeURIComponent(q)}
+		<a href={(l === 'D' ? 'https://www.discogs.com/search?type=all&q=' : 'https://musicbrainz.org/search?type=release&method=indexed&query=') + encodeURIComponent(q)}
 			target="_blank" rel="noopener" onClick={e => e.stopPropagation()} title={`Search ${l === 'D' ? 'Discogs' : 'MusicBrainz'} for ${q}`}
 			className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700 hover:bg-rose-200">
 			{/* eslint-disable-next-line @next/next/no-img-element */}
