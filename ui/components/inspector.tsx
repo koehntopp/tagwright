@@ -27,10 +27,10 @@ export function copy(text: string) {
 	else if (copyViaTextarea(text)) done()
 	else fail()
 }
-export const CopyBtn = ({ text }: { text: string }) => (
+export const CopyBtn = ({ text, title = 'Copy' }: { text: string; title?: string }) => (
 	<button
 		onClick={e => { e.stopPropagation(); copy(text) }}
-		title="Copy"
+		title={title}
 		className="shrink-0 rounded-full p-1 text-slate-400 hover:bg-black/5 hover:text-slate-700"
 	>
 		<Copy className="size-3" />
@@ -203,6 +203,7 @@ export function Inspector(p: Props) {
 						{/* the version string already holds year, DR, format and catalogue number: nothing is shown twice */}
 						{flagOf(a.country) && <span className="mr-1">{flagOf(a.country)}</span>}
 						{a.version || [a.year, a.media || 'CD', a.catalog].filter(Boolean).join(' · ')}
+						{a.catalog && a.catalog.toLowerCase() !== 'none' && <span className="inline-flex align-middle"><CopyBtn text={a.catalog} title="Copy the catalogue number" /></span>}
 					</div>
 					<div className="mt-2 flex flex-wrap items-center gap-1">
 						<IdBadge l="D" v={a.discogs} q={searchQuery(a)} />
