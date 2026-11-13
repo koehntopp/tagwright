@@ -42,7 +42,7 @@ from library.template import default as default_template
 from library.template import validate as validate_template
 from library.watcher import Library
 from library.watcher import Settings as LibrarySettings
-from pipeline import covers, logconfig, lrclib
+from pipeline import covers, layout, logconfig, lrclib
 from pipeline import discogs as discogs_api
 from pipeline import musicbrainz as mb_api
 from pipeline.audio import Audio, Cover, is_audio, new_cover, open_audio
@@ -68,6 +68,7 @@ def env_path(name: str) -> Path:
 
 ROOT = env_path('STAGING_FOLDER')
 INGEST = env_path('LIBRARY_FOLDER')
+layout.STAGING = ROOT
 DATA = env_path('DATA_DIR')  # settings.json, library.db, the MusicBrainz cache
 SETTINGS_FILE = DATA / 'settings.json'
 log = logging.getLogger('app')  # the program's own lines (ADR 0064)

@@ -16,7 +16,7 @@ No state is stored besides settings ([0009](0009-settings-and-api-keys.md)). Eve
 
 ### Album folders
 
-An album is a folder that contains FLAC files. Its tracks are the files in its own folder and those in its `Disc N` / `CD N` subfolders (any case, optional space), so a multi-disc album is one album; other subfolders are other albums. This is the rule of `DISC_DIR_RE` in `pipeline/layout.py`: `ALBUM_DR` is always the mean over all discs, otherwise the discs would get different `VERSION` strings and folder names. The staging folder itself is never an album, and hidden folders and files (a name starting with a dot) are not read.
+**In the staging folder a top-level folder is one album with everything below it ([0076](0076-staging-album-is-the-top-level-folder.md)); the rest of this paragraph is the rule for other folders (the library).** An album is a folder that contains FLAC files. Its tracks are the files in its own folder and those in its `Disc N` / `CD N` subfolders (any case, optional space), so a multi-disc album is one album; other subfolders are other albums. This is the rule of `DISC_DIR_RE` in `pipeline/layout.py`: `ALBUM_DR` is always the mean over all discs, otherwise the discs would get different `VERSION` strings and folder names. The staging folder itself is never an album, and hidden folders and files (a name starting with a dot) are not read.
 
 ### Six steps (in pipeline order)
 

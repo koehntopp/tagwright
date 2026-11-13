@@ -63,6 +63,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0072](0072-delete-the-staging-folder-after-a-move.md) | Offer to delete the album's staging folder after a move, with a list of what is left | Accepted |
 | [0074](0074-maximum-cover-size-setting.md) | The maximum cover size is a setting (default 1500) | Accepted |
 | [0075](0075-fingerprints-with-fpscan.md) | Fingerprints with fpscan instead of fpcalc | Accepted |
+| [0076](0076-staging-album-is-the-top-level-folder.md) | In the staging folder, a top-level folder is one album | Accepted |
 
 ## History: superseded ADRs
 

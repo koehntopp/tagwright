@@ -115,7 +115,7 @@ class TestDr:
 		dr.run(tmp_path / 'album', ctx)
 		assert (
 			tmp_path / 'args'
-		).read_text() == f'--write-tags --quiet --album folder {tmp_path / "album"}'
+		).read_text() == f'--write-tags --quiet --album overall {tmp_path / "album"}'
 
 	def test_a_failing_drcalc_is_a_step_error_with_its_output(
 		self, ctx: Context, install: Install, tmp_path: Path

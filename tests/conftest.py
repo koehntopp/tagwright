@@ -26,6 +26,7 @@ from fastapi.testclient import TestClient  # noqa: E402  # same reason
 from mutagen.flac import FLAC  # noqa: E402  # same reason
 
 import app as tagwright  # noqa: E402  # same reason
+from pipeline import layout  # noqa: E402  # same reason
 
 MakeFlac = Callable[..., Path]
 MakeMp3 = Callable[..., Path]
@@ -55,6 +56,7 @@ def sandbox(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 	for d in (root, ingest):
 		d.mkdir()
 	monkeypatch.setattr(tagwright, 'ROOT', root)
+	monkeypatch.setattr(layout, 'STAGING', root)
 	monkeypatch.setattr(tagwright, 'INGEST', ingest)
 	monkeypatch.setattr(tagwright, 'MIN_COVER', 0)
 	monkeypatch.setattr(tagwright, 'MAX_COVER', 1500)

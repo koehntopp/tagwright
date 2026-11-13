@@ -77,8 +77,10 @@ def test_a_disc_folder_directly_in_the_base_is_an_album_of_its_own_not_the_base(
 	assert tagwright.flacs(root / 'CD1') == [root / 'CD1' / '01.flac']
 
 
-def test_an_album_does_not_swallow_the_albums_in_its_other_subfolders(make_flac: MakeFlac) -> None:
-	root = tagwright.ROOT
+def test_a_library_album_does_not_swallow_the_albums_in_its_other_subfolders(
+	make_flac: MakeFlac,
+) -> None:
+	root = tagwright.INGEST  # outside the staging folder the Disc N rule applies
 	make_flac(root / 'Outer' / '01.flac')
 	make_flac(root / 'Outer' / 'Disc 2' / '01.flac')
 	make_flac(root / 'Outer' / 'Inner Album' / '01.flac')  # another album below it
@@ -87,6 +89,27 @@ def test_an_album_does_not_swallow_the_albums_in_its_other_subfolders(make_flac:
 		root / 'Outer' / 'Disc 2' / '01.flac',
 	]
 	assert tagwright.album_dirs(root) == [root / 'Outer', root / 'Outer' / 'Inner Album']
+
+
+def test_a_staging_folder_is_one_album_whatever_its_subfolders_are_called(
+	make_flac: MakeFlac,
+) -> None:
+	"""ADR 0076: the four 'Disc 1 - Title' folders of a box are one album, not four."""
+	root = tagwright.ROOT
+	for n in range(1, 5):
+		make_flac(root / 'nebraska' / f'Disc {n} - Part {n}' / '01.flac')
+	make_flac(root / 'nebraska' / 'Bonus' / 'deep' / '01.flac')
+	make_flac(root / 'Single' / '01.flac')
+	make_flac(root / '.hidden' / '01.flac')
+	assert tagwright.album_dirs(root) == [root / 'Single', root / 'nebraska']
+	assert len(tagwright.flacs(root / 'nebraska')) == 5
+	assert (root / 'nebraska' / 'Disc 1 - Part 1' / '01.flac') in tagwright.flacs(root / 'nebraska')
+
+
+def test_a_staging_folder_without_audio_is_not_an_album(make_flac: MakeFlac) -> None:
+	(tagwright.ROOT / 'Empty' / 'CD 1').mkdir(parents=True)
+	make_flac(tagwright.ROOT / 'Real' / '01.flac')
+	assert tagwright.album_dirs(tagwright.ROOT) == [tagwright.ROOT / 'Real']
 
 
 def test_the_base_folder_is_never_listed_as_an_album(
