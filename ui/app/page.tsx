@@ -52,7 +52,7 @@ export default function Page() {
 	const [log, setLog] = useState<LogLine[]>([])
 	const [dlg, setDlg] = useState<{ kind: string; tab?: string; file?: string; path?: string } | null>(null)
 	const [tagTab, setTagTab] = useState<string | null>(null)
-	const [cerr, setCerr] = useState(''), [moving, setMoving] = useState(false)
+	const [cerr, setCerr] = useState(''), [moving, setMoving] = useState(false), [coverBusy, setCoverBusy] = useState<string | null>(null)
 	const [kreload, setKreload] = useState(0)
 	const [playing, setPlaying] = useState<string | null>(null)
 	const since = useRef(0), ticks = useRef(0), poll = useRef<ReturnType<typeof setTimeout>>(undefined), searchRef = useRef<HTMLInputElement>(null)
@@ -170,13 +170,17 @@ export default function Page() {
 		catch (e: any) { setCerr(e.message) }
 		finally { setMoving(false) }
 	}
+	// Scaling and embedding a cover takes seconds: the cover shows a spinner and the Tags and cover step spins meanwhile
 	const putCover = async (f: File) => {
-		if (!a) return
+		if (!a || coverBusy) return
+		const path = a.path
+		setCoverBusy(path); setWorking({ path, steps: ['Tags and cover'] })
 		try {
-			const r = await fetch('/api/cover?path=' + encodeURIComponent(a.path), { method: 'PUT', body: f })
+			const r = await fetch('/api/cover?path=' + encodeURIComponent(path), { method: 'PUT', body: f })
 			if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText)
-			addLog(['cover replaced from ' + f.name]); toast.success('Cover updated'); await refreshOne(a.path)
+			addLog(['cover replaced from ' + f.name]); toast.success('Cover updated'); await refreshOne(path)
 		} catch (e: any) { toast.error(e.message) }
+		finally { setCoverBusy(null); setWorking(w => (w?.path === path ? null : w)) }
 	}
 	const delCover = async () => {
 		if (!a) return
@@ -327,7 +331,7 @@ export default function Page() {
 				{a ? (
 					<Inspector key={a.path} a={a} job={job} working={working?.path === a.path ? working.steps : undefined} log={log} inLibrary={area === 'library'} refresh={() => refreshOne(a.path)} run={run} move={() => { setCerr(''); setDlg({ kind: 'move' }) }}
 						openEditor={tab => setTagTab(tab)} openAlbum={() => setDlg({ kind: 'album' })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })}
-						openLyrics={file => setDlg({ kind: 'lyrics', file, path: a.path })} playing={playing} play={play} delCover={() => { setCerr(''); setDlg({ kind: 'cover' }) }} putCover={putCover} />
+						openLyrics={file => setDlg({ kind: 'lyrics', file, path: a.path })} playing={playing} play={play} delCover={() => { setCerr(''); setDlg({ kind: 'cover' }) }} putCover={putCover} coverBusy={coverBusy === a.path} />
 				) : <div className="p-6 text-slate-500">Select an album.</div>}
 			</aside>
 			</div>

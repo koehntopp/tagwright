@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ChartColumn, Check, ChevronDown, Copy, Ellipsis, Fingerprint, FileText, Mic, Pause, Pencil, Play, RefreshCw, Search, Tags, Trash2, TriangleAlert, Upload, Volume2 } from 'lucide-react'
+import { ChartColumn, Check, ChevronDown, Copy, Ellipsis, Fingerprint, FileText, Loader2, Mic, Pause, Pencil, Play, RefreshCw, Search, Tags, Trash2, TriangleAlert, Upload, Volume2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -113,6 +113,7 @@ type Props = {
 	play: (f: TrackFile) => void
 	delCover: () => void
 	putCover: (f: File) => void
+	coverBusy?: boolean  // a cover is being processed (scaled and embedded)
 }
 
 const STEP_ICON: Record<string, typeof Check> = { 'Dynamic range': ChartColumn, ReplayGain: Volume2, Fingerprints: Fingerprint, 'Tags and cover': Tags, Lyrics: Mic, Filenames: FileText }
@@ -162,12 +163,15 @@ export function Inspector(p: Props) {
 							f ? p.putCover(f) : toast.error('Drop an image file')
 						}}
 					>
-						<CoverImg a={a} className="size-36 rounded-xl shadow" />
+						<div className="relative">
+							<CoverImg a={a} className="size-36 rounded-xl shadow" />
+							{p.coverBusy && <div className="absolute inset-0 grid place-items-center rounded-xl bg-white/70" role="status" aria-label="Processing the cover"><Loader2 className="size-8 animate-spin text-slate-700" /></div>}
+						</div>
 					</div>
 					<div className="relative mt-2 flex items-center justify-center gap-1.5" data-cover-menu>
 						<span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] tabular-nums ${coverSmall ? 'border-amber-300 bg-amber-100 text-amber-900' : 'bg-white text-slate-500'}`}
 							title={coverSmall ? a.issues.find(i => i.action === 'cover')?.text : cov ? `${cov.embedded ? 'Embedded cover' : 'Folder image, not embedded'}, ${fmtBytes(cov.bytes)}` : ''}>
-							{coverSmall && <TriangleAlert className="size-3" />}{cov ? `${cov.w}×${cov.h}` : 'no cover'}
+							{coverSmall && <TriangleAlert className="size-3" />}{p.coverBusy ? 'Processing…' : cov ? `${cov.w}×${cov.h}` : 'no cover'}
 						</span>
 						<button aria-label="Cover actions" aria-haspopup="menu" aria-expanded={menu} title="Cover actions" onClick={() => setMenu(m => !m)}
 							className="grid size-6 place-items-center rounded-md border bg-white text-slate-600 hover:bg-slate-50"><Ellipsis className="size-4" /></button>
