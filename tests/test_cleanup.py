@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 import app as tagwright
 
-from .conftest import MakeFlac
+from .conftest import COMPLETE, MakeFlac
 
 
 @pytest.fixture
@@ -129,3 +129,15 @@ def test_the_setting_is_off_by_default_and_saved(client: TestClient) -> None:
 	assert not client.post('/api/settings', json={**body, 'delete_after_move': False}).json()[
 		'delete_after_move'
 	]
+
+
+def test_the_move_dialog_text_follows_the_setting(
+	client: TestClient, make_flac: MakeFlac, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	album = tagwright.ROOT / 'Artist - Album'
+	make_flac(album / '01_01_One.flac', TITLE='One', TRACKNUMBER='1', DISCNUMBER='1', **COMPLETE)
+	off = client.get('/api/move/preview', params={'path': str(album)}).json()['stays']
+	assert 'stay in the staging folder' in off
+	allow(monkeypatch)
+	on = client.get('/api/move/preview', params={'path': str(album)}).json()['stays']
+	assert 'asked whether to delete' in on and 'stay in the staging folder' not in on

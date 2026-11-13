@@ -1174,7 +1174,12 @@ def move_plan(path: Path) -> tuple[dict, list[lib_planner.Move]]:
 		'files': files,
 		'problems': problems,
 		'can_move': bool(plan.moves) and not problems,
-		'stays': 'Only the audio files move. Other files in the album folder (images, logs) stay in the staging folder.',
+		'stays': (
+			'Only the audio files move. When they have moved you are asked whether to delete what is left '
+			'of the album folder (images, logs) in the staging folder.'
+			if settings.get('delete_after_move')
+			else 'Only the audio files move. Other files in the album folder (images, logs) stay in the staging folder.'
+		),
 	}
 	return info, plan.moves
 

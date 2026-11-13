@@ -38,6 +38,7 @@ Everything since 0.2 (8 to 13 November 2026).
 
 ### Fixed
 
+- The Move to library dialog said that images and logs "stay in the staging folder" even when Settings offers to delete the folder afterwards. It now says that you will be asked whether to delete what is left [0072].
 - A track got no fingerprint when its FLAC had stray bytes after the last frame (for example an ID3v1 block), because the newer decoder in the Docker image made `fpcalc` exit with an error even though it had printed the fingerprint. The fingerprint is now used and a warning names the file [0073].
 - The Discogs search link behind a missing Discogs ID opened a results page without Discogs' header. It now opens the general Discogs search (all result types, in the address `discogs.com/search?type=all&q=…`), which shows the page normally [0054].
 - A run that was going when the server restarted (for example a redeploy) left the page showing it as running for ever. The page now keeps asking while the server is away, and when it is back it clears the run and says it was interrupted.
