@@ -1050,6 +1050,7 @@ def get_settings() -> dict:
 		'input_source': mount_source(ROOT),
 		'output_source': mount_source(INGEST),
 		'min_cover': MIN_COVER,
+		'delete_after_move': bool(settings.get('delete_after_move', False)),
 		'library': library_json(),
 		**{k + '_hint': hint(settings.get(k, '')) for k in KEYS},
 	}
@@ -1073,6 +1074,8 @@ def set_settings(body: dict) -> dict:
 		settings.get('library') or {}
 	).get('template')
 	settings.update(min_cover=new_min)
+	if 'delete_after_move' in body:
+		settings['delete_after_move'] = bool(body['delete_after_move'])
 	settings.pop('input', None)  # ADR 0045: the folders are no longer settings
 	settings.pop('output', None)
 	if new_library is not None:
@@ -1166,6 +1169,73 @@ def move_preview(path: str) -> dict:
 	if album == ROOT or not album.is_dir():
 		raise HTTPException(400, 'not an album folder')
 	return move_plan(album)[0]
+
+
+def folder_listing(folder: Path, limit: int = 300) -> dict:
+	"""What is in a folder, everything below it included (hidden files too, symlinks not followed): the first `limit`
+	files with their sizes, the totals, and how many audio files are among them."""
+	files: list[dict] = []
+	count = size_total = dirs = audio = 0
+	for root, dirnames, names in os.walk(folder, followlinks=False):
+		dirs += len(dirnames)
+		for name in sorted(names):
+			p = Path(root) / name
+			try:
+				size = p.lstat().st_size
+			except OSError:
+				size = 0
+			count += 1
+			size_total += size
+			audio += is_audio(name)
+			if len(files) < limit:
+				files.append({'path': p.relative_to(folder).as_posix(), 'size': size})
+	return {
+		'path': str(folder),
+		'name': folder.name,
+		'files': files,
+		'count': count,
+		'bytes': size_total,
+		'dirs': dirs,
+		'audio': audio,
+		'truncated': count > len(files),
+	}
+
+
+def cleanup_folder(path: str) -> Path:
+	"""The folder an album left behind in the staging folder: inside it, never the staging folder itself (ADR 0072)."""
+	p = safe(path)
+	if p == ROOT or ROOT not in p.parents:
+		raise HTTPException(400, 'only a folder inside the staging folder can be deleted')
+	if not p.is_dir():
+		raise HTTPException(404, 'no such folder')
+	return p
+
+
+@app.get('/api/folder')
+def folder(path: str) -> dict:
+	"""What a folder of the staging folder still holds: the list the delete dialog shows (ADR 0072)."""
+	return folder_listing(cleanup_folder(path))
+
+
+@app.post('/api/folder/delete')
+def folder_delete(body: dict) -> dict:
+	"""Delete a folder of the staging folder with everything in it, when Settings allows it and no song is left in it."""
+	if job['state'] == 'running':
+		raise HTTPException(409, 'a job is running')
+	if not settings.get('delete_after_move', False):
+		raise HTTPException(409, 'deleting folders after a move is not enabled in Settings')
+	p = cleanup_folder(body.get('path', ''))
+	listing = folder_listing(p, limit=0)
+	if listing['audio']:
+		raise HTTPException(
+			409, f'{listing["audio"]} song(s) are still in this folder; nothing was deleted'
+		)
+	shutil.rmtree(p)
+	log.info(
+		'deleted the folder %s (%d files, %d bytes)', p.name, listing['count'], listing['bytes']
+	)
+	library.poke()
+	return {'deleted': True, 'files': listing['count'], 'bytes': listing['bytes']}
 
 
 @app.post('/api/move')

@@ -9,13 +9,13 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { Album, api, mmss, post } from '@/lib/api'
+import { Album, api, fmtBytes, mmss, post } from '@/lib/api'
 import { CopyBtn, IdBadge, searchQuery } from '@/components/inspector'
 import { TrackTable } from '@/components/track-table'
 import { LibraryTab } from '@/components/library'
 
-type Shell = { open: boolean; onClose: () => void; title: React.ReactNode; wide?: string; err?: string; save?: () => void; saveLabel?: string; saveDisabled?: boolean; cancelLabel?: string; children: React.ReactNode; header?: React.ReactNode }
-export function Shell({ open, onClose, title, wide = 'sm:max-w-[40rem]', err, save, saveLabel = 'Save', saveDisabled, cancelLabel = 'Cancel', children, header }: Shell) {
+type Shell = { open: boolean; onClose: () => void; title: React.ReactNode; wide?: string; err?: string; save?: () => void; saveLabel?: string; saveDisabled?: boolean; danger?: boolean; cancelLabel?: string; children: React.ReactNode; header?: React.ReactNode }
+export function Shell({ open, onClose, title, wide = 'sm:max-w-[40rem]', err, save, saveLabel = 'Save', saveDisabled, danger, cancelLabel = 'Cancel', children, header }: Shell) {
 	return (
 		<Dialog open={open} onOpenChange={o => !o && onClose()}>
 			<DialogContent className={`${wide} gap-0 rounded-2xl`}>
@@ -27,7 +27,7 @@ export function Shell({ open, onClose, title, wide = 'sm:max-w-[40rem]', err, sa
 				{err && <p className="mt-2 text-sm text-rose-600">{err}</p>}
 				<DialogFooter className="mt-4">
 					<Button variant="outline" size="sm" onClick={onClose}>{cancelLabel}</Button>
-					{save && <Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" disabled={saveDisabled} onClick={save}>{saveLabel}</Button>}
+					{save && <Button size="sm" className={danger ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-slate-800 text-white hover:bg-slate-700'} disabled={saveDisabled} onClick={save}>{saveLabel}</Button>}
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
@@ -80,7 +80,7 @@ export function SettingsDialog({ open, onClose, saved }: { open: boolean; onClos
 	const [s, setS] = useState<any>(null), [f, setF] = useState<any>({}), [lib, setLib] = useState<any>(null), [err, setErr] = useState(''), [tab, setTab] = useState('general')
 	useEffect(() => {
 		if (!open) return
-		api('/api/settings').then(r => { setS(r); setLib(r.library); setF({ min_cover: r.min_cover, discogs_api_key: '' }); setErr(''); setTab('general') }, e => toast.error(e.message))
+		api('/api/settings').then(r => { setS(r); setLib(r.library); setF({ min_cover: r.min_cover, delete_after_move: !!r.delete_after_move, discogs_api_key: '' }); setErr(''); setTab('general') }, e => toast.error(e.message))
 	}, [open])
 	const save = async () => {
 		try {
@@ -97,6 +97,10 @@ export function SettingsDialog({ open, onClose, saved }: { open: boolean; onClos
 					<Field label="Staging folder" help="Albums to fix are read from here. Set with STAGING_FOLDER."><div className="rounded-md border bg-muted/40 px-3 py-2 font-mono text-sm">{s.input_source || s.input}</div></Field>
 					<Field label="Library folder" help="Fixed albums are placed here in the library layout, and a watcher keeps this folder in that layout (see the Library tab). Set with LIBRARY_FOLDER."><div className="rounded-md border bg-muted/40 px-3 py-2 font-mono text-sm">{s.output_source || s.output}</div></Field>
 					<Field label="Minimum cover size (pixels)" help="An album whose cover is smaller than this on either side, or has none, cannot be moved to the library. 0 turns the check off."><Input type="number" min={0} max={20000} step={50} className="w-40 font-mono" value={f.min_cover} onChange={set('min_cover')} /></Field>
+					<label className="flex items-start gap-2 text-sm">
+						<input type="checkbox" className="mt-1" checked={!!f.delete_after_move} onChange={e => setF({ ...f, delete_after_move: e.target.checked })} />
+						<span><span className="font-medium">Offer to delete the album's folder after a move</span><span className="block text-xs text-slate-500">After all songs of an album have moved to the library, a dialog lists what is left in its folder of the staging folder (cover, logs, scans) with the sizes, and deletes the folder only when you press Delete.</span></span>
+					</label>
 					<Field label="Discogs API key" help="Leave blank to keep the stored key."><Input type="password" className="font-mono" placeholder={s.discogs_api_key_hint || 'Not set'} value={f.discogs_api_key} onChange={set('discogs_api_key')} /></Field>
 				</div>
 			)}
@@ -291,6 +295,46 @@ export function TagEditor({ a, tab, reload, onClose, done, begin, openLyrics, op
 					</>
 				)}
 			</div>
+		</Shell>
+	)
+}
+
+/** After a move: what is left in the album's folder of the staging folder, and Delete / Cancel (ADR 0072). */
+export function CleanupDialog({ path, onClose, done }: { path: string | null; onClose: () => void; done: () => void }) {
+	const [d, setD] = useState<any>(null), [err, setErr] = useState(''), [busy, setBusy] = useState(false)
+	useEffect(() => {
+		if (!path) return
+		setD(null); setErr(''); setBusy(false)
+		api('/api/folder?path=' + encodeURIComponent(path)).then(setD, e => setErr(e.message))
+	}, [path])
+	const remove = async () => {
+		setBusy(true)
+		try {
+			const r = await post('/api/folder/delete', { path })
+			toast.success(`Folder deleted (${r.files} file${r.files === 1 ? '' : 's'}, ${fmtBytes(r.bytes)})`)
+			onClose(); done()
+		} catch (e: any) { setErr(e.message); setBusy(false) }
+	}
+	return (
+		<Shell open={!!path} onClose={onClose} title="Delete the folder?" wide="sm:max-w-[40rem]" err={err} save={remove} saveLabel={busy ? 'Deleting…' : 'Delete'} saveDisabled={!d || busy || d.audio > 0} danger>
+			{d && (
+				<div className="space-y-3 text-sm">
+					<p>The songs of this album are in the library. <span className="font-mono">{d.name}</span> in the staging folder still holds {d.count ? `${d.count} file${d.count === 1 ? '' : 's'} (${fmtBytes(d.bytes)})` : 'nothing'}. Delete deletes the folder and all of it.</p>
+					{d.audio > 0 && <p className="rounded-md bg-rose-50 p-2 text-rose-800">{d.audio} song{d.audio === 1 ? ' is' : 's are'} still in this folder, so it cannot be deleted.</p>}
+					{d.count > 0 && (
+						<div className="max-h-72 overflow-y-auto rounded-md border">
+							<table className="w-full text-xs">
+								<tbody>
+									{d.files.map((f: { path: string; size: number }) => (
+										<tr key={f.path} className="border-b last:border-0"><td className="break-all px-2 py-1 font-mono">{f.path}</td><td className="whitespace-nowrap px-2 py-1 text-right tabular-nums text-slate-500">{fmtBytes(f.size)}</td></tr>
+									))}
+									{d.truncated && <tr><td className="px-2 py-1 text-slate-500" colSpan={2}>and {d.count - d.files.length} more files</td></tr>}
+								</tbody>
+							</table>
+						</div>
+					)}
+				</div>
+			)}
 		</Shell>
 	)
 }

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlbumEdit, CoverDelete, LyricsEdit, SettingsDialog, Shell, TagEditor } from '@/components/dialogs'
+import { AlbumEdit, CleanupDialog, CoverDelete, LyricsEdit, SettingsDialog, Shell, TagEditor } from '@/components/dialogs'
 import { CopyBtn, CoverImg, IdBadge, Inspector } from '@/components/inspector'
 import { LibraryDialog, LibraryIndicator, useLibrary } from '@/components/library'
 import { DiscogsDialog, MbDialog } from '@/components/releases'
@@ -40,7 +40,7 @@ export default function Page() {
 	const [albums, setAlbums] = useState<Album[]>([])
 	const [loading, setLoading] = useState(true)
 	const [area, setArea] = useState<'staging' | 'library'>('staging')
-	const areaRef = useRef<'staging' | 'library'>('staging'), libPath = useRef('')
+	const areaRef = useRef<'staging' | 'library'>('staging'), libPath = useRef(''), offerDelete = useRef(false)
 	const [filter, setFilter] = useState('all')
 	const [q, setQ] = useState('')
 	const [sort, setSort] = useState('recent')
@@ -126,7 +126,7 @@ export default function Page() {
 
 	useEffect(() => {
 		(async () => {
-			try { libPath.current = (await api('/api/settings')).output } catch {}
+			try { const r = await api('/api/settings'); libPath.current = r.output; offerDelete.current = !!r.delete_after_move } catch {}
 			const saved = localStorage.getItem('tagwright-area')
 			if (saved === 'library') { areaRef.current = 'library'; setArea('library') }
 			await load()
@@ -159,7 +159,13 @@ export default function Page() {
 	}
 	const move = async () => {
 		if (!a) return
-		try { const r = await post('/api/move', { path: a.path }); addLog(['moved to ' + r.moved_to]); setDlg(null); toast.success('Moved to the library'); setSelected(null); await load() }
+		const from = a.path
+		try {
+			const r = await post('/api/move', { path: from }); addLog(['moved to ' + r.moved_to]); toast.success('Moved to the library'); setSelected(null)
+			// the songs are gone from the staging folder; with the setting on, offer to delete what is left of its folder (ADR 0072)
+			setDlg(offerDelete.current ? { kind: 'cleanup', path: from } : null)
+			await load()
+		}
 		catch (e: any) { setCerr(e.message) }
 	}
 	const putCover = async (f: File) => {
@@ -349,7 +355,8 @@ export default function Page() {
 			<DiscogsDialog a={dk === 'discogs' ? a : null} onClose={() => setDlg(null)} done={done} />
 			<MbDialog a={dk === 'mb' ? a : null} onClose={() => setDlg(null)} done={done} />
 			<LibraryDialog open={dk === 'library'} onClose={() => setDlg(null)} st={lib.st} reload={lib.reload} />
-			<SettingsDialog open={dk === 'settings'} onClose={() => setDlg(null)} saved={async () => { setSelected(null); try { libPath.current = (await api('/api/settings')).output } catch {} load('') }} />
+			<SettingsDialog open={dk === 'settings'} onClose={() => setDlg(null)} saved={async () => { setSelected(null); try { const r = await api('/api/settings'); libPath.current = r.output; offerDelete.current = !!r.delete_after_move } catch {} load('') }} />
+			<CleanupDialog path={dk === 'cleanup' ? dlg?.path ?? null : null} onClose={() => setDlg(null)} done={() => void load()} />
 		</div>
 	)
 }

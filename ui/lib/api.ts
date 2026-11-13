@@ -58,7 +58,7 @@ const CHANNELS: Record<number, string> = { 1: 'Mono', 2: 'Stereo', 3: '3.0', 4: 
 export const channelLabel = (n?: number) => (n ? CHANNELS[n] || `${n} ch` : '')
 export const title = (a: Album) => a.album || a.name
 export const mmss = (n: number) => (n ? Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0') : '')
-export const fmtBytes = (n: number) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB')
+export const fmtBytes = (n: number) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n >= 1024 ? Math.round(n / 1024) + ' KB' : n + ' B')
 export const coverUrl = (a: Album) => `/api/cover?path=${encodeURIComponent(a.path)}&v=${a.mtime}`
 export const STATUS = { needs: 'Needs input', ready: 'Incomplete', fixed: 'Fixed' }
 

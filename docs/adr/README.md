@@ -60,6 +60,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0069](0069-release-notes-and-commit-descriptions.md) | Release notes in CHANGELOG.md for every functional change; detailed commit descriptions | Accepted |
 | [0070](0070-releases.md) | Releases: version tag, versioned image on ghcr.io, GitHub release with the changelog notes | Accepted |
 | [0071](0071-readme-and-screenshots-at-every-release.md) | The README and its screenshots are updated at every release | Accepted |
+| [0072](0072-delete-the-staging-folder-after-a-move.md) | Offer to delete the album's staging folder after a move, with a list of what is left | Accepted |
 
 ## History: superseded ADRs
 

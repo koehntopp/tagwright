@@ -8,6 +8,7 @@ Everything since 0.2 (8 to 13 November 2026).
 
 ### Added
 
+- **Delete the leftover folder after a move**: a setting (off by default) makes Tagwright open a dialog after a successful "Move to library" that lists everything still in the album's folder of the staging folder, with sizes, and deletes the folder only when you press Delete [0072].
 - A **copy button next to the catalogue number** in the inspector header, below the album art, copies just the number (not shown when the catalogue number is `none`).
 - **Library**: a watcher keeps the library folder in the canonical artist/album/disc/file layout, waiting for files to settle before it moves anything. The layout is set in Settings by dragging tags into rows, with a live preview on a real album; a status indicator in the top bar shows artists, albums, tracks and activity, with a Re-analyze button [0037].
 - **Staging | Library switch** in the top bar flips the board between the staging folder and the library, so details of albums already in the library can be fixed [0038]. Albums are listed from stored summaries and the watcher's index, so switching takes a fraction of a second instead of minutes on a network share [0067].

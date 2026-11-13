@@ -1,6 +1,6 @@
 # ADR 0009: Settings and API keys
 
-- **Status**: Accepted (the staging and library folders are no longer settings: [0045](0045-folders-from-the-environment-only.md); the lrclib.net API key setting is gone: [0044](0044-lrclib-application-id-no-key-setting.md); the generated config overlay for the discogs scripts is gone: the pipeline reads the keys from the settings directly, [0036](0036-standalone-pipeline-package.md))
+- **Status**: Accepted (a setting for deleting the folder after a move: [0072](0072-delete-the-staging-folder-after-a-move.md); the staging and library folders are no longer settings: [0045](0045-folders-from-the-environment-only.md); the lrclib.net API key setting is gone: [0044](0044-lrclib-application-id-no-key-setting.md); the generated config overlay for the discogs scripts is gone: the pipeline reads the keys from the settings directly, [0036](0036-standalone-pipeline-package.md))
 - **Date**: 2026-11-08
 
 ## Context
