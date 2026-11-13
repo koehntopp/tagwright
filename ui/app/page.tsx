@@ -72,7 +72,7 @@ export default function Page() {
 		if (next === areaRef.current) return
 		areaRef.current = next
 		localStorage.setItem('tagwright-area', next)
-		setArea(next); setSelected(null); setAlbums([])
+		setArea(next); setSelected(null); setAlbums([]); setQ('')
 		try { await load() } catch (e: any) { toast.error(e.message) }
 	}
 	// The watcher moved or removed files (a corrected artist name puts an album in another folder): the board must not
@@ -319,7 +319,7 @@ export default function Page() {
 							))}
 						</div>
 					</div>
-				) : <div className="py-16 text-center text-slate-500">No albums match.</div>}
+				) : <div className="py-16 text-center text-slate-500">{q.trim() ? `No albums match “${q.trim()}”.` : 'No albums match.'}</div>}
 			</main>
 			<aside className="w-[600px] shrink-0 overflow-y-auto border-l bg-white min-[1600px]:w-[720px]">
 				{a ? (

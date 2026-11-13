@@ -39,6 +39,7 @@ Everything since 0.2 (8 to 13 November 2026).
 
 ### Fixed
 
+- Switching between staging and library kept the search text, so the other folder showed an empty board although its counts were not zero. The search is cleared on a switch, and an empty result names the search text.
 - The "Delete the folder?" dialog said the folder "holds nothing" when it held only empty subfolders (CD 1, CD 2). It now counts and lists the subfolders and says that they are deleted too [0072].
 - The Move to library dialog said that images and logs "stay in the staging folder" even when Settings offers to delete the folder afterwards. It now says that you will be asked whether to delete what is left [0072].
 - A track got no fingerprint when its FLAC had stray bytes after the last frame (for example an ID3v1 block), because the newer decoder in the Docker image made `fpcalc` exit with an error even though it had printed the fingerprint. The fingerprint is now used and a warning names the file [0073].

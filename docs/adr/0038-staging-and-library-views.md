@@ -20,3 +20,5 @@ Since [0037](0037-library-watcher-and-layout.md) the output folder is the librar
 
 - A library album edited in the UI is changed on the library volume; the watcher may move it afterwards. Turn Apply off in Settings, Library to review first.
 - The Filenames step of a library album can be open after a template change until the watcher has renamed its files.
+
+- Switching the view clears the search text; an empty result names the search (otherwise the other folder looks empty although its counts are not).
