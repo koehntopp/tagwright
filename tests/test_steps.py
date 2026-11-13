@@ -194,37 +194,29 @@ class TestReplayGain:
 		assert not Path((tmp_path / 'preset_path').read_text()).exists()
 
 
-FPCALC = (
-	'name = args[-1]\n'
-	'if name.endswith("bad.flac"):\n'
-	'\tprint("ERROR: decoding failed"); sys.exit(3)\n'
-	'if name.endswith("empty.flac"):\n'
-	'\tprint("DURATION=1"); sys.exit(0)\n'
-	'if name.endswith("trailing.flac"):\n'
-	'\tprint("ERROR: Error decoding the audio source (Invalid data found)"); print("DURATION=0.2"); '
-	'print("FINGERPRINT=FP-trailing"); sys.exit(2)\n'
-	'print("DURATION=0.2"); print("FINGERPRINT=FP-" + name.rsplit("/", 1)[-1])\n'
+FPSCAN = (
+	'# fake fpscan --write-tags --quiet <album>: tags every file without a fingerprint, exit 1 if one is bad\n'
+	'from pathlib import Path\n'
+	'from mutagen.flac import FLAC\n'
+	'bad = 0\n'
+	'for p in sorted(Path(args[-1]).rglob("*.flac")):\n'
+	'\tf = FLAC(p)\n'
+	'\tif "ACOUSTID_FINGERPRINT" in f or "ACOUSTID FINGERPRINT" in f:\n'
+	'\t\tcontinue\n'
+	'\tif p.name == "bad.flac":\n'
+	'\t\tprint("error: bad.flac: no audio track"); bad += 1; continue\n'
+	'\tf["ACOUSTID_FINGERPRINT"] = ["FP-" + p.name]; f.save()\n'
+	'sys.exit(1 if bad else 0)\n'
 )
 
 
 class TestFingerprint:
-	def test_parse(self) -> None:
-		assert fingerprint.parse('DURATION=12\nFINGERPRINT=AQAA \n') == 'AQAA'
-		assert fingerprint.parse('DURATION=12\n') == ''
-		assert fingerprint.parse('') == ''
-
-	def test_existing_reads_both_spellings(self) -> None:
-		assert fingerprint.existing({'ACOUSTID_FINGERPRINT': [' x ']}) == 'x'
-		assert fingerprint.existing({'ACOUSTID FINGERPRINT': ['y']}) == 'y'
-		assert fingerprint.existing({'ACOUSTID_FINGERPRINT': [' ']}) == ''
-		assert fingerprint.existing(None) == ''
-
 	def test_writes_a_fingerprint_for_every_file_that_lacks_one(
 		self, ctx: Context, install: Install, make_flac: MakeFlac, tmp_path: Path
 	) -> None:
 		install(
-			'fpcalc',
-			FPCALC + f'open({str(tmp_path / "calls")!r}, "a").write(" ".join(args) + "\\n")',
+			'fpscan',
+			f'open({str(tmp_path / "calls")!r}, "w").write(" ".join(args))\n' + FPSCAN,
 		)
 		a = album(make_flac, tmp_path / 'a')
 		f = FLAC(a / '02.flac')
@@ -233,91 +225,32 @@ class TestFingerprint:
 		fingerprint.run(a, ctx)
 		assert FLAC(a / '01.flac')['ACOUSTID_FINGERPRINT'] == ['FP-01.flac']
 		assert FLAC(a / '02.flac')['ACOUSTID_FINGERPRINT'] == ['KEEP']  # never recomputed
-		calls = (tmp_path / 'calls').read_text().splitlines()
-		assert len(calls) == 1
-		assert calls[0].startswith('-length 120 ')  # the first 120 s only
+		assert (tmp_path / 'calls').read_text() == f'--write-tags --quiet {a}'
 		assert FLAC(a / '01.flac')['TITLE'] == ['T1']  # other tags survive
 
-	def test_the_legacy_spelling_counts_as_present(
+	def test_a_failing_file_is_a_step_error_and_the_others_are_still_written(
 		self, ctx: Context, install: Install, make_flac: MakeFlac, tmp_path: Path
 	) -> None:
-		install('fpcalc', 'sys.exit(9)')  # must not be called
-		a = album(make_flac, tmp_path / 'a', 1)
-		f = FLAC(a / '01.flac')
-		f['ACOUSTID FINGERPRINT'] = ['OLD']
-		f.save()
-		fingerprint.run(a, ctx)
+		install('fpscan', FPSCAN)
+		a = album(make_flac, tmp_path / 'a')
+		(a / '01.flac').rename(a / 'bad.flac')
+		with pytest.raises(StepError, match='code 1: error: bad.flac'):
+			fingerprint.run(a, ctx)
+		assert FLAC(a / '02.flac')['ACOUSTID_FINGERPRINT'] == ['FP-02.flac']
+		assert 'ACOUSTID_FINGERPRINT' not in FLAC(a / 'bad.flac')
 
-	def test_no_files_to_do_needs_no_tool(
+	def test_a_missing_tool_is_a_step_error(
 		self, ctx: Context, make_flac: MakeFlac, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 	) -> None:
-		monkeypatch.delenv('FPCALC_BIN', raising=False)
+		monkeypatch.delenv('FPSCAN_BIN', raising=False)
 		monkeypatch.setenv('PATH', '')
-		a = album(make_flac, tmp_path / 'a', 1)
-		f = FLAC(a / '01.flac')
-		f['ACOUSTID_FINGERPRINT'] = ['x']
-		f.save()
-		fingerprint.run(a, ctx)
-
-	def test_failures_are_per_file_and_the_others_are_still_written(
-		self,
-		ctx: Context,
-		install: Install,
-		make_flac: MakeFlac,
-		tmp_path: Path,
-		caplog: pytest.LogCaptureFixture,
-	) -> None:
-		install('fpcalc', FPCALC)
-		a = tmp_path / 'a'
-		for name in ('01.flac', 'bad.flac', 'empty.flac', 'zz.flac'):
-			make_flac(a / name)
-		with caplog.at_level(logging.INFO), pytest.raises(StepError, match='2 fingerprint'):
-			fingerprint.run(a, ctx)
-		assert FLAC(a / '01.flac')['ACOUSTID_FINGERPRINT'] == ['FP-01.flac']
-		assert FLAC(a / 'zz.flac')['ACOUSTID_FINGERPRINT'] == ['FP-zz.flac']
-		assert 'ACOUSTID_FINGERPRINT' not in FLAC(a / 'bad.flac')
-		assert 'ACOUSTID_FINGERPRINT' not in FLAC(a / 'empty.flac')
-		assert 'generated for 2 of 4 files' in caplog.text
-		assert 'decoding failed' in caplog.text
-		assert 'printed no fingerprint' in caplog.text
-
-	def test_a_fingerprint_printed_despite_a_decoding_error_is_used(
-		self,
-		ctx: Context,
-		install: Install,
-		make_flac: MakeFlac,
-		tmp_path: Path,
-		caplog: pytest.LogCaptureFixture,
-	) -> None:
-		"""ADR 0073: a stray block after the last frame makes fpcalc exit 2, yet it printed the fingerprint."""
-		install('fpcalc', FPCALC)
-		a = tmp_path / 'a'
-		make_flac(a / 'trailing.flac')
-		with caplog.at_level(logging.INFO):
-			fingerprint.run(a, ctx)  # no StepError
-		assert FLAC(a / 'trailing.flac')['ACOUSTID_FINGERPRINT'] == ['FP-trailing']
-		assert 'exited with code 2' in caplog.text and 'fingerprint, which is used' in caplog.text
-		assert 'generated for 1 of 1 files' in caplog.text
-
-	def test_tags_written_meanwhile_are_not_lost(
-		self, ctx: Context, install: Install, make_flac: MakeFlac, tmp_path: Path
-	) -> None:
-		a = album(make_flac, tmp_path / 'a', 1)
-		# the tool itself writes a tag into the file while it "calculates" (what drcalc or rsgain could do)
-		install(
-			'fpcalc',
-			f'from mutagen.flac import FLAC\nf = FLAC({str(a / "01.flac")!r}); f["LATE"] = ["kept"]; f.save()\n'
-			+ FPCALC,
-		)
-		fingerprint.run(a, ctx)
-		t = FLAC(a / '01.flac')
-		assert t['LATE'] == ['kept']
-		assert t['ACOUSTID_FINGERPRINT'] == ['FP-01.flac']
+		with pytest.raises(StepError, match='fpscan is not installed'):
+			fingerprint.run(album(make_flac, tmp_path / 'a', 1), ctx)
 
 	def test_a_stop_ends_the_step(
 		self, ctx: Context, install: Install, make_flac: MakeFlac, tmp_path: Path
 	) -> None:
-		install('fpcalc', FPCALC)
+		install('fpscan', FPSCAN)
 		a = album(make_flac, tmp_path / 'a')
 		ctx.stop.set()
 		with pytest.raises(Stopped):
@@ -395,7 +328,7 @@ class TestRun:
 
 
 def noise_album(root: Path, tracks: int = 2, seconds: int = 15, rate: int = 44100) -> Path:
-	"""Real audio for the real tools: drcalc needs at least 12 s, fpcalc and rsgain a signal."""
+	"""Real audio for the real tools: drcalc needs at least 12 s, fpscan and rsgain a signal."""
 	rng = np.random.default_rng(1)
 	for i in range(1, tracks + 1):
 		root.mkdir(parents=True, exist_ok=True)
@@ -452,8 +385,8 @@ def test_the_real_drcalc_keeps_other_tags_and_fails_on_short_tracks(
 	assert t['DYNAMIC_RANGE'][0].isdigit()  # the measurable track was still tagged
 
 
-@needs(not shutil.which('fpcalc'), reason='fpcalc is not installed')
-def test_the_real_fpcalc_writes_a_fingerprint(ctx: Context, tmp_path: Path) -> None:
+@needs(not shutil.which('fpscan'), reason='fpscan is not installed')
+def test_the_real_fpscan_writes_a_fingerprint(ctx: Context, tmp_path: Path) -> None:
 	a = noise_album(tmp_path / 'a', 1, seconds=5)
 	fingerprint.run(a, ctx)
 	assert len(FLAC(a / '01.flac')['ACOUSTID_FINGERPRINT'][0]) > 20

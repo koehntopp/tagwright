@@ -1,6 +1,6 @@
 # ADR 0036: A standalone pipeline package; the discogs repository is no longer needed
 
-- **Status**: Accepted (one step can be run alone: [0051](0051-run-a-single-pipeline-step.md); rolled out, see below)
+- **Status**: Accepted (`fpcalc` replaced by `fpscan`: [0075](0075-fingerprints-with-fpscan.md); one step can be run alone: [0051](0051-run-a-single-pipeline-step.md); rolled out, see below)
 - **Date**: 2026-11-11
 - **Supersedes**: [0004](0004-pipeline-engine-reuses-discogs-scripts.md) (the engine is the unchanged discogs scripts), [0012](0012-language-and-performance.md) (stay in Python; the DR step is now a Rust binary), the **Backend** bullet of [0005](0005-technology-stack-and-conventions.md) (one file), the discogs mount and `drmeter` binary of [0003](0003-deployment-web-app-in-docker.md), the config overlay of [0009](0009-settings-and-api-keys.md), and as history only [0025](0025-fingerprint-length-in-discogs-repository.md), [0027](0027-legacy-dynamic-range-tags-removed.md), [0032](0032-parallel-tag-writes-reopen-before-save.md) and [0033](0033-pipeline-tag-steps-run-in-sequence.md), which were changes to the discogs repository
 

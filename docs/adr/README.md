@@ -61,8 +61,8 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0070](0070-releases.md) | Releases: version tag, versioned image on ghcr.io, GitHub release with the changelog notes | Accepted |
 | [0071](0071-readme-and-screenshots-at-every-release.md) | The README and its screenshots are updated at every release | Accepted |
 | [0072](0072-delete-the-staging-folder-after-a-move.md) | Offer to delete the album's staging folder after a move, with a list of what is left | Accepted |
-| [0073](0073-fingerprints-despite-a-decoding-error.md) | A fingerprint that fpcalc printed despite a decoding error is used | Accepted |
 | [0074](0074-maximum-cover-size-setting.md) | The maximum cover size is a setting (default 1500) | Accepted |
+| [0075](0075-fingerprints-with-fpscan.md) | Fingerprints with fpscan instead of fpcalc | Accepted |
 
 ## History: superseded ADRs
 
@@ -77,6 +77,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | [0017](0017-ui-layout-and-design-system.md) | UI layout and design system | Superseded by 0030 |
 | [0019](0019-version-control-and-releases.md) | Version control and releases | Superseded by 0020 |
 | [0022](0022-top-bar-instead-of-sidebar.md) | Top bar instead of a sidebar | Superseded by 0030 |
+| [0073](0073-fingerprints-despite-a-decoding-error.md) | A fingerprint that fpcalc printed despite a decoding error is used | Superseded by 0075 |
 | [0039](0039-incomplete-and-what-is-missing.md) | "Incomplete" instead of "Ready", and showing what is missing | Superseded by 0054 |
 | [0043](0043-assignment-refreshes-the-discogs-tags.md) | Assigning a Discogs release refreshes the Discogs-owned tags at once | Superseded by 0053 |
 | [0046](0046-discogs-medleys-are-one-release-track.md) | A Discogs medley (index entry with sub-tracks) is one release track | Superseded by 0053 |

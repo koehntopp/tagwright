@@ -1,4 +1,4 @@
-"""Running the external tools (drcalc, rsgain, fpcalc) so that Stop can end them (ADR 0008, 0036)."""
+"""Running the external tools (drcalc, rsgain, fpscan) so that Stop can end them (ADR 0008, 0036)."""
 
 import logging
 import os

@@ -17,7 +17,16 @@ RUN ldd /tmp/rsgain-build/rsgain | awk '/=>/ {print $3}' | xargs -r realpath | x
         | cut -d: -f1 | sort -u > /tmp/rsgain-runtime-pkgs \
     && test -s /tmp/rsgain-runtime-pkgs
 
-# ── Stage 2: runtime image ───────────────────────────────────────────────────
+# ── Stage 2: build fpscan (no release binary yet, ADR 0075) ──────────────────
+FROM rust:1-slim AS fpscan
+# fpscan has no release yet: pinned to a commit of https://github.com/koehntopp/fpscan
+ARG FPSCAN_REV=dc213d5d728b614dd88acbcba71f231467e6b19c
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN cargo install --git https://github.com/koehntopp/fpscan --rev "${FPSCAN_REV}" --locked --root /out \
+    && strip /out/bin/fpscan
+
+# ── Stage 3: runtime image ───────────────────────────────────────────────────
 FROM python:3.14-slim
 LABEL org.opencontainers.image.source="https://github.com/koehntopp/tagwright" \
       org.opencontainers.image.licenses="GPL-3.0-or-later"
@@ -25,11 +34,12 @@ ARG TARGETARCH
 # renovate: datasource=github-releases depName=koehntopp/drcalc extractVersion=^v(?<version>.*)$
 ARG DRCALC_VERSION=0.1.0
 COPY --from=rsgain /tmp/rsgain-runtime-pkgs /tmp/rsgain-runtime-pkgs
-# fpcalc (chromaprint) and the libraries of rsgain
+# the libraries of rsgain
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libchromaprint-tools curl ca-certificates $(cat /tmp/rsgain-runtime-pkgs) \
+        curl ca-certificates $(cat /tmp/rsgain-runtime-pkgs) \
     && rm -rf /var/lib/apt/lists/* /tmp/rsgain-runtime-pkgs
 COPY --from=rsgain /tmp/rsgain-build/rsgain /usr/local/bin/rsgain
+COPY --from=fpscan /out/bin/fpscan /usr/local/bin/fpscan
 # drcalc (dynamic range): the release binary for this architecture, checked against the published SHA256SUMS (ADR 0036)
 RUN set -e; \
     case "$TARGETARCH" in amd64) t=x86_64 ;; arm64) t=aarch64 ;; *) echo "unsupported arch $TARGETARCH" >&2; exit 1 ;; esac; \

@@ -19,7 +19,7 @@ Tagwright is a self-hosted web app (FastAPI backend, Next.js frontend) with its 
 
 ## 3. Hard rules that come from the ADRs
 
-- **Pipeline** (0036): the steps and their order (dot_clean, dynamic range via `drcalc`, ReplayGain, fingerprints, Discogs tags, lyrics) are one run, one step after the other; do not reorder, skip or run steps in parallel. Steps live in `pipeline/` and import nothing from `app.py`. External tools (`drcalc`, `rsgain`, `fpcalc`) are found on `PATH`.
+- **Pipeline** (0036, 0075): the steps and their order (dot_clean, dynamic range via `drcalc`, ReplayGain, fingerprints, Discogs tags, lyrics) are one run, one step after the other; do not reorder, skip or run steps in parallel. Steps live in `pipeline/` and import nothing from `app.py`. External tools (`drcalc`, `rsgain`, `fpscan`) are found on `PATH`.
 - **Tags** (0004, 0014): UPPERCASE keys; never read a tag the tools wrote as input; never make a Discogs-owned tag editable and never overwrite a user-owned tag from automation. `ALBUM_FIELDS`, `DISCOGS_FIXED` and `DISCOGS_PREFIXES` must agree with `pipeline/fixtags.py` (`tests/test_tag_contract.py` checks it).
 - **Safety** (0007, 0008): every path goes through `safe()`; every endpoint that writes returns 409 while a job runs; never log, return or commit an API key; never add an endpoint that reads or writes outside `ROOT` or `INGEST_DIR`.
 - **File names** (0010): `clean()` in `pipeline/naming.py` stays as it is (the rule existing libraries were named with); Tagwright never renames album folders.

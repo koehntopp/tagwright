@@ -29,6 +29,7 @@ Everything since 0.2 (8 to 13 November 2026).
 
 ### Changed
 
+- Fingerprints are now calculated by `fpscan` (the owner's Rust tool) instead of `fpcalc`: one run per album, FLAC and MP3, and no failures because of stray bytes after the last frame. New fingerprints differ slightly from `fpcalc`'s but match the same on AcoustID; existing ones are kept [0075].
 - **New interface** on Next.js and shadcn/ui, with a top bar instead of the sidebar; the pipeline status moved there too. The inspector grows to 720 px on wide screens [0029, 0030, 0031, 0041].
 - **Settings**: the staging and library folders are no longer editable; they come from `STAGING_FOLDER` and `LIBRARY_FOLDER` and Settings shows their host paths. There are no default paths: `STAGING_FOLDER`, `LIBRARY_FOLDER` and `DATA_DIR` must be set, and the compose file takes the host paths from a `.env` file [0045, 0055]. The lrclib.net key setting is gone [0044].
 - "Ready" is now called "Incomplete", and without a Discogs release ID the red Discogs line is the only line shown [0054].

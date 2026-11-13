@@ -1,6 +1,6 @@
 # ADR 0073: A fingerprint that fpcalc printed despite a decoding error is used
 
-- **Status**: Accepted
+- **Status**: Superseded by [0075](0075-fingerprints-with-fpscan.md)
 - **Date**: 2026-11-13
 - **Supersedes in part**: [0036](0036-standalone-pipeline-package.md) (a step's tool failing on a non-zero exit code), for the fingerprint step
 

@@ -29,7 +29,7 @@ One run does these steps in this order (ADR 0036):
 
 1. **Dynamic range** with [`drcalc`](https://github.com/koehntopp/drcalc) (`DYNAMIC_RANGE`, `ALBUM_DR`)
 2. **ReplayGain** with `rsgain`
-3. **Fingerprints** with `fpcalc` (AcoustID)
+3. **Fingerprints** with [`fpscan`](https://github.com/koehntopp/fpscan) (AcoustID)
 4. **Tags & cover** from the assigned Discogs release
 5. **Lyrics** from [lrclib.net](https://lrclib.net), synced (LRC) when available
 6. **Filenames** in the layout's file name pattern
@@ -80,7 +80,7 @@ Settings, tab *Library*, defines the layout by dragging tags into rows: one row 
 
 ## Run it
 
-Requirements: Python 3.14, [`uv`](https://docs.astral.sh/uv/), and on `PATH`: `drcalc`, `rsgain`, `fpcalc`.
+Requirements: Python 3.14, [`uv`](https://docs.astral.sh/uv/), and on `PATH`: `drcalc`, `rsgain`, `fpscan`.
 
 ```bash
 STAGING_FOLDER=/path/to/staging LIBRARY_FOLDER=/path/to/library DATA_DIR=./data ./app.py
@@ -119,7 +119,7 @@ Or build and run it with compose:
 docker compose up -d
 ```
 
-Set `STAGING_HOST_PATH` and `LIBRARY_HOST_PATH` in a `.env` file next to [compose.yaml](compose.yaml); it mounts them at `/staging` and `/library`, and `./data` at `/data`. The image contains Python, `fpcalc`, `drcalc` and a source-built `rsgain`.
+Set `STAGING_HOST_PATH` and `LIBRARY_HOST_PATH` in a `.env` file next to [compose.yaml](compose.yaml); it mounts them at `/staging` and `/library`, and `./data` at `/data`. The image contains Python, `drcalc`, a source-built `rsgain` and `fpscan`.
 
 Tagwright has no authentication. Run it on a trusted network or behind a reverse proxy that authenticates (ADR 0007).
 
