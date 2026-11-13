@@ -102,7 +102,9 @@ Avoid `Any`. If it is genuinely necessary, add a comment saying why.
 
 - **Never create a branch.** Work and commit directly on `main`, then push to `origin main`. `main` is the only branch; if any other exists, tell the owner. Do not tag unless asked.
 - Never commit `data/`, `node_modules/`, `__pycache__/`, keys or music files.
-- Keep commits focused, with a message that says what and why. Verify first ([ADR 0018](docs/adr/0018-verification.md)); there is no branch to catch a bad change.
+- Keep commits focused. Verify first ([ADR 0018](docs/adr/0018-verification.md)); there is no branch to catch a bad change.
+- **Every commit gets a detailed description** ([ADR 0069](docs/adr/0069-release-notes-and-commit-descriptions.md)): a subject line (imperative, what changed, up to about 72 characters) and a body with four parts: *why* (the request or the bug, in the owner's terms), *what* (the behaviour that changed and the main code or files), *how it was checked* (tests, what was run, what was **not** verified) and *which ADRs apply*. A one-line commit message is not acceptable, not even for a small fix.
+- **Every functional change or bug fix is recorded for release notes.** Add an entry under `## Unreleased` in [CHANGELOG.md](CHANGELOG.md) **in the same commit**: one entry per change, under Added, Changed, Fixed, Removed or Security, written for a user of the app (what is different for them, not how the code works), with the ADR number when there is one. A commit with no user-visible effect (refactor, tests, docs, CI, a dependency bump) needs no entry; say "No release note" in its body. When the owner tags a release, `Unreleased` becomes that version's heading.
 - Never force-push or rewrite history.
 - Branches `renovate/*` belong to the Renovate bot ([ADR 0061](docs/adr/0061-renovate-for-dependency-updates.md)): do not create, push to or delete them, and do not count them as a violation of the one-branch rule.
 
@@ -114,6 +116,7 @@ Check each item and say which you checked:
 - [ ] Changed behaviour, constants or endpoints are reflected in the ADRs and in the README index.
 - [ ] `static/ui/` rebuilt (`cd ui && npm run build`) if anything under `ui/` changed.
 - [ ] Verified on a copy, not on real data; what was not verified is stated.
+- [ ] Every commit has a detailed description (why, what, how checked, ADRs), and every functional change or bug fix has its entry under `Unreleased` in CHANGELOG.md (or the body says "No release note").
 - [ ] No secrets in code, logs, commits or output.
 - [ ] `uv run --group test pytest` passes, or the failures are listed.
 - [ ] Python changed: `uv run ruff check .` and `uv run ruff format --check .` pass, or the failures are listed.
