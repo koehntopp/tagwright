@@ -1568,6 +1568,10 @@ def release_tracks(rid: str) -> dict:
 	r = discogs(f'/releases/{rid}')
 	album_artist = artist_names(r.get('artists', []))
 	tracks, seq, head = [], 0, 0
+	disc_titles: dict[
+		int, str
+	] = {}  # disc -> its subtitle: the heading right before the disc's first track
+	pending = ''
 
 	def add(t: dict, pos: str, disc: int, track: int, part_of: str = '', duration: int = 0) -> None:
 		tracks.append(
@@ -1591,6 +1595,12 @@ def release_tracks(rid: str) -> dict:
 		if t.get('type_') == 'heading':
 			if h := re.match(r'^(?:CD|DVD|Disc|Disk)\s*(\d+)\b', t.get('title', ''), re.I):
 				head = int(h[1])  # plain positions 1, 2, ... restart under each 'Disc N' heading
+			pending = re.sub(
+				r'^(?:(?:CD|DVD|Disc|Disk)\s*\d+\b\s*[-:\u2013.]?\s*)?',
+				'',
+				t.get('title', ''),
+				flags=re.I,
+			).strip()
 			continue
 		parts = t.get('sub_tracks') or [] if t.get('type_') == 'index' else []
 		if parts:
@@ -1606,6 +1616,8 @@ def release_tracks(rid: str) -> dict:
 			m = (None, head, pos)
 		seq += 1
 		disc, number = (int(m[1]) if m else 1), (int(m[2]) if m else seq)
+		disc_titles.setdefault(disc, pending)
+		pending = ''
 		add(t, pos, disc, number, duration=sum(seconds(p.get('duration', '')) for p in parts))
 		for part in parts:
 			add(part, part.get('position', ''), disc, number, part_of=t.get('title', ''))
@@ -1624,10 +1636,18 @@ def release_tracks(rid: str) -> dict:
 		'master_id': r.get('master_id') or 0,
 		'image': image,
 		'tracks': tracks,
+		'discs': [{'disc': d, 'title': x} for d, x in sorted(disc_titles.items()) if x],
 	}
 	releases[rid] = out
 	raw_releases[rid] = r
 	return out
+
+
+def set_disc_subtitle(a: Audio, rel: dict, disc: int) -> None:
+	"""The release's subtitle of `disc` as SET SUBTITLE and DISCSUBTITLE, as the tag editor writes them (ADR 0078)."""
+	if title := next((d['title'] for d in rel.get('discs', []) if d['disc'] == disc), ''):
+		a['SET SUBTITLE'] = [title]
+		a['DISCSUBTITLE'] = [title]
 
 
 def release_album_title(rel: dict) -> str:
@@ -1916,6 +1936,7 @@ def tracks_apply(body: dict) -> dict:
 			a['DISCNUMBER'] = [str(d)]
 			a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]
 			a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(per_disc))]
+			set_disc_subtitle(a, rel, t['disc'])
 		a.save()
 		log.append(f'{fn}: {d}-{n:02d} {t["title"]}' if with_titles else f'{fn}: album data only')
 	if cover:
@@ -2177,6 +2198,11 @@ def mb_release(mbid: str) -> dict:
 			'first': rg.get('first-release-date') or '',
 		},
 		'tracks': tracks,
+		'discs': [
+			{'disc': m.get('position', 1), 'title': m['title']}
+			for m in r.get('media', [])
+			if m.get('title')
+		],
 		'discogs_ids': [
 			m.group(1)
 			for x in r.get('relations') or []
@@ -2300,6 +2326,7 @@ def musicbrainz_apply(body: dict) -> dict:
 		if assigned and match and with_titles:
 			d, n = final[fn]
 			a['TITLE'] = [match[0]['title']]
+			set_disc_subtitle(a, rel, match[0]['disc'])
 			a['TRACKNUMBER'] = [str(n)]
 			a['DISCNUMBER'] = [str(d)]
 			a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]

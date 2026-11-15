@@ -165,3 +165,44 @@ def test_the_propose_endpoint_serves_musicbrainz_and_the_saved_flag(
 	assert d['import_titles'] is False
 	assert len(d['release']['tracks']) == 2
 	assert [f['rel'] for f in d['files']] == [0, 1]  # matched by disc and track number
+
+
+def test_disc_subtitles_are_written_with_the_box_on_only(
+	client: TestClient, album: Path, mb: None
+) -> None:
+	MB['discs'] = [{'disc': 1, 'title': 'Reckless 40th'}]
+	try:
+		mb_apply(client, album)
+		assert 'SET SUBTITLE' not in FLAC(sorted(album.glob('*.flac'))[0])
+		mb_apply(client, album, import_titles=True)
+	finally:
+		del MB['discs']
+	tags = FLAC(sorted(album.glob('*.flac'))[0])
+	assert tags['SET SUBTITLE'] == ['Reckless 40th']
+	assert tags['DISCSUBTITLE'] == ['Reckless 40th']
+
+
+def test_discogs_disc_subtitles_come_from_the_heading_before_a_disc(
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	raw = {
+		'id': 6,
+		'title': 'X',
+		'artists': [{'name': 'A'}],
+		'tracklist': [
+			{'type_': 'heading', 'title': 'Reckless 40th Anniversary'},
+			{'type_': 'track', 'position': 'CD1-1', 'title': 'One'},
+			{'type_': 'heading', 'title': 'Bonus'},  # inside a disc: ignored
+			{'type_': 'track', 'position': 'CD1-2', 'title': 'Two'},
+			{'type_': 'heading', 'title': 'CD2 - 18 Til I Die'},
+			{'type_': 'track', 'position': 'CD2-1', 'title': 'Three'},
+			{'type_': 'heading', 'title': 'CD3'},  # only the label: no subtitle
+			{'type_': 'track', 'position': 'CD3-1', 'title': 'Four'},
+		],
+	}
+	monkeypatch.setattr(tagwright, 'discogs', lambda path, **kw: raw)
+	tagwright.releases.pop('6', None)
+	assert tagwright.release_tracks('6')['discs'] == [
+		{'disc': 1, 'title': 'Reckless 40th Anniversary'},
+		{'disc': 2, 'title': '18 Til I Die'},
+	]
