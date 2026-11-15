@@ -91,7 +91,7 @@ function TitlesBox({ on, set, rel }: { on: boolean; set: (v: boolean) => void; r
 	return (
 		<div className="mt-3 text-sm">
 			<label className="flex items-center gap-2"><input type="checkbox" className="size-4" checked={on} onChange={e => set(e.target.checked)} />Import song titles</label>
-			<p className="mt-1 text-xs text-slate-500">Off: only the album data is imported (release IDs, catalogue number, year and country); the files keep their titles, track and disc numbers and disc subtitles. On: the files also get the release's title, track number, disc number and disc subtitle.</p>
+			<p className="mt-1 text-xs text-slate-500">Off: only the album data is imported (release IDs, catalogue number, year and country); the files keep their titles, track and disc numbers and disc subtitles.<br />On: the files also get the release's title, track number, disc number and disc subtitle.</p>
 			{rel.discs?.length > 0 && <p className={`mt-1 text-xs ${on ? 'text-slate-700' : 'text-slate-400'}`}>Disc subtitles of the release: {rel.discs.map((d: any) => `${d.disc}: ${d.title}`).join(' · ')}</p>}
 		</div>
 	)
