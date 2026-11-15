@@ -1909,8 +1909,10 @@ def tracks_apply(body: dict) -> dict:
 		fill(a, 'CATALOGNUMBER', rel['catno'], *CATALOG_KEYS[1:])
 		fill(a, 'ALBUM_FORMAT', release_format(raw_releases[rel['id']]))
 		fill(a, 'ARTIST', t['artist'])
-		if not tag(a.tags, 'ALBUM_ARTIST_OVERRIDE'):
-			fill(a, 'ALBUMARTIST', rel['artist'])
+		if rel['artist'] and not tag(a.tags, 'ALBUM_ARTIST_OVERRIDE'):
+			if tag(a.tags, 'ALBUMARTIST') != rel['artist']:  # the release artist wins (ADR 0079)
+				a['ALBUMARTIST'] = [rel['artist']]
+				filled['ALBUMARTIST'] = filled.get('ALBUMARTIST', 0) + 1
 		if not tag(a.tags, 'ALBUM_TITLE_OVERRIDE'):
 			fill(a, 'ALBUM', release_album_title(rel))
 		for key, values in player.items():

@@ -45,7 +45,7 @@ Per file, **only when the tag is empty** (an existing value is a user-set tag an
 | Tag | From Discogs |
 |-----|--------------|
 | `ARTIST` | the track's artists, else the release artists (names without the `(n)` suffix, join words kept) |
-| `ALBUMARTIST` | the release artists; skipped when `ALBUM_ARTIST_OVERRIDE` is set |
+| `ALBUMARTIST` | the release artists, **replacing** a different value ([0079](0079-discogs-assignment-sets-the-album-artist.md)); skipped when `ALBUM_ARTIST_OVERRIDE` is set |
 | `ALBUM_FORMAT` | the release's first format name (`CD`, `SACD`, `Vinyl`, `DVD`, ...), ignoring the wrappers `Box Set` and `All Media`; nothing is written when the release names no format |
 | `ALBUM` | the master title, else the release title; skipped when `ALBUM_TITLE_OVERRIDE` is set. `fixtags.py` rewrites `ALBUM` on every run anyway |
 | `CATALOGNUMBER` | the first label's catalogue number, **including Discogs' own `none`** (the tag must never be empty); checked under all four spellings (`CATALOGNUMBER`, `CATALOG NUMBER`, `CATALOG_NUMBER`, `CATALOGNO`). The next refresh puts it into `VERSION` |

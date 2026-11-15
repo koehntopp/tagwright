@@ -206,3 +206,26 @@ def test_discogs_disc_subtitles_come_from_the_heading_before_a_disc(
 		{'disc': 1, 'title': 'Reckless 40th Anniversary'},
 		{'disc': 2, 'title': '18 Til I Die'},
 	]
+
+
+def test_the_discogs_assignment_replaces_a_different_album_artist(
+	client: TestClient, album: Path, stubbed: None
+) -> None:
+	for f in album.glob('*.flac'):
+		x = FLAC(f)
+		x['ALBUMARTIST'] = ['Test and Artist']
+		x.save()
+	apply(client, album)
+	assert {FLAC(f)['ALBUMARTIST'][0] for f in album.glob('*.flac')} == {'Test Artist'}
+
+
+def test_an_album_artist_override_is_not_replaced(
+	client: TestClient, album: Path, stubbed: None
+) -> None:
+	for f in album.glob('*.flac'):
+		x = FLAC(f)
+		x['ALBUMARTIST'] = ['Mine']
+		x['ALBUM_ARTIST_OVERRIDE'] = ['Mine']
+		x.save()
+	apply(client, album)
+	assert {FLAC(f)['ALBUMARTIST'][0] for f in album.glob('*.flac')} == {'Mine'}
