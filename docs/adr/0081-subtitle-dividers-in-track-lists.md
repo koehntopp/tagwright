@@ -2,7 +2,7 @@
 
 - **Status**: Accepted
 - **Date**: 2026-11-15
-- **Supersedes in part**: [0014](0014-internal-tag-editor.md) (the Tracks tab's per-row "Disc subtitle" column and the "Disc subtitle" entry of the bulk edit), and, when the import dialogs are converted (second stage, below), the disc-scoped disc subtitle of [0078](0078-musicbrainz-track-assignment-and-import-song-titles.md)
+- **Supersedes in part**: [0014](0014-internal-tag-editor.md) (the Tracks tab's per-row "Disc subtitle" column and the "Disc subtitle" entry of the bulk edit), and the disc-scoped disc subtitle of [0078](0078-musicbrainz-track-assignment-and-import-song-titles.md)
 
 ## Context
 
@@ -19,7 +19,13 @@ One shared component, `SubtitleDivider` (`ui/components/subtitle-divider.tsx`), 
 - **Reordering** (Tag Editor): disc, track number and subtitle belong to the **positions**, like the numbers in [0014](0014-internal-tag-editor.md): a track dragged across a divider takes that run's subtitle.
 - **Colours** ([0030](0030-ui-layout-and-design-system-v2.md)): a divider that shows data of the files (Tag Editor) is light blue with a dark blue chip; in the import dialogs release data is blue and the file's own data grey ([0078](0078-musicbrainz-track-assignment-and-import-song-titles.md)).
 
-**Stages.** (1) The component and the Tag Editor's Tracks tab (the "Disc subtitle" column and its bulk-edit entry go). (2) The Discogs and MusicBrainz dialogs: dividers where the release's subtitle changes (every Discogs heading, every MusicBrainz medium title), with a Release / Keep mine choice per divider (default Keep mine when the files already carry a different non-empty subtitle), "Was:" listing the files' current subtitles, and the apply endpoints taking a subtitle per run instead of per disc. Stage 2 gets its own text here when it is built.
+**The import dialogs (Discogs and MusicBrainz; built).** They draw the same dividers over the file -> release track table, using the release's subtitle of each *assigned* release track:
+
+- Release data per track: `subtitle` on every release track. **Discogs**: every heading starts a run with that title (a leading `CD n` / `Disc n` label stripped; a heading that is only that label gives none), the run lasts until the next heading or the next disc, and a new disc without a heading has none. **MusicBrainz**: the medium's title. A divider is drawn where the disc or the release's subtitle changes between neighbouring assigned files (skipped files stay with the run above).
+- Each divider shows the release's subtitle (blue, editable with the pen), "Was:" with the distinct subtitles the files carry now, a yellow "differs from your subtitles" chip when they differ, and a **Release / Keep mine** toggle. **Keep mine** writes nothing for the files of that run. The default is Keep mine when a file of the run already has a non-empty subtitle that differs from the release's, otherwise Release. Typing a subtitle switches the run to Release.
+- "+ divider here" splits a run by hand, the x removes a divider (a hand-made one disappears; one of the release is merged into the run above). An empty subtitle is never written.
+- The checkbox "Import song titles" sits in the release line at the top right of both dialogs; with it off the dividers are grey and inactive and nothing is written.
+- `POST /api/tracks/apply` and `POST /api/musicbrainz/apply` take `subtitle` in each assignment: a text is written as `SET SUBTITLE` and `DISCSUBTITLE`, `null` (Keep mine) leaves the file alone, no key writes the release track's own subtitle. `POST /api/tracks/propose` returns each file's current `subtitle`. This replaces the `discs` list of the release answers.
 
 ## Consequences
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Album, api, channelLabel, mmss, post } from '@/lib/api'
 import { ChannelBadge, CopyBtn } from '@/components/inspector'
 import { Shell } from '@/components/dialogs'
+import { DividerGap, SubtitleDivider } from '@/components/subtitle-divider'
 
 type Sort = { key: '' | 'year' | 'tracks'; dir: 1 | -1 }
 const val = { year: (r: any) => +r.year || 0, tracks: (r: any) => +(r.n ?? r.tracks) || 0 }
@@ -61,14 +62,62 @@ function numbering(rel: any, files: any[]) {
 	return { used, dup: Object.values(used).some(n => n > 1), n: Object.keys(used).length }
 }
 
-/** The file -> release track table of both dialogs (ADR 0013, 0078). */
-function AssignTable({ rel, files, used, upd, numbers }: { rel: any; files: any[]; used: Record<number, number>; upd: (k: number, p: any) => void; numbers: boolean }) {
+/** Runs of the subtitle dividers (ADR 0081): neighbouring assigned files whose release tracks share a disc and a
+ *  subtitle. `ovr` holds the owner's changes per run start: `text` (typed subtitle), `keep` (Keep mine), `split` (a divider
+ *  added by hand) and `merge` (a divider of the release removed). Skipped files stay with the run above. */
+type Ovr = { text?: string; keep?: boolean; split?: boolean; merge?: boolean }
+type Run = { start: number; key: string; disc: number; relSub: string; inside: boolean; idx: number[]; text: string; keep: boolean; was: string; differs: boolean }
+function subtitleRuns(rel: any, files: any[], ovr: Record<string, Ovr>) {
+	const runs: Run[] = []
+	let cur: Run | null = null, lastSub = ''
+	if (rel) files.forEach((f, i) => {
+		if (f.rel === null) return
+		const t = rel.tracks[f.rel], relSub: string = t.subtitle || '', o = ovr[f.file]
+		const discStart = !cur || t.disc !== cur.disc
+		if (!cur || discStart || ((relSub !== lastSub || o?.split) && !o?.merge)) {
+			cur = { start: i, key: f.file, disc: t.disc, relSub, inside: !discStart, idx: [], text: '', keep: false, was: '', differs: false }
+			runs.push(cur)
+		}
+		cur.idx.push(i); lastSub = relSub
+	})
+	const subOf: Record<string, string | null> = {}
+	for (const r of runs) {
+		const o = ovr[r.key], was = [...new Set(r.idx.map(i => files[i].subtitle as string).filter(Boolean))]
+		r.text = o?.text ?? r.relSub
+		r.differs = was.some(x => x !== r.relSub)
+		r.keep = o?.keep ?? r.differs
+		r.was = was.join(' · ')
+		for (const i of r.idx) subOf[files[i].file] = r.keep ? null : r.text.trim() || null
+	}
+	return { runs, subOf, multi: new Set(runs.map(r => r.disc)).size > 1 }
+}
+
+/** The file -> release track table of both dialogs (ADR 0013, 0078, 0081). */
+function AssignTable({ rel, files, used, upd, numbers, ovr, setOvr }: { rel: any; files: any[]; used: Record<number, number>; upd: (k: number, p: any) => void; numbers: boolean; ovr: Record<string, Ovr>; setOvr: (o: Record<string, Ovr>) => void }) {
+	const { runs, multi } = subtitleRuns(rel, files, ovr)
+	const [editing, setEditing] = useState<string | null>(null)
+	const runAt = (k: number) => runs.find(r => r.start === k)
+	const setO = (key: string, o: Ovr | null) => { const n = { ...ovr }; o ? (n[key] = o) : delete n[key]; setOvr(n) }
+	const lastAssigned = (k: number) => files.slice(0, k).some(f => f.rel !== null)
 	return (
 		<table className="w-full text-sm">
 			<thead><tr className="text-left text-xs text-slate-500"><th>File and title</th><th className="w-16">Disc</th><th className="w-16">Track</th><th>Release track</th><th /></tr></thead>
 			<tbody>
-				{files.map((f, k) => (
-					<tr key={f.file} className="border-t">
+				{files.map((f, k) => {
+					const run = runAt(k), o = run ? ovr[run.key] : undefined
+					const bar = run && (run.inside || multi || run.relSub || o?.text)
+					return (
+					<Fragment key={f.file}>
+					{bar && run && (
+						<SubtitleDivider cols={5} disc={!run.inside && multi ? String(run.disc) : undefined} inside={run.inside} subtitle={run.text} count={run.idx.length} was={run.was} differs={run.differs} keep={run.keep} disabled={!numbers}
+							onKeep={keep => setO(run.key, { ...o, keep })}
+							editing={editing === run.key} onEdit={() => setEditing(run.key)}
+							onSet={t => { setEditing(null); if (!t.trim() && o?.split && !o.text) setO(run.key, null); else setO(run.key, { ...o, text: t.trim(), keep: false }) }}
+							onCancel={() => { setEditing(null); if (o?.split && !o.text) setO(run.key, null) }}
+							onRemove={run.inside ? () => (o?.split ? setO(run.key, null) : setO(run.key, { ...o, merge: true })) : undefined} />
+					)}
+					{numbers && f.rel !== null && !run && lastAssigned(k) && <DividerGap cols={5} onAdd={() => { setO(f.file, { split: true, text: '' }); setEditing(f.file) }} />}
+					<tr className="border-t">
 						<td className="w-1/2 py-1">
 							<div className="mb-0.5 truncate text-xs text-slate-400" title={f.file}>File: {f.file} · {mmss(f.duration)}</div>
 							{numbers && f.rel !== null ? (
@@ -93,27 +142,31 @@ function AssignTable({ rel, files, used, upd, numbers }: { rel: any; files: any[
 						</td>
 						<td className="w-16 text-right">{f.rel === null ? <Badge variant="secondary">skip</Badge> : f.conf >= 0.6 ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">match</Badge> : <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">check</Badge>}</td>
 					</tr>
-				))}
+					</Fragment>
+					)
+				})}
 			</tbody>
 		</table>
 	)
 }
 
-/** "Import song titles": whether the release's titles and numbering replace the files'; remembered from the last apply. */
-function TitlesBox({ on, set, rel }: { on: boolean; set: (v: boolean) => void; rel: any }) {
+/** "Import song titles": whether the release's titles and numbering replace the files'; remembered from the last apply.
+ *  The checkbox sits in the release line (top right), the explanation below the table. */
+function TitlesCheck({ on, set }: { on: boolean; set: (v: boolean) => void }) {
+	return <label className="flex shrink-0 items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={on} onChange={e => set(e.target.checked)} />Import song titles</label>
+}
+function TitlesHint({ on }: { on: boolean }) {
 	return (
 		<div className="mt-3 text-sm">
-			<label className="flex items-center gap-2"><input type="checkbox" className="size-4" checked={on} onChange={e => set(e.target.checked)} />Import song titles</label>
-			<p className="mt-1 text-xs text-slate-500">Off: only the album data is imported (release IDs, CATALOGNUMBER, year and country); the files keep their TITLE, ARTIST, TRACKNUMBER, DISCNUMBER and DISCSUBTITLE.<br />On: the files also get the release's TITLE, ARTIST, TRACKNUMBER, DISCNUMBER and DISCSUBTITLE.</p>
-			{on && <p className="mt-1 text-xs text-slate-500">Blue fields: data from the release that will be written (editable). Grey text: what the file has now.</p>}
-			{rel.discs?.length > 0 && <p className={`mt-1 text-xs ${on ? 'text-slate-700' : 'text-slate-400'}`}>Disc subtitles of the release: {rel.discs.map((d: any) => `${d.disc}: ${d.title}`).join(' · ')}</p>}
+			<p className="text-xs text-slate-500">Off: only the album data is imported (release IDs, CATALOGNUMBER, year and country); the files keep their TITLE, ARTIST, TRACKNUMBER, DISCNUMBER and DISCSUBTITLE.<br />On: the files also get the release's TITLE, ARTIST, TRACKNUMBER, DISCNUMBER and DISCSUBTITLE.</p>
+			{on && <p className="mt-1 text-xs text-slate-500">Blue fields: data from the release that will be written (editable). Grey text: what the file has now. “Keep mine” writes no subtitle for that part.</p>}
 		</div>
 	)
 }
 
 export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: () => void; done: (path: string) => void }) {
 	const [q, setQ] = useState(''), [rows, setRows] = useState<any[] | null>(null), [sort, setSort] = useState<Sort>({ key: '', dir: 1 })
-	const [rel, setRel] = useState<any>(null), [rid, setRid] = useState(''), [files, setFiles] = useState<any[]>([]), [busy, setBusy] = useState(false), [applying, setApplying] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState(''), [titles, setTitles] = useState(true)
+	const [rel, setRel] = useState<any>(null), [rid, setRid] = useState(''), [files, setFiles] = useState<any[]>([]), [busy, setBusy] = useState(false), [applying, setApplying] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState(''), [titles, setTitles] = useState(true), [ovr, setOvr] = useState<Record<string, Ovr>>({})
 	const token = useRef<object>({})
 	useEffect(() => {
 		if (!a) return
@@ -125,7 +178,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 		setBusy(true); setWhat('Loading the release from Discogs…'); setErr('')
 		try {
 			const d = await post('/api/tracks/propose', { path: a!.path, release_id: id })
-			setRid(id); setRel(d.release); setFiles(d.files); setTitles(d.import_titles)
+			setRid(id); setRel(d.release); setFiles(d.files); setTitles(d.import_titles); setOvr({})
 		} catch (e: any) { setErr(e.message) }
 		setBusy(false)
 	}
@@ -149,11 +202,12 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 		await Promise.all([next(), next(), next()])
 	}
 	const { used, dup, n } = numbering(rel, files)
+	const sr = subtitleRuns(rel, files, ovr)
 	const upd = (k: number, p: any) => setFiles(files.map((f, i) => (i === k ? { ...f, ...p } : f)))
 	const apply = async () => {
 		setBusy(true); setApplying(true); setWhat('Assigning the tracks…')
 		try {
-			await post('/api/tracks/apply', { path: a.path, release_id: rid, import_titles: titles, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at, title: f.nt })) })
+			await post('/api/tracks/apply', { path: a.path, release_id: rid, import_titles: titles, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at, title: f.nt, subtitle: sr.subOf[f.file] ?? null })) })
 			toast.success('Tracks assigned'); setBusy(false); setApplying(false); onClose(); done(a.path)
 		} catch (e: any) { setErr(e.message); setBusy(false); setApplying(false) }
 	}
@@ -170,9 +224,9 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>
 				{rel ? (
 					<>
-						<div className="mb-3 text-sm"><span className="font-medium">{rel.artist} - {rel.title}</span> <span className="text-slate-500">{rel.year} · {rel.tracks.length} tracks on release · {files.length} files</span></div>
-						<AssignTable rel={rel} files={files} used={used} upd={upd} numbers={titles} />
-						<TitlesBox on={titles} set={setTitles} rel={rel} />
+						<div className="mb-3 flex items-center gap-3 text-sm"><div className="min-w-0 flex-1"><span className="font-medium">{rel.artist} - {rel.title}</span> <span className="text-slate-500">{rel.year} · {rel.tracks.length} tracks on release · {files.length} files</span></div><TitlesCheck on={titles} set={setTitles} /></div>
+						<AssignTable rel={rel} files={files} used={used} upd={upd} numbers={titles} ovr={ovr} setOvr={setOvr} />
+						<TitlesHint on={titles} />
 						<div className="mt-3 text-xs text-slate-500">Always written from Discogs: DISCOGS_RELEASE_ID, ALBUMARTIST, ALBUM, CATALOGNUMBER, ALBUM_FORMAT (each unless its _OVERRIDE tag is set), COMPOSER, PRODUCER, ENGINEER, the other credit tags and the DISCOGS_* tags.<br />Written only where a file has none: a cover, and ARTIST while “Import song titles” is off.</div>
 						<div className="mt-1 text-xs text-slate-500">Not in this album: {rel.tracks.filter((t: any) => !used[t.i] && !t.part_of && !rel.tracks.some((p: any) => p.part_of === t.title && used[p.i])).map((t: any) => t.title).join(', ') || 'none'}</div>
 					</>
@@ -197,7 +251,7 @@ const L = ({ kind, id, text }: { kind: string; id: string; text: string }) => <a
 
 export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () => void; done: (path: string) => void }) {
 	const [q, setQ] = useState(''), [rows, setRows] = useState<any[] | null>(null), [sort, setSort] = useState<Sort>({ key: '', dir: 1 })
-	const [rel, setRel] = useState<any>(null), [busy, setBusy] = useState(false), [applying, setApplying] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState(''), [files, setFiles] = useState<any[]>([]), [titles, setTitles] = useState(false)
+	const [rel, setRel] = useState<any>(null), [busy, setBusy] = useState(false), [applying, setApplying] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState(''), [files, setFiles] = useState<any[]>([]), [titles, setTitles] = useState(false), [ovr, setOvr] = useState<Record<string, Ovr>>({})
 	useEffect(() => {
 		if (!a) return
 		setRows(null); setRel(null); setErr(''); setBusy(false); setWhat(''); setQ([a.artist, a.album].filter(Boolean).join(' '))
@@ -208,7 +262,7 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 		setBusy(true); setWhat('Loading the release from MusicBrainz…'); setErr('')
 		try {
 			const d = await post('/api/tracks/propose', { path: a!.path, release_id: id, source: 'musicbrainz' })
-			setRel(d.release); setFiles(d.files); setTitles(d.import_titles)
+			setRel(d.release); setFiles(d.files); setTitles(d.import_titles); setOvr({})
 		} catch (e: any) { setErr(e.message) }
 		setBusy(false)
 	}
@@ -221,10 +275,11 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 	}
 	const apply = async () => {
 		setBusy(true); setApplying(true); setWhat('Writing the MusicBrainz tags…')
-		try { await post('/api/musicbrainz/apply', { path: a.path, id: rel.id, import_titles: titles, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at, title: f.nt })) }); toast.success('MusicBrainz release applied'); setBusy(false); setApplying(false); onClose(); done(a.path) }
+		try { await post('/api/musicbrainz/apply', { path: a.path, id: rel.id, import_titles: titles, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at, title: f.nt, subtitle: sr.subOf[f.file] ?? null })) }); toast.success('MusicBrainz release applied'); setBusy(false); setApplying(false); onClose(); done(a.path) }
 		catch (e: any) { setErr(e.message); setBusy(false); setApplying(false) }
 	}
 	const { used, dup, n } = numbering(rel, files)
+	const sr = subtitleRuns(rel, files, ovr)
 	const upd = (k: number, p: any) => setFiles(files.map((f, i) => (i === k ? { ...f, ...p } : f)))
 	const commas = (xs: any[]) => xs.map((x, i) => <span key={x.id}>{i ? ', ' : ''}<L kind="artist" id={x.id} text={x.name} /></span>)
 	return (
@@ -239,14 +294,14 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>
 				{rel ? (
 					<>
-						<div className="mb-3 text-sm"><span className="font-medium">{rel.artist} - {rel.name}</span> <span className="text-slate-500">{[rel.year, rel.country, rel.format, rel.label, rel.catno].filter(Boolean).join(' · ')} · {rel.tracks.length} tracks on release · {files.length} files</span></div>
+						<div className="mb-3 flex items-center gap-3 text-sm"><div className="min-w-0 flex-1"><span className="font-medium">{rel.artist} - {rel.name}</span> <span className="text-slate-500">{[rel.year, rel.country, rel.format, rel.label, rel.catno].filter(Boolean).join(' · ')} · {rel.tracks.length} tracks on release · {files.length} files</span></div><TitlesCheck on={titles} set={setTitles} /></div>
 						<table className="mb-3 w-full text-sm"><tbody>
 							<tr className="border-b"><td className="w-40 py-1 text-slate-500">Release</td><td className="font-mono text-xs"><L kind="release" id={rel.id} text={rel.id} /></td></tr>
 							<tr className="border-b"><td className="py-1 text-slate-500">Release group (master)</td><td>{rel.group.id ? <><L kind="release-group" id={rel.group.id} text={rel.group.title || rel.group.id} /> <span className="text-xs text-slate-500">{[rel.group.type, rel.group.first].filter(Boolean).join(' · ')}</span></> : <span className="text-slate-500">none</span>}</td></tr>
 							<tr><td className="py-1 text-slate-500">Album artist</td><td>{rel.artists.length ? commas(rel.artists) : <span className="text-slate-500">none</span>}</td></tr>
 						</tbody></table>
-						<AssignTable rel={rel} files={files} used={used} upd={upd} numbers={titles} />
-						<TitlesBox on={titles} set={setTitles} rel={rel} />
+						<AssignTable rel={rel} files={files} used={used} upd={upd} numbers={titles} ovr={ovr} setOvr={setOvr} />
+						<TitlesHint on={titles} />
 						<div className="mt-3 text-xs text-slate-500">Apply writes MUSICBRAINZ_ALBUMID, the release group and album artist IDs and links to every file, and MUSICBRAINZ_ARTISTID and its link to each assigned file. With “Import song titles” on, assigned files also get the release's TITLE, ARTIST, TRACKNUMBER, DISCNUMBER and DISCSUBTITLE and are renamed. BARCODE, ASIN, MUSICBRAINZ_ALBUM_RELEASECOUNTRY, MUSICBRAINZ_ALBUMSTATUS, MUSICBRAINZ_ALBUMTYPE and MUSICBRAINZ_ALBUM_DISAMBIGUATION are filled only where the file has none yet.</div>
 					</>
 				) : rows && <Results rows={rows} sort={sort} setSort={setSort} pick={pick} />}

@@ -9,9 +9,15 @@ import { Input } from '@/components/ui/input'
  *  `disc` shows the "Disc N" chip (multi-disc albums); `inside` (a change of subtitle within a disc) indents it and
  *  `onRemove` adds the x.
  *  `editing` / `onEdit` / `onCancel` let the list own the edit state, so "+ divider here" can open an empty one. */
-export function SubtitleDivider({ disc, inside, subtitle, count, editing, onEdit, onSet, onCancel, onRemove, placeholder = 'No subtitle', cols }: {
+export function SubtitleDivider({ disc, inside, subtitle, count, editing, onEdit, onSet, onCancel, onRemove, placeholder = 'No subtitle', cols, keep, onKeep, was, differs, disabled }: {
 	disc?: string
 	inside?: boolean
+	/** import dialogs: `keep` = "Keep mine" (nothing is written for the run), `was` = what the files have now */
+	keep?: boolean
+	onKeep?: (keep: boolean) => void
+	was?: string
+	differs?: boolean
+	disabled?: boolean
 	subtitle: string
 	count: number
 	editing: boolean
@@ -28,7 +34,7 @@ export function SubtitleDivider({ disc, inside, subtitle, count, editing, onEdit
 	return (
 		<tr>
 			<td colSpan={cols} className="p-0 pt-2">
-				<div className={`flex min-h-9 items-center gap-2 border-y border-sky-200 bg-sky-50 px-2 py-1 ${inside ? 'ml-4 border-l-4 border-l-sky-300' : ''}`}>
+				<div className={`flex min-h-9 items-center gap-2 border-y px-2 py-1 ${keep || disabled ? 'border-slate-200 bg-slate-100' : 'border-sky-200 bg-sky-50'} ${disabled ? 'opacity-60' : ''} ${inside ? `ml-4 border-l-4 ${keep || disabled ? 'border-l-slate-300' : 'border-l-sky-300'}` : ''}`}>
 					{disc && <span className="shrink-0 rounded-full bg-sky-900 px-2.5 py-0.5 text-[11px] font-medium text-white">Disc {disc}</span>}
 					{editing ? (
 						<form className="flex flex-1 items-center gap-1.5" onSubmit={e => { e.preventDefault(); onSet(text) }}>
@@ -38,10 +44,22 @@ export function SubtitleDivider({ disc, inside, subtitle, count, editing, onEdit
 						</form>
 					) : (
 						<>
-							<span className={`min-w-0 flex-1 truncate text-sm ${subtitle ? 'text-sky-950' : 'italic text-slate-400'}`} title={subtitle}>{subtitle || placeholder}</span>
+							<div className="min-w-0 flex-1">
+								<div className="flex items-center gap-2">
+									<span className={`min-w-0 truncate text-sm ${keep ? 'text-slate-400' : subtitle ? 'text-sky-950' : 'italic text-slate-400'}`} title={subtitle}>{subtitle || placeholder}</span>
+									{differs && !disabled && <span className="shrink-0 rounded-full bg-yellow-100 px-2 text-[11px] text-yellow-800">differs from your subtitles</span>}
+								</div>
+								{was !== undefined && <div className="truncate text-[11px] text-slate-400" title={was}>Was: {was || '(none)'}</div>}
+							</div>
+							{onKeep && !disabled && (
+								<div className="flex shrink-0 overflow-hidden rounded-full border border-slate-300 text-[11px]" role="group" aria-label="Which subtitle is written">
+									<button type="button" aria-pressed={!keep} onClick={() => onKeep(false)} className={`px-2.5 py-0.5 ${!keep ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-white'}`}>Release</button>
+									<button type="button" aria-pressed={!!keep} onClick={() => onKeep(true)} className={`px-2.5 py-0.5 ${keep ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-white'}`}>Keep mine</button>
+								</div>
+							)}
 							<span className="shrink-0 text-xs text-slate-500">{count} {count === 1 ? 'file' : 'files'}</span>
-							<button type="button" className="shrink-0 rounded-full p-1 text-slate-600 hover:bg-white" title="Edit the subtitle" aria-label="Edit the subtitle" onClick={onEdit}><Pencil className="size-3" /></button>
-							{onRemove && <button type="button" className="shrink-0 rounded-full p-1 text-slate-400 hover:bg-white hover:text-slate-700" title="Remove this divider" aria-label="Remove this divider" onClick={onRemove}><X className="size-3" /></button>}
+							{!disabled && <button type="button" className="shrink-0 rounded-full p-1 text-slate-600 hover:bg-white" title="Edit the subtitle" aria-label="Edit the subtitle" onClick={onEdit}><Pencil className="size-3" /></button>}
+							{onRemove && !disabled && <button type="button" className="shrink-0 rounded-full p-1 text-slate-400 hover:bg-white hover:text-slate-700" title="Remove this divider" aria-label="Remove this divider" onClick={onRemove}><X className="size-3" /></button>}
 						</>
 					)}
 				</div>

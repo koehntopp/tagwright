@@ -167,22 +167,58 @@ def test_the_propose_endpoint_serves_musicbrainz_and_the_saved_flag(
 	assert [f['rel'] for f in d['files']] == [0, 1]  # matched by disc and track number
 
 
-def test_disc_subtitles_are_written_with_the_box_on_only(
+def test_subtitles_are_written_with_the_box_on_only_and_keep_mine_skips_them(
 	client: TestClient, album: Path, mb: None
 ) -> None:
-	MB['discs'] = [{'disc': 1, 'title': 'Reckless 40th'}]
+	for t in MB['tracks']:
+		t['subtitle'] = 'Reckless 40th'
 	try:
 		mb_apply(client, album)
 		assert 'SET SUBTITLE' not in FLAC(sorted(album.glob('*.flac'))[0])
-		mb_apply(client, album, import_titles=True)
+		files = [f.name for f in tagwright.flacs(album)]
+		r = client.post(
+			'/api/musicbrainz/apply',
+			json={
+				'path': str(album),
+				'id': MB_ID,
+				'import_titles': True,
+				'assignments': [
+					{'file': files[0], 'rel': 0},  # no key: the release track's own subtitle
+					{'file': files[1], 'rel': 1, 'subtitle': None},  # Keep mine
+				],
+			},
+		)
+		assert r.status_code == 200, r.text
 	finally:
-		del MB['discs']
-	tags = FLAC(sorted(album.glob('*.flac'))[0])
-	assert tags['SET SUBTITLE'] == ['Reckless 40th']
-	assert tags['DISCSUBTITLE'] == ['Reckless 40th']
+		for t in MB['tracks']:
+			t.pop('subtitle', None)
+	first, second = (FLAC(f) for f in sorted(album.glob('*.flac')))
+	assert first['SET SUBTITLE'] == ['Reckless 40th'] and first['DISCSUBTITLE'] == ['Reckless 40th']
+	assert 'SET SUBTITLE' not in second
 
 
-def test_discogs_disc_subtitles_come_from_the_heading_before_a_disc(
+def test_a_subtitle_typed_in_the_dialog_is_written_per_file(
+	client: TestClient, album: Path, mb: None
+) -> None:
+	files = [f.name for f in tagwright.flacs(album)]
+	r = client.post(
+		'/api/musicbrainz/apply',
+		json={
+			'path': str(album),
+			'id': MB_ID,
+			'import_titles': True,
+			'assignments': [
+				{'file': files[0], 'rel': 0, 'subtitle': 'Main set'},
+				{'file': files[1], 'rel': 1, 'subtitle': ' Encore '},
+			],
+		},
+	)
+	assert r.status_code == 200, r.text
+	got = [FLAC(f)['SET SUBTITLE'][0] for f in sorted(album.glob('*.flac'))]
+	assert got == ['Main set', 'Encore']
+
+
+def test_discogs_subtitles_start_at_every_heading_and_end_with_a_disc(
 	monkeypatch: pytest.MonkeyPatch,
 ) -> None:
 	raw = {
@@ -192,19 +228,30 @@ def test_discogs_disc_subtitles_come_from_the_heading_before_a_disc(
 		'tracklist': [
 			{'type_': 'heading', 'title': 'Reckless 40th Anniversary'},
 			{'type_': 'track', 'position': 'CD1-1', 'title': 'One'},
-			{'type_': 'heading', 'title': 'Bonus'},  # inside a disc: ignored
 			{'type_': 'track', 'position': 'CD1-2', 'title': 'Two'},
+			{'type_': 'heading', 'title': 'Encore'},  # inside a disc: a new run
+			{'type_': 'track', 'position': 'CD1-3', 'title': 'Three'},
 			{'type_': 'heading', 'title': 'CD2 - 18 Til I Die'},
-			{'type_': 'track', 'position': 'CD2-1', 'title': 'Three'},
-			{'type_': 'heading', 'title': 'CD3'},  # only the label: no subtitle
-			{'type_': 'track', 'position': 'CD3-1', 'title': 'Four'},
+			{'type_': 'track', 'position': 'CD2-1', 'title': 'Four'},
+			{
+				'type_': 'track',
+				'position': 'CD3-1',
+				'title': 'Five',
+			},  # a new disc without a heading
+			{'type_': 'heading', 'title': 'CD4'},  # only the label: no subtitle
+			{'type_': 'track', 'position': 'CD4-1', 'title': 'Six'},
 		],
 	}
 	monkeypatch.setattr(tagwright, 'discogs', lambda path, **kw: raw)
 	tagwright.releases.pop('6', None)
-	assert tagwright.release_tracks('6')['discs'] == [
-		{'disc': 1, 'title': 'Reckless 40th Anniversary'},
-		{'disc': 2, 'title': '18 Til I Die'},
+	got = [(t['title'], t['subtitle']) for t in tagwright.release_tracks('6')['tracks']]
+	assert got == [
+		('One', 'Reckless 40th Anniversary'),
+		('Two', 'Reckless 40th Anniversary'),
+		('Three', 'Encore'),
+		('Four', '18 Til I Die'),
+		('Five', ''),
+		('Six', ''),
 	]
 
 
