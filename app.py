@@ -1783,6 +1783,11 @@ def tracks_propose(body: dict) -> dict:
 	}
 
 
+def assignment_titles(asg: list[dict]) -> dict[str, str]:
+	"""The titles the owner typed in the dialog (file -> title); a file without one gets the release's title."""
+	return {a['file']: t.strip() for a in asg if isinstance(t := a.get('title'), str) and t.strip()}
+
+
 def number_assignments(
 	rel: dict, assignments: list[dict]
 ) -> tuple[
@@ -1831,6 +1836,7 @@ def tracks_apply(body: dict) -> dict:
 	rel = release_tracks(str(body.get('release_id', '')).strip())
 	with_titles = remember_import_titles('discogs', body)
 	asg, chosen, final, per_disc, picked = number_assignments(rel, body.get('assignments', []))
+	titles = assignment_titles(asg)
 	log = []
 	filled: dict[str, int] = {}
 
@@ -1923,14 +1929,18 @@ def tracks_apply(body: dict) -> dict:
 		if t['position']:
 			a['TRACK_NUMBER_TEXT'] = [t['position']]
 		if with_titles:
-			a['TITLE'] = [t['title']]
+			a['TITLE'] = [titles.get(fn) or t['title']]
 			a['TRACKNUMBER'] = [str(n)]
 			a['DISCNUMBER'] = [str(d)]
 			a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]
 			a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(per_disc))]
 			set_disc_subtitle(a, rel, t['disc'])
 		a.save()
-		log.append(f'{fn}: {d}-{n:02d} {t["title"]}' if with_titles else f'{fn}: album data only')
+		log.append(
+			f'{fn}: {d}-{n:02d} {titles.get(fn) or t["title"]}'
+			if with_titles
+			else f'{fn}: album data only'
+		)
 	if cover:
 		embed_cover(album, cover, only_missing=True)
 		filled['cover'] = 1
@@ -2270,8 +2280,10 @@ def musicbrainz_apply(body: dict) -> dict:
 	chosen: dict[str, int] = {}
 	final: dict[str, tuple[int, int]] = {}
 	per_disc: dict[int, int] = {}
+	titles: dict[str, str] = {}
 	if assigned:
-		_, chosen, final, per_disc, _ = number_assignments(rel, body['assignments'])
+		asg, chosen, final, per_disc, _ = number_assignments(rel, body['assignments'])
+		titles = assignment_titles(asg)
 	group, mb = rel['group'], 'https://musicbrainz.org'
 	by_title: dict[str, list[dict]] = {}
 	for t in rel['tracks']:
@@ -2317,7 +2329,7 @@ def musicbrainz_apply(body: dict) -> dict:
 			match = by_title.get(norm_title(tag(a.tags, 'TITLE')), [])
 		if assigned and match and with_titles:
 			d, n = final[fn]
-			a['TITLE'] = [match[0]['title']]
+			a['TITLE'] = [titles.get(fn) or match[0]['title']]
 			set_disc_subtitle(a, rel, match[0]['disc'])
 			a['TRACKNUMBER'] = [str(n)]
 			a['DISCNUMBER'] = [str(d)]

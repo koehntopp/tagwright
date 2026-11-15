@@ -16,6 +16,14 @@ Japanese releases often carry kanji in the titles Discogs gives; MusicBrainz usu
 4. **Not touched**: the Discogs-owned per-track tags (`DISCOGS_RELEASE_ORDINAL_POSITION`, `TRACK_NUMBER_TEXT`) are not rewritten by a MusicBrainz assignment; they describe the Discogs release and the next Discogs assignment replaces them. A MusicBrainz apply does not run the Discogs tags step.
 5. Use case UC-11 of 0002 now includes assigning the album's files to the release's tracks.
 
+## Both dialogs look and work the same
+
+The Discogs and the MusicBrainz dialog **must stay consistent**: they use one shared table component and one checkbox component (`AssignTable`, `TitlesBox` in `ui/components/releases.tsx`), and a change to how assignment, titles, numbers or the checkbox look or behave is made once for both. Specifically:
+
+- With "Import song titles" **on**, each assigned file shows an **editable title field** under its release track choice, filled with the release's title, so a title can be corrected during the import. Under it, in small light grey text, `Was: <the file's current title>` with a copy button. The typed title is sent as `title` in the assignment and written instead of the release's title (a blank field means the release's title).
+- Whatever the apply will **not change** is shown light grey: with the box off the disc and track fields (and the disc subtitles line) are grey and disabled, and the title fields are not shown.
+- Hints under the table name tags in capitals.
+
 ## Consequences
 
 - With "Import song titles" on, a MusicBrainz apply can replace Discogs titles and, through the rename, file names; renumbering and renaming follow the chosen release's track order.

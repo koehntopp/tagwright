@@ -7,6 +7,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 ### Added
 
 - The MusicBrainz dialog assigns the album's files to the release's tracks, like the Discogs dialog, and renumbers and renames them [0078].
+- With "Import song titles" on, the Discogs and MusicBrainz dialogs show an editable title for every file (so you can correct it during the import) and the old title below it with a copy button; what will not change is shown in light grey [0078].
 - An **"Import song titles"** checkbox in the Discogs and MusicBrainz dialogs: off imports only the album data (release IDs, catalogue number, year and country) and keeps the files' titles, track and disc numbers and disc subtitles; on also writes the release's title, track number, disc number and disc subtitle (the heading before a disc on Discogs, the disc title on MusicBrainz), which the dialog shows [0078]. It is remembered; default on for Discogs, off for MusicBrainz [0078].
 
 ### Changed

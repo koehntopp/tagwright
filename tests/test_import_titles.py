@@ -229,3 +229,23 @@ def test_an_album_artist_override_is_not_replaced(
 		x.save()
 	apply(client, album)
 	assert {FLAC(f)['ALBUMARTIST'][0] for f in album.glob('*.flac')} == {'Mine'}
+
+
+def test_a_title_typed_in_the_dialog_wins_over_the_release_title(
+	client: TestClient, album: Path, mb: None
+) -> None:
+	files = [f.name for f in tagwright.flacs(album)]
+	r = client.post(
+		'/api/musicbrainz/apply',
+		json={
+			'path': str(album),
+			'id': MB_ID,
+			'import_titles': True,
+			'assignments': [
+				{'file': files[0], 'rel': 0, 'title': '  Uno (fixed) '},
+				{'file': files[1], 'rel': 1, 'title': ''},
+			],
+		},
+	)
+	assert r.status_code == 200, r.text
+	assert sorted(titles(album)) == ['Dos', 'Uno (fixed)']
