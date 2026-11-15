@@ -38,10 +38,10 @@ export const CopyBtn = ({ text, title = 'Copy' }: { text: string; title?: string
 )
 
 const LY = {
-	lrc: ['LRC', 'bg-emerald-500 text-white'],
-	txt: ['TXT', 'bg-amber-400 text-amber-950'],
-	instr: ['Instrumental', 'bg-sky-100 text-sky-800'],
-	none: ['No lyrics', 'bg-rose-100 text-rose-700'],
+	lrc: ['LRC', 'bg-emerald-500 text-white', 'Synced lyrics (LRC)'],
+	txt: ['TXT', 'bg-amber-400 text-amber-950', 'Plain text lyrics, not synced'],
+	instr: ['INS', 'bg-sky-100 text-sky-800', 'Instrumental'],
+	none: ['---', 'bg-rose-100 text-rose-700', 'No lyrics'],
 } as const
 
 const Pill = ({ className = '', ...p }: React.ComponentProps<'span'>) => (
@@ -312,7 +312,7 @@ export function Inspector(p: Props) {
 				<CollapsibleContent className="px-4 pb-3">
 					<ul className="max-h-80 overflow-y-auto">
 						{a.files.map(f => {
-							const [lt, lc] = LY[f.lyrics] || LY.none
+							const [lt, lc, lh] = LY[f.lyrics] || LY.none
 							return (
 								<li key={f.file} className={`flex items-center gap-2 border-b border-l-4 border-b-slate-200 py-1.5 pl-1 text-[13px] last:border-b-0 ${p.playing === a.path + '|' + f.file ? 'border-l-yellow-400 bg-yellow-50' : 'border-l-transparent'}`}>
 									<button className="shrink-0 rounded-full p-1 hover:bg-white" title="Play" onClick={() => p.play(f)}>
@@ -325,8 +325,9 @@ export function Inspector(p: Props) {
 									{stepSel !== null && (f.checks[stepSel]
 										? <span className={`font-semibold ${f.lyrics === 'txt' && a.steps[stepSel].name === 'Lyrics' ? 'text-amber-500' : 'text-emerald-600'}`}>✓</span>
 										: <span className="font-semibold text-rose-600">✗</span>)}
+									{f.format && <Pill title={f.format.includes('/') ? 'Sample rate in kHz / bit depth' : 'Sample rate in kHz'} className="w-[4.5rem] shrink-0 border border-slate-200 bg-white tabular-nums text-slate-700">{f.format}</Pill>}
 									<Pill className={`w-12 shrink-0 ${f.dr ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-500'}`}>{f.dr ? 'DR' + f.dr : 'DR —'}</Pill>
-									<Pill className={`w-24 shrink-0 ${lc}`}>{lt}</Pill>
+									<Pill title={lh} className={`w-10 shrink-0 ${lc}`}>{lt}</Pill>
 									<button className="shrink-0 rounded-full p-1 hover:bg-white" title="Edit lyrics" onClick={() => p.openLyrics(f.file)}><Pencil className="size-3" /></button>
 								</li>
 							)

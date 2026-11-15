@@ -186,17 +186,29 @@ def track_dr_mean(tags: list[Tags]) -> str:
 	return str(round(sum(vals) / len(vals))).zfill(2) if vals else ''
 
 
+def rate_bits(info: object) -> str:
+	"""Sample rate in kHz and bit depth as short as possible: `44.1/16`, `192/24`; the rate alone when the format has
+	no bit depth (MP3) (ADR 0015)."""
+	rate = getattr(info, 'sample_rate', 0)
+	bits = getattr(info, 'bits_per_sample', 0)
+	if not rate:
+		return ''
+	khz = f'{rate / 1000:g}'
+	return f'{khz}/{bits}' if bits else khz
+
+
 def track_files(
 	album: Path,
 	files: list[Path],
 	tags: list[Tags],
 	lengths: list[float],
 	channels: list[int],
+	formats: list[str],
 	has_discogs: bool,
 ) -> list[dict]:
 	"""Per-track rows; checks[i] answers pipeline step i (same order as steps in summarize)."""
 	out = []
-	for f, t, length, ch in zip(files, tags, lengths, channels, strict=False):
+	for f, t, length, ch, fmt in zip(files, tags, lengths, channels, formats, strict=False):
 		kind = lyric_kind(t)
 		tags_ok = (
 			has_discogs
@@ -209,6 +221,7 @@ def track_files(
 				'name': f.name,
 				'length': round(length),
 				'channels': ch,
+				'format': fmt,
 				'file': str(f.relative_to(album)),
 				'disc': tag(t, 'DISCNUMBER'),
 				'track': tag(t, 'TRACKNUMBER'),
@@ -396,6 +409,7 @@ def summarize(album: Path) -> dict:
 			tags,
 			[a.info.length for a in audio],
 			[a.info.channels for a in audio],
+			[rate_bits(a.info) for a in audio],
 			bool(did),
 		),
 		lyrics={'synced': syn, 'plain': pla, 'instrumental': ins, 'missing': mis},
@@ -547,7 +561,7 @@ cache: dict[str, tuple[str, dict]] = {}
 
 
 SUMMARY_VERSION = (
-	2  # bump it when summarize() returns something else: stored summaries are then read again
+	3  # bump it when summarize() returns something else: stored summaries are then read again
 )
 summaries = SummaryStore(DATA / 'summaries.db')
 

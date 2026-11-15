@@ -7,6 +7,7 @@ export type TrackFile = {
 	track: string
 	disc: string
 	length: number
+	format: string
 	dr: string
 	lyrics: 'lrc' | 'txt' | 'instr' | 'none'
 	checks: boolean[]
