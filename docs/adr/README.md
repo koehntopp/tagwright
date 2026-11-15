@@ -64,6 +64,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0074](0074-maximum-cover-size-setting.md) | The maximum cover size is a setting (default 1500) | Accepted |
 | [0075](0075-fingerprints-with-fpscan.md) | Fingerprints with fpscan instead of fpcalc | Accepted |
 | [0076](0076-staging-album-is-the-top-level-folder.md) | In the staging folder, a top-level folder is one album | Accepted |
+| [0077](0077-library-as-csv-for-other-programs.md) | The library as CSV for other programs (`/api/library/albums.csv`) | Accepted |
 | [0078](0078-musicbrainz-track-assignment-and-import-song-titles.md) | MusicBrainz track assignment and the "Import song titles" checkbox in both dialogs | Accepted |
 
 ## History: superseded ADRs
