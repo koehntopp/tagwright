@@ -66,7 +66,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0076](0076-staging-album-is-the-top-level-folder.md) | In the staging folder, a top-level folder is one album | Accepted |
 | [0077](0077-library-as-csv-for-other-programs.md) | The library as CSV for other programs (`/api/library/albums.csv`) | Accepted |
 | [0078](0078-musicbrainz-track-assignment-and-import-song-titles.md) | MusicBrainz track assignment and the "Import song titles" checkbox in both dialogs | Accepted |
-| [0079](0079-discogs-assignment-sets-the-album-artist.md) | The Discogs assignment sets ALBUMARTIST (replaces a different value) | Accepted |
+| [0079](0079-discogs-assignment-sets-the-album-artist.md) | ALBUMARTIST is a Discogs tag (assignment and Run fixes); the override is the exception | Accepted |
 
 ## History: superseded ADRs
 

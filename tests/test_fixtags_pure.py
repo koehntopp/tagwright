@@ -215,10 +215,20 @@ class TestPlanTags:
 		assert p.tags['ALBUM'] == ['My Title']
 		assert p.tags['ORIGINAL_TITLE'] == ['Master Title']  # the Discogs title stays
 
-	def test_artist_override_is_written_only_when_set(self) -> None:
-		assert 'ALBUMARTIST' not in plan({}).tags
+	def test_album_artist_is_the_override_else_the_release_artists(self) -> None:
+		with_artists = {
+			**RELEASE,
+			'artists': [{'name': 'Simon', 'join': '&'}, {'name': 'Garfunkel (2)'}],
+		}
+		assert 'ALBUMARTIST' not in plan({}).tags  # Discogs names no artist: left alone
 		assert 'ALBUMARTIST' not in plan({'ALBUM_ARTIST_OVERRIDE': ['  ']}).tags
 		assert plan({'ALBUM_ARTIST_OVERRIDE': [' New Name ']}).tags['ALBUMARTIST'] == ['New Name']
+		assert plan({'ALBUMARTIST': ['Simon and Garfunkel']}, with_artists).tags['ALBUMARTIST'] == [
+			'Simon & Garfunkel'
+		]
+		assert plan({'ALBUM_ARTIST_OVERRIDE': ['Mine']}, with_artists).tags['ALBUMARTIST'] == [
+			'Mine'
+		]
 
 	@pytest.mark.parametrize(
 		('release_year', 'master_year', 'date', 'original'),

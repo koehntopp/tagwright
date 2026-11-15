@@ -455,3 +455,26 @@ def test_an_unwritable_file_is_skipped_with_a_warning(
 		assert 'Skipping unreadable or unwritable file' in caplog.text
 	finally:
 		files[1].chmod(0o644)
+
+
+def test_run_fixes_sets_album_artist_from_discogs_unless_overridden(
+	make_flac: MakeFlac, cfg: Config, tmp_path: Path
+) -> None:
+	answers = {
+		**ANSWERS,
+		'/releases/123': {
+			**RELEASE,
+			'artists': [{'name': 'Simon', 'join': '&'}, {'name': 'Garfunkel'}],
+		},
+	}
+	files = album_of(make_flac, tmp_path / 'a', ALBUMARTIST='Simon and Garfunkel')
+	fixtags.fix_album(tmp_path / 'a', cfg, get=FakeGet(answers))
+	assert all(tags_of(f)['ALBUMARTIST'] == ['Simon & Garfunkel'] for f in files)
+	files = album_of(
+		make_flac,
+		tmp_path / 'b',
+		ALBUMARTIST='Mine',
+		ALBUM_ARTIST_OVERRIDE='Mine',
+	)
+	fixtags.fix_album(tmp_path / 'b', cfg, get=FakeGet(answers))
+	assert all(tags_of(f)['ALBUMARTIST'] == ['Mine'] for f in files)

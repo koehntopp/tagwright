@@ -15,7 +15,8 @@ Tags written uniformly to every file:
 	ALBUM_MAX_RESOLUTION, and when they have a value ALBUM_RELEASE_YEAR, ALBUM_EDITION, ALBUM_DR,
 	ALBUM_RELEASE_COUNTRY, ALBUM_RELEASE_LABEL, ALBUM_COMPANY_*, ALBUM_CREDIT_*, ALBUM_IDENT_*,
 	ALBUM_RELEASE_* (see `discogs_extra_tags`)
-	ALBUMARTIST                            only with ALBUM_ARTIST_OVERRIDE (a manual correction), else untouched
+	ALBUMARTIST                            ALBUM_ARTIST_OVERRIDE, else the release artists (ADR 0079); left alone when Discogs
+	                                       names no artist
 
 Per track: DISCSUBTITLE from the track's own SET SUBTITLE, LYRICS_LANGUAGE from MusicBrainz. Tags that no
 longer have a value on Discogs are removed; the legacy WORK and PART grouping tags are removed.
@@ -77,6 +78,16 @@ def tag_key(prefix: str, text: str) -> str:
 def clean_name(name: str) -> str:
 	"""Drop Discogs' ' (2)' artist disambiguation suffix."""
 	return re.sub(r'\s*\(\d+\)$', '', name.strip())
+
+
+def artist_names(artists: list[dict]) -> str:
+	"""The release artists as Discogs shows them: ' (2)' suffixes dropped, join words ('&', ',') kept."""
+	out = ''
+	for a in artists:
+		out += clean_name(a.get('name', ''))
+		j = a.get('join', '').strip()
+		out += (', ' if j == ',' else f' {j} ') if j else ''
+	return out.strip()
 
 
 def discogs_extra_tags(data: dict) -> dict[str, list[str]]:
@@ -215,8 +226,10 @@ def plan_tags(
 	"""The album-level tags from the first file's tags (upper-cased keys) and the Discogs data."""
 	release_title = release['title'].strip()
 	album_name = first_value(first_tags, 'ALBUM_TITLE_OVERRIDE') or master_title
-	# ALBUM_ARTIST_OVERRIDE only ever corrects a wrong ALBUMARTIST manually; absent, ALBUMARTIST is left alone.
-	artist_override = first_value(first_tags, 'ALBUM_ARTIST_OVERRIDE').strip()
+	# ALBUMARTIST is a Discogs tag (ADR 0079): the release artists, unless the owner set ALBUM_ARTIST_OVERRIDE.
+	album_artist = first_value(first_tags, 'ALBUM_ARTIST_OVERRIDE').strip() or artist_names(
+		release.get('artists') or []
+	)
 
 	# Tool-written tags are never read back as input: the release year comes only from the Discogs release.
 	release_year = int(release.get('year') or 0)
@@ -256,8 +269,8 @@ def plan_tags(
 		tags['ALBUM_EDITION'] = [edition]
 	if dr_rating:
 		tags['ALBUM_DR'] = [dr_rating]
-	if artist_override:
-		tags['ALBUMARTIST'] = [artist_override]
+	if album_artist:
+		tags['ALBUMARTIST'] = [album_artist]
 
 	country = (release.get('country') or '').strip()
 	if country:

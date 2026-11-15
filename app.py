@@ -48,7 +48,7 @@ from pipeline import discogs as discogs_api
 from pipeline import musicbrainz as mb_api
 from pipeline.audio import Audio, Cover, is_audio, new_cover, open_audio
 from pipeline.config import Config
-from pipeline.fixtags import DISCOGS_TAG_PREFIXES, fix_album
+from pipeline.fixtags import DISCOGS_TAG_PREFIXES, artist_names, fix_album
 from pipeline.http import ApiError
 from pipeline.layout import album_dirs, flacs, is_disc_dir
 from pipeline.naming import bliss_album, rename_files
@@ -1380,16 +1380,6 @@ def discogs_image(url: str) -> bytes:
 		return discogs_api.image(url)
 	except ApiError as e:
 		raise HTTPException(e.status, e.message) from e
-
-
-def artist_names(artists: list[dict]) -> str:
-	"""'Name (2)' disambiguation suffixes dropped; Discogs join words ('&', ',') kept."""
-	out = ''
-	for a in artists:
-		out += re.sub(r'\s*\(\d+\)$', '', a.get('name', ''))
-		j = a.get('join', '').strip()
-		out += (', ' if j == ',' else f' {j} ') if j else ''
-	return out.strip()
 
 
 def seconds(d: str) -> int:

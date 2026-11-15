@@ -11,7 +11,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
-- Assigning a Discogs release now sets the album artist from Discogs, replacing a different spelling in the files (for example "Simon and Garfunkel" becomes "Simon & Garfunkel"); an Album Artist Override is kept [0079].
+- The album artist now comes from Discogs: assigning a release and Run fixes both write it, replacing a different spelling in the files (for example "Simon and Garfunkel" becomes "Simon & Garfunkel"), so the library groups an artist's albums in one folder. An Album Artist Override is kept [0079].
 
 ### Fixed
 
