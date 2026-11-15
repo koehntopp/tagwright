@@ -20,6 +20,19 @@ def test_bliss_name_pads_disc_and_track() -> None:
 	assert naming.bliss_name(t) == '01_03_Hello_World.flac'
 
 
+def test_bliss_name_fits_255_bytes_with_a_long_title() -> None:
+	name = naming.bliss_name({'TITLE': ['Word ' * 80], 'TRACKNUMBER': ['3'], 'DISCNUMBER': ['1']})
+	assert name is not None
+	assert len(name.encode()) <= 255
+	assert name.startswith('01_03_Word_Word_')
+	assert name.endswith('Word.flac')
+
+
+def test_bliss_name_is_unchanged_below_the_limit() -> None:
+	t = {'TITLE': ['Short One'], 'TRACKNUMBER': ['3'], 'DISCNUMBER': ['1']}
+	assert naming.bliss_name(t) == '01_03_Short_One.flac'
+
+
 @pytest.mark.parametrize('missing', ['TITLE', 'TRACKNUMBER', 'DISCNUMBER'])
 def test_bliss_name_is_none_while_a_tag_is_empty(missing: str) -> None:
 	t = {'TITLE': ['x'], 'TRACKNUMBER': ['1'], 'DISCNUMBER': ['1']}

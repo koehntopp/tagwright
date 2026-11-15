@@ -15,6 +15,8 @@ from pipeline.audio import open_audio
 from pipeline.layout import flacs
 from pipeline.tagio import Tags, tag
 
+NAME_MAX: int = 255  # bytes in one file name on common filesystems
+
 
 def clean(text: str) -> str:
 	return sanitize_filename(slugify(text, lowercase=False, separator='_'))
@@ -25,7 +27,10 @@ def bliss_name(t: Tags) -> str | None:
 	title, number, disc = tag(t, 'TITLE'), tag(t, 'TRACKNUMBER'), tag(t, 'DISCNUMBER')
 	if not title or not number or not disc:
 		return None
-	return f'{disc.split("/")[0].zfill(2)}_{number.split("/")[0].zfill(2)}_{clean(title)}.flac'
+	head = f'{disc.split("/")[0].zfill(2)}_{number.split("/")[0].zfill(2)}_'
+	room = NAME_MAX - len(head.encode()) - len('.flac')  # the longest extension rename_files keeps
+	body = clean(title).encode()[:room].decode(errors='ignore').rstrip('_ .')
+	return f'{head}{body}.flac'
 
 
 def bliss_album(t: Tags) -> str:
