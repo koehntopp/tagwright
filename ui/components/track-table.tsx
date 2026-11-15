@@ -1,17 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { GripVertical, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ChannelBadge } from '@/components/inspector'
+import { DividerGap, SubtitleDivider } from '@/components/subtitle-divider'
 
 export type Row = { channels?: number; file: string; title: string; artist: string; disc: string; track: string; subtitle: string }
-const COLS: [keyof Row, string, string][] = [['disc', 'Disc', 'w-14'], ['track', 'Track', 'w-14'], ['title', 'Title', 'min-w-40'], ['artist', 'Artist', 'min-w-32'], ['subtitle', 'Disc subtitle', 'min-w-28']]
-const SETTABLE: [keyof Row, string][] = [['disc', 'Disc'], ['subtitle', 'Disc subtitle'], ['artist', 'Artist'], ['track', 'Track']]
+const COLS: [keyof Row, string, string][] = [['disc', 'Disc', 'w-14'], ['track', 'Track', 'w-14'], ['title', 'Title', 'min-w-40'], ['artist', 'Artist', 'min-w-32']]
+const SETTABLE: [keyof Row, string][] = [['disc', 'Disc'], ['artist', 'Artist'], ['track', 'Track']]
+const COLS_N = 8 // grip, box, the COLS, channels, pen
 
 // Track list of the tag editor: shift-click selects a range, bulk set and renumber act on the selection,
-// dragging a row (or the selection) reorders; the disc and track numbers stay with the positions ([ADR 0014]).
+// dragging a row (or the selection) reorders; the disc and track numbers and the subtitle stay with the positions
+// ([ADR 0014], [ADR 0081]: the disc subtitles are dividers between the rows).
 export function TrackTable({ rows, setRows, openLyrics }: { rows: Row[]; setRows: (r: Row[]) => void; openLyrics: (file: string) => void }) {
 	const [sel, setSel] = useState<Set<string>>(new Set())
 	const [anchor, setAnchor] = useState<number | null>(null)
@@ -20,6 +23,7 @@ export function TrackTable({ rows, setRows, openLyrics }: { rows: Row[]; setRows
 	const [start, setStart] = useState('1')
 	const [drag, setDrag] = useState<string | null>(null)
 	const [over, setOver] = useState<number | null>(null)
+	const [editing, setEditing] = useState<{ file: string; add: boolean } | null>(null)
 	const chosen = rows.filter(r => sel.has(r.file))
 
 	const click = (e: React.MouseEvent, i: number) => {
@@ -49,9 +53,14 @@ export function TrackTable({ rows, setRows, openLyrics }: { rows: Row[]; setRows
 		const rest = rows.filter(r => !moving.has(r.file)), moved = rows.filter(r => moving.has(r.file))
 		const pos = target ? rest.indexOf(target) : rest.length
 		const order = [...rest.slice(0, pos), ...moved, ...rest.slice(pos)]
-		setRows(order.map((r, i) => ({ ...r, disc: rows[i].disc, track: rows[i].track })))
+		setRows(order.map((r, i) => ({ ...r, disc: rows[i].disc, track: rows[i].track, subtitle: rows[i].subtitle })))
 	}
 	const all = rows.length > 0 && sel.size === rows.length
+	// a run: neighbouring rows with the same disc and subtitle; a divider starts every run that begins a disc or a subtitle
+	const multi = new Set(rows.map(r => r.disc)).size > 1
+	const same = (a: Row, b: Row) => a.disc === b.disc && (a.subtitle ?? '') === (b.subtitle ?? '')
+	const runEnd = (i: number) => { let j = i; while (j + 1 < rows.length && same(rows[j + 1], rows[i])) j++; return j }
+	const setRun = (i: number, text: string, to = runEnd(i)) => setRows(rows.map((r, k) => (k >= i && k <= to ? { ...r, subtitle: text.trim() } : r)))
 
 	return (
 		<div>
@@ -82,9 +91,23 @@ export function TrackTable({ rows, setRows, openLyrics }: { rows: Row[]; setRows
 					</tr>
 				</thead>
 				<tbody onDragLeave={() => setOver(null)}>
-					{rows.map((r, i) => (
+					{rows.map((r, i) => {
+						const discStart = i === 0 || r.disc !== rows[i - 1].disc
+						const change = !discStart && (r.subtitle ?? '') !== (rows[i - 1].subtitle ?? '')
+						const adding = editing?.add && editing.file === r.file
+						const end = runEnd(i)
+						return (
+						<Fragment key={r.file}>
+						{(change || (discStart && (multi || r.subtitle))) && (
+							<SubtitleDivider cols={COLS_N} disc={discStart && multi ? r.disc : undefined} inside={change} subtitle={r.subtitle ?? ''} count={end - i + 1}
+								editing={editing?.file === r.file && !editing.add} onEdit={() => setEditing({ file: r.file, add: false })}
+								onSet={t => { setRun(i, t); setEditing(null) }} onCancel={() => setEditing(null)}
+								onRemove={change ? () => setRun(i, rows[i - 1].subtitle ?? '') : undefined} />
+						)}
+						{!discStart && !change && (adding
+							? <SubtitleDivider cols={COLS_N} inside subtitle="" count={end - i + 1} editing onEdit={() => {}} onSet={t => { if (t.trim()) setRun(i, t); setEditing(null) }} onCancel={() => setEditing(null)} />
+							: <DividerGap cols={COLS_N} onAdd={() => setEditing({ file: r.file, add: true })} />)}
 						<tr
-							key={r.file}
 							className={`${sel.has(r.file) ? 'bg-sky-50' : ''} ${drag && sel.has(r.file) && sel.size > 1 && sel.has(drag) ? 'opacity-60' : r.file === drag ? 'opacity-40' : ''} ${over === i ? 'shadow-[0_-2px_0_0_#1e293b]' : ''}`}
 							onDragOver={e => { if (drag) { e.preventDefault(); setOver(i) } }}
 							onDrop={e => { e.preventDefault(); move(i); setDrag(null); setOver(null) }}
@@ -97,7 +120,9 @@ export function TrackTable({ rows, setRows, openLyrics }: { rows: Row[]; setRows
 							<td className="pr-2"><ChannelBadge n={r.channels} /></td>
 							<td><button className="rounded-full p-1 hover:bg-slate-100" title="Edit lyrics" onClick={() => openLyrics(r.file)}><Pencil className="size-3" /></button></td>
 						</tr>
-					))}
+						</Fragment>
+						)
+					})}
 					<tr onDragOver={e => { if (drag) { e.preventDefault(); setOver(rows.length) } }} onDrop={e => { e.preventDefault(); move(rows.length); setDrag(null); setOver(null) }} className={over === rows.length ? 'shadow-[0_-2px_0_0_#1e293b]' : ''}><td colSpan={8} className="h-4" /></tr>
 				</tbody>
 			</table>

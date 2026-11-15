@@ -68,6 +68,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0078](0078-musicbrainz-track-assignment-and-import-song-titles.md) | MusicBrainz track assignment and the "Import song titles" checkbox in both dialogs | Accepted |
 | [0079](0079-discogs-assignment-sets-the-album-artist.md) | ALBUMARTIST is a Discogs tag (assignment and Run fixes); the override is the exception | Accepted |
 | [0080](0080-discogs-leads-album-level-tags.md) | Discogs leads CATALOGNUMBER, ALBUM_FORMAT and the credits (overrides keep manual values); ARTIST goes with the title | Accepted |
+| [0081](0081-subtitle-dividers-in-track-lists.md) | Disc subtitles are dividers in the track lists (Tag Editor first, then the import dialogs) | Accepted |
 
 ## History: superseded ADRs
 

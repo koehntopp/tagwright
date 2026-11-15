@@ -6,6 +6,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Added
 
+- The Tag Editor's Tracks tab shows the disc subtitles as dividers between the tracks instead of a column: a band per disc on albums with several discs (with a pen to set the subtitle), and a band wherever the subtitle changes inside a disc. "+ divider here" between two tracks adds a subtitle, the x removes one, and a track dragged across a divider takes that subtitle [0081].
+
 - The track list shows each track's sample rate and bit depth (`44.1/16`, `192/24`; an MP3 shows the rate alone), and its lyrics badge is shorter: `LRC`, `TXT`, `INS` for instrumental and `---` for none, with the full text as hover text [0015].
 
 - The MusicBrainz dialog assigns the album's files to the release's tracks, like the Discogs dialog, and renumbers and renames them [0078].
