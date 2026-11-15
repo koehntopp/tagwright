@@ -37,14 +37,14 @@ export const CopyBtn = ({ text, title = 'Copy' }: { text: string; title?: string
 	</button>
 )
 
-const LY = {
+export const LY = {
 	lrc: ['LRC', 'bg-emerald-500 text-white', 'Synced lyrics (LRC)'],
 	txt: ['TXT', 'bg-amber-400 text-amber-950', 'Plain text lyrics, not synced'],
 	instr: ['INS', 'bg-sky-100 text-sky-800', 'Instrumental'],
 	none: ['---', 'bg-rose-100 text-rose-700', 'No lyrics'],
 } as const
 
-const Pill = ({ className = '', ...p }: React.ComponentProps<'span'>) => (
+export const Pill = ({ className = '', ...p }: React.ComponentProps<'span'>) => (
 	<span {...p} className={`inline-flex h-5 items-center justify-center rounded-full px-2 text-[11px] font-medium ${className}`} />
 )
 

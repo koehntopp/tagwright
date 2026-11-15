@@ -4,13 +4,14 @@ import { Fragment, useState } from 'react'
 import { GripVertical, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ChannelBadge } from '@/components/inspector'
+import { ChannelBadge, LY, Pill } from '@/components/inspector'
+import { mmss } from '@/lib/api'
 import { DividerGap, SubtitleDivider } from '@/components/subtitle-divider'
 
-export type Row = { channels?: number; file: string; title: string; artist: string; disc: string; track: string; subtitle: string }
+export type Row = { channels?: number; length?: number; format?: string; lyrics?: keyof typeof LY; file: string; title: string; artist: string; disc: string; track: string; subtitle: string }
 const COLS: [keyof Row, string, string][] = [['disc', 'Disc', 'w-14'], ['track', 'Track', 'w-14'], ['title', 'Title', 'min-w-40'], ['artist', 'Artist', 'min-w-32']]
 const SETTABLE: [keyof Row, string][] = [['disc', 'Disc'], ['artist', 'Artist'], ['track', 'Track']]
-const COLS_N = 8 // grip, box, the COLS, channels, pen
+const COLS_N = 11 // grip, box, the COLS, time, rate/bits, channels, lyrics, pen
 
 // Track list of the tag editor: shift-click selects a range, bulk set and renumber act on the selection,
 // dragging a row (or the selection) reorders; the disc and track numbers and the subtitle stay with the positions
@@ -86,7 +87,10 @@ export function TrackTable({ rows, setRows, openLyrics }: { rows: Row[]; setRows
 						<th className="w-6" />
 						<th className="w-6 pb-1"><input type="checkbox" className="accent-slate-800" checked={all} onChange={() => setSel(all ? new Set() : new Set(rows.map(r => r.file)))} title="Select all" /></th>
 						{COLS.map(c => <th key={c[0]} className="pb-1 font-medium">{c[1]}</th>)}
+						<th className="pb-1 pr-2 text-right font-medium">Time</th>
+						<th className="pb-1 pr-2 font-medium">Rate/bits</th>
 						<th className="pb-1 font-medium">Channels</th>
+						<th className="pb-1 font-medium">Lyrics</th>
 						<th />
 					</tr>
 				</thead>
@@ -117,13 +121,16 @@ export function TrackTable({ rows, setRows, openLyrics }: { rows: Row[]; setRows
 							{COLS.map(([k, , w]) => (
 								<td key={k} className="pb-1 pr-2"><Input className={`h-7 text-xs ${w}`} value={r[k] ?? ''} onChange={e => edit(r.file, k, e.target.value)} /></td>
 							))}
+							<td className="pr-2 text-right text-xs tabular-nums text-slate-500">{mmss(r.length ?? 0)}</td>
+							<td className="pr-2">{r.format && <Pill title={r.format.includes('/') ? 'Sample rate in kHz / bit depth' : 'Sample rate in kHz'} className="w-[4.5rem] border border-slate-200 bg-white tabular-nums text-slate-700">{r.format}</Pill>}</td>
 							<td className="pr-2"><ChannelBadge n={r.channels} /></td>
+							<td className="pr-1">{(([lt, lc, lh]) => <Pill title={lh} className={`w-10 ${lc}`}>{lt}</Pill>)(LY[r.lyrics ?? 'none'] || LY.none)}</td>
 							<td><button className="rounded-full p-1 hover:bg-slate-100" title="Edit lyrics" onClick={() => openLyrics(r.file)}><Pencil className="size-3" /></button></td>
 						</tr>
 						</Fragment>
 						)
 					})}
-					<tr onDragOver={e => { if (drag) { e.preventDefault(); setOver(rows.length) } }} onDrop={e => { e.preventDefault(); move(rows.length); setDrag(null); setOver(null) }} className={over === rows.length ? 'shadow-[0_-2px_0_0_#1e293b]' : ''}><td colSpan={8} className="h-4" /></tr>
+					<tr onDragOver={e => { if (drag) { e.preventDefault(); setOver(rows.length) } }} onDrop={e => { e.preventDefault(); move(rows.length); setDrag(null); setOver(null) }} className={over === rows.length ? 'shadow-[0_-2px_0_0_#1e293b]' : ''}><td colSpan={COLS_N} className="h-4" /></tr>
 				</tbody>
 			</table>
 		</div>

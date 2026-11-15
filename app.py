@@ -2552,6 +2552,9 @@ def get_tags(path: str) -> dict:
 			{
 				'file': str(f.relative_to(album)),
 				'channels': audio.info.channels,
+				'length': round(audio.info.length),
+				'format': rate_bits(audio.info),
+				'lyrics': lyric_kind(t),
 				'title': tag(t, 'TITLE'),
 				'artist': tag(t, 'ARTIST'),
 				'disc': tag(t, 'DISCNUMBER'),

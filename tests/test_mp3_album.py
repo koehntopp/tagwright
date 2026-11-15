@@ -95,6 +95,12 @@ def test_the_tag_editor_and_the_player_work_on_mp3(client: TestClient, make_mp3:
 	r = client.get('/api/tags', params={'path': str(folder)}).json()
 	assert r['album_format'] == 'CD' and r['tracks'][0]['title'] == 'One'
 	assert 'REPLAYGAIN_ALBUM_GAIN' in {o['key'] for o in r['other']}
+	first = r['tracks'][0]
+	assert (
+		first['format'] == '44.1'
+		and first['length'] >= 0
+		and first['lyrics'] in {'lrc', 'txt', 'instr', 'none'}
+	)
 	r = client.post(
 		'/api/tags',
 		json={
