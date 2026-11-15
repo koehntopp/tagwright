@@ -1693,6 +1693,24 @@ def discogs_tracks(id: str) -> dict:
 	return {'count': len(release_tracks(id.strip())['tracks'])}
 
 
+def import_titles(source: str) -> bool:
+	"""Whether an assignment from `source` ('discogs' or 'musicbrainz') writes the release's titles (ADR 0078)."""
+	return bool(settings.get(f'import_titles_{source}', source == 'discogs'))
+
+
+def remember_import_titles(source: str, body: dict) -> bool:
+	"""The checkbox of the request, saved for the next time; without one the saved value."""
+	if 'import_titles' not in body:
+		return import_titles(source)
+	on = bool(body['import_titles'])
+	if on != import_titles(source):
+		settings[f'import_titles_{source}'] = on
+		DATA.mkdir(parents=True, exist_ok=True)
+		SETTINGS_FILE.write_text(json.dumps(settings, indent=2))
+		SETTINGS_FILE.chmod(0o600)
+	return on
+
+
 def norm_title(s: str) -> str:
 	return re.sub(
 		r'[^a-z0-9]+',
@@ -1723,7 +1741,9 @@ def album_files(album: Path) -> list[dict]:
 def tracks_propose(body: dict) -> dict:
 	"""Release tracklist, album files and a suggested file -> release track assignment."""
 	album = safe(body.get('path', ''))
-	rel = release_tracks(str(body.get('release_id', '')).strip())
+	source = 'musicbrainz' if body.get('source') == 'musicbrainz' else 'discogs'
+	rid = str(body.get('release_id', '')).strip()
+	rel = mb_release(rid.lower()) if source == 'musicbrainz' else release_tracks(rid)
 	files = album_files(album)
 	pairs = []
 	for f in files:
@@ -1748,22 +1768,20 @@ def tracks_propose(body: dict) -> dict:
 				used.add(i)
 	return {
 		'release': rel,
+		'import_titles': import_titles(source),
 		'files': [{**f, 'rel': assign[f['file']], 'conf': conf.get(f['file'], 0)} for f in files],
 	}
 
 
-@app.post('/api/tracks/apply')
-def tracks_apply(body: dict) -> dict:
-	"""Write release id and per-track tags for the assigned files, refresh the Discogs-owned tags, then rename the files.
-
-	Tracks are renumbered 1..n per disc in release order, so a subset of the release gets no gaps.
-	Files without an assignment are left untouched.
-	"""
-	album = safe(body.get('path', ''))
-	if job['state'] == 'running':
-		raise HTTPException(409, 'a job is running')
-	rel = release_tracks(str(body.get('release_id', '')).strip())
-	asg = [a for a in body.get('assignments', []) if a.get('rel') is not None]
+def number_assignments(
+	rel: dict, assignments: list[dict]
+) -> tuple[
+	list[dict], dict[str, int], dict[str, tuple[int, int]], dict[int, int], list[tuple[str, int]]
+]:
+	"""Disc and track numbers for assigned files (ADR 0013, 0078): 1..n per disc in release order, the UI may override
+	disc and track per file. Returns the assignments, file -> release track, file -> (disc, track), tracks per disc and
+	the (file, release track) pairs in release order."""
+	asg = [a for a in assignments if a.get('rel') is not None]
 	chosen = {a['file']: a['rel'] for a in asg}
 	if len({*chosen.values()}) != len(chosen):
 		raise HTTPException(400, 'a release track is assigned twice')
@@ -1787,6 +1805,22 @@ def tracks_apply(body: dict) -> dict:
 	per_disc: dict[int, int] = {}
 	for d, _ in final.values():
 		per_disc[d] = per_disc.get(d, 0) + 1
+	return asg, chosen, final, per_disc, picked
+
+
+@app.post('/api/tracks/apply')
+def tracks_apply(body: dict) -> dict:
+	"""Write release id and per-track tags for the assigned files, refresh the Discogs-owned tags, then rename the files.
+
+	Tracks are renumbered 1..n per disc in release order, so a subset of the release gets no gaps.
+	Files without an assignment are left untouched.
+	"""
+	album = safe(body.get('path', ''))
+	if job['state'] == 'running':
+		raise HTTPException(409, 'a job is running')
+	rel = release_tracks(str(body.get('release_id', '')).strip())
+	with_titles = remember_import_titles('discogs', body)
+	asg, chosen, final, per_disc, picked = number_assignments(rel, body.get('assignments', []))
 	log = []
 	filled: dict[str, int] = {}
 
@@ -1876,13 +1910,14 @@ def tracks_apply(body: dict) -> dict:
 		a['DISCOGS_RELEASE_ORDINAL_POSITION'] = [str(t['i'])]
 		if t['position']:
 			a['TRACK_NUMBER_TEXT'] = [t['position']]
-		a['TITLE'] = [t['title']]
+		if with_titles:
+			a['TITLE'] = [t['title']]
 		a['TRACKNUMBER'] = [str(n)]
 		a['DISCNUMBER'] = [str(d)]
 		a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]
 		a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(per_disc))]
 		a.save()
-		log.append(f'{fn}: {d}-{n:02d} {t["title"]}')
+		log.append(f'{fn}: {d}-{n:02d} {t["title"] if with_titles else "(title kept)"}')
 	if cover:
 		embed_cover(album, cover, only_missing=True)
 		filled['cover'] = 1
@@ -2111,6 +2146,8 @@ def mb_release(mbid: str) -> dict:
 	tracks = [
 		{
 			'disc': m.get('position', 1),
+			'track': t.get('position', 0),
+			'part_of': '',
 			'position': t.get('number', ''),
 			'title': t.get('title', ''),
 			'channels': channels_from_title(t.get('title', '')),
@@ -2121,6 +2158,8 @@ def mb_release(mbid: str) -> dict:
 		for m in r.get('media', [])
 		for t in m.get('tracks', [])
 	]
+	for i, t in enumerate(tracks):
+		t['i'] = i
 	types = [t for t in [rg.get('primary-type'), *(rg.get('secondary-types') or [])] if t]
 	out = {
 		**mb_brief(r),
@@ -2152,7 +2191,11 @@ def mb_release(mbid: str) -> dict:
 @app.get('/api/musicbrainz/release')
 def musicbrainz_release(id: str, path: str = '') -> dict:
 	"""The parsed release; with a path also how many files the album has."""
-	return {**mb_release(id), 'files': len(flacs(safe(path))) if path else 0}
+	return {
+		**mb_release(id),
+		'files': len(flacs(safe(path))) if path else 0,
+		'import_titles': import_titles('musicbrainz'),
+	}
 
 
 @app.get('/api/musicbrainz/check')
@@ -2204,6 +2247,13 @@ def musicbrainz_apply(body: dict) -> dict:
 		raise HTTPException(409, 'a job is running')
 	album = safe(body.get('path', ''))
 	rel = mb_release(str(body.get('id', '')).strip().lower())
+	assigned = isinstance(body.get('assignments'), list)
+	with_titles = remember_import_titles('musicbrainz', body)
+	chosen: dict[str, int] = {}
+	final: dict[str, tuple[int, int]] = {}
+	per_disc: dict[int, int] = {}
+	if assigned:
+		_, chosen, final, per_disc, _ = number_assignments(rel, body['assignments'])
 	group, mb = rel['group'], 'https://musicbrainz.org'
 	by_title: dict[str, list[dict]] = {}
 	for t in rel['tracks']:
@@ -2228,7 +2278,7 @@ def musicbrainz_apply(body: dict) -> dict:
 		'MUSICBRAINZ_ALBUM_DISAMBIGUATION': rel['disambiguation'],
 	}
 	filled: dict[str, int] = {}
-	log, per_file = [], 0
+	log, per_file, renumbered = [], 0, 0
 	for f in flacs(album):
 		a = open_audio(f)
 		if a.tags is None:
@@ -2242,7 +2292,20 @@ def musicbrainz_apply(body: dict) -> dict:
 			if v and not tag(a.tags, k):
 				a[k] = [v]
 				filled[k] = filled.get(k, 0) + 1
-		match = by_title.get(norm_title(tag(a.tags, 'TITLE')), [])
+		fn = str(f.relative_to(album))
+		if assigned:
+			match = [rel['tracks'][chosen[fn]]] if fn in chosen else []
+		else:
+			match = by_title.get(norm_title(tag(a.tags, 'TITLE')), [])
+		if assigned and match:
+			d, n = final[fn]
+			if with_titles:
+				a['TITLE'] = [match[0]['title']]
+			a['TRACKNUMBER'] = [str(n)]
+			a['DISCNUMBER'] = [str(d)]
+			a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]
+			a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(per_disc))]
+			renumbered += 1
 		if len(match) == 1 and match[0]['artists']:
 			for k in [k for k in a.tags.keys() if k.upper() in MB_TRACK_KEYS]:
 				del a.tags[k]
@@ -2258,6 +2321,12 @@ def musicbrainz_apply(body: dict) -> dict:
 			'filled from MusicBrainz (only where empty): '
 			+ ', '.join(f'{k} x{v}' for k, v in filled.items())
 		)
+	if assigned:
+		log.append(
+			f'{renumbered} files assigned to release tracks, '
+			+ ('titles written' if with_titles else 'titles kept')
+		)
+		log += rename_album_files(album)
 	logging.getLogger('app').info(
 		'MusicBrainz release %s applied to %s', body.get('id', ''), album.name
 	)

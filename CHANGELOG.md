@@ -4,6 +4,11 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+### Added
+
+- The MusicBrainz dialog assigns the album's files to the release's tracks, like the Discogs dialog, and renumbers and renames them [0078].
+- An **Import song titles** checkbox in the Discogs and MusicBrainz dialogs: off keeps the titles in the files. It is remembered; default on for Discogs, off for MusicBrainz [0078].
+
 ### Fixed
 
 - A dialog no longer keeps showing "a job is running" after the job has finished.

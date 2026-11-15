@@ -49,9 +49,53 @@ const Busy = ({ text }: { text: string }) => (
 	</div>
 )
 
+/** Default numbering (same rule as the server): 1..n per disc in release order; f.d / f.t hold manual overrides.
+ *  Sets f.ad / f.at on the files and returns how often each release track is used. */
+function numbering(rel: any, files: any[]) {
+	const sel = rel ? files.filter(f => f.rel !== null).sort((x, y) => x.rel - y.rel) : []
+	const seen: Record<number, number> = {}
+	const discs = rel ? [...new Set(sel.map(f => rel.tracks[f.rel].disc as number))].sort((x, y) => x - y) : []
+	sel.forEach(f => { const d = rel.tracks[f.rel].disc; seen[d] = (seen[d] || 0) + 1; f.ad = discs.indexOf(d) + 1; f.at = seen[d] })
+	const used: Record<number, number> = {}
+	files.forEach(f => { if (f.rel !== null) used[f.rel] = (used[f.rel] || 0) + 1 })
+	return { used, dup: Object.values(used).some(n => n > 1), n: Object.keys(used).length }
+}
+
+/** The file -> release track table of both dialogs (ADR 0013, 0078). */
+function AssignTable({ rel, files, used, upd }: { rel: any; files: any[]; used: Record<number, number>; upd: (k: number, p: any) => void }) {
+	return (
+		<table className="w-full text-sm">
+			<thead><tr className="text-left text-xs text-slate-500"><th>File</th><th className="w-16">Disc</th><th className="w-16">Track</th><th>Release track</th><th /></tr></thead>
+			<tbody>
+				{files.map((f, k) => (
+					<tr key={f.file} className="border-t">
+						<td className="w-1/2 py-1"><div className="flex items-center gap-2"><span className="max-w-xs truncate" title={f.file}>{f.title}</span><ChannelBadge n={f.channels} /></div><div className="text-xs text-slate-500">{f.file} · {mmss(f.duration)}</div></td>
+						<td>{f.rel !== null && <Input type="number" min={1} className="h-7 w-14 text-xs" value={f.d ?? f.ad} onChange={e => upd(k, { d: e.target.value === '' ? null : +e.target.value })} />}</td>
+						<td>{f.rel !== null && <Input type="number" min={1} className="h-7 w-14 text-xs" value={f.t ?? f.at} onChange={e => upd(k, { t: e.target.value === '' ? null : +e.target.value })} />}</td>
+						<td>
+							<select className={`h-8 w-full rounded-md border bg-white px-2 text-sm ${f.rel !== null && used[f.rel] > 1 ? 'border-rose-500' : ''}`} value={f.rel ?? ''} onChange={e => upd(k, { rel: e.target.value === '' ? null : +e.target.value, conf: 1, d: null, t: null })}>
+								<option value="">Skip (leave as is)</option>
+								{rel.tracks.map((t: any) => <option key={t.i} value={t.i}>{t.part_of ? '\u00a0\u00a0\u21b3' : (t.position || t.i + 1)}  {t.title}{t.duration ? ` (${mmss(t.duration)})` : ''}{t.channels ? ` · ${channelLabel(t.channels)}` : ''}</option>)}
+							</select>
+						</td>
+						<td className="w-16 text-right">{f.rel === null ? <Badge variant="secondary">skip</Badge> : f.conf >= 0.6 ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">match</Badge> : <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">check</Badge>}</td>
+					</tr>
+				))}
+			</tbody>
+		</table>
+	)
+}
+
+/** "Import song titles": whether the release's titles replace the files' titles; remembered from the last apply. */
+function TitlesBox({ on, set }: { on: boolean; set: (v: boolean) => void }) {
+	return (
+		<label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={on} onChange={e => set(e.target.checked)} />Import song titles</label>
+	)
+}
+
 export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: () => void; done: (path: string) => void }) {
 	const [q, setQ] = useState(''), [rows, setRows] = useState<any[] | null>(null), [sort, setSort] = useState<Sort>({ key: '', dir: 1 })
-	const [rel, setRel] = useState<any>(null), [rid, setRid] = useState(''), [files, setFiles] = useState<any[]>([]), [busy, setBusy] = useState(false), [applying, setApplying] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState('')
+	const [rel, setRel] = useState<any>(null), [rid, setRid] = useState(''), [files, setFiles] = useState<any[]>([]), [busy, setBusy] = useState(false), [applying, setApplying] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState(''), [titles, setTitles] = useState(true)
 	const token = useRef<object>({})
 	useEffect(() => {
 		if (!a) return
@@ -63,7 +107,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 		setBusy(true); setWhat('Loading the release from Discogs…'); setErr('')
 		try {
 			const d = await post('/api/tracks/propose', { path: a!.path, release_id: id })
-			setRid(id); setRel(d.release); setFiles(d.files)
+			setRid(id); setRel(d.release); setFiles(d.files); setTitles(d.import_titles)
 		} catch (e: any) { setErr(e.message) }
 		setBusy(false)
 	}
@@ -86,19 +130,12 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 		}
 		await Promise.all([next(), next(), next()])
 	}
-	// default numbering (same rule as the server): 1..n per disc in release order; f.d / f.t hold manual overrides
-	const sel = rel ? files.filter(f => f.rel !== null).sort((x, y) => x.rel - y.rel) : []
-	const seen: Record<number, number> = {}
-	const discs = rel ? [...new Set(sel.map(f => rel.tracks[f.rel].disc as number))].sort((x, y) => x - y) : []
-	sel.forEach(f => { const d = rel.tracks[f.rel].disc; seen[d] = (seen[d] || 0) + 1; f.ad = discs.indexOf(d) + 1; f.at = seen[d] })
-	const used: Record<number, number> = {}
-	files.forEach(f => { if (f.rel !== null) used[f.rel] = (used[f.rel] || 0) + 1 })
-	const dup = Object.values(used).some(n => n > 1), n = Object.keys(used).length
+	const { used, dup, n } = numbering(rel, files)
 	const upd = (k: number, p: any) => setFiles(files.map((f, i) => (i === k ? { ...f, ...p } : f)))
 	const apply = async () => {
 		setBusy(true); setApplying(true); setWhat('Assigning the tracks…')
 		try {
-			await post('/api/tracks/apply', { path: a.path, release_id: rid, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at })) })
+			await post('/api/tracks/apply', { path: a.path, release_id: rid, import_titles: titles, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at })) })
 			toast.success('Tracks assigned'); setBusy(false); setApplying(false); onClose(); done(a.path)
 		} catch (e: any) { setErr(e.message); setBusy(false); setApplying(false) }
 	}
@@ -116,25 +153,8 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 				{rel ? (
 					<>
 						<div className="mb-3 text-sm"><span className="font-medium">{rel.artist} - {rel.title}</span> <span className="text-slate-500">{rel.year} · {rel.tracks.length} tracks on release · {files.length} files</span></div>
-						<table className="w-full text-sm">
-							<thead><tr className="text-left text-xs text-slate-500"><th>File</th><th className="w-16">Disc</th><th className="w-16">Track</th><th>Release track</th><th /></tr></thead>
-							<tbody>
-								{files.map((f, k) => (
-									<tr key={f.file} className="border-t">
-										<td className="w-1/2 py-1"><div className="flex items-center gap-2"><span className="max-w-xs truncate" title={f.file}>{f.title}</span><ChannelBadge n={f.channels} /></div><div className="text-xs text-slate-500">{f.file} · {mmss(f.duration)}</div></td>
-										<td>{f.rel !== null && <Input type="number" min={1} className="h-7 w-14 text-xs" value={f.d ?? f.ad} onChange={e => upd(k, { d: e.target.value === '' ? null : +e.target.value })} />}</td>
-										<td>{f.rel !== null && <Input type="number" min={1} className="h-7 w-14 text-xs" value={f.t ?? f.at} onChange={e => upd(k, { t: e.target.value === '' ? null : +e.target.value })} />}</td>
-										<td>
-											<select className={`h-8 w-full rounded-md border bg-white px-2 text-sm ${f.rel !== null && used[f.rel] > 1 ? 'border-rose-500' : ''}`} value={f.rel ?? ''} onChange={e => upd(k, { rel: e.target.value === '' ? null : +e.target.value, conf: 1, d: null, t: null })}>
-												<option value="">Skip (leave as is)</option>
-												{rel.tracks.map((t: any) => <option key={t.i} value={t.i}>{t.part_of ? '\u00a0\u00a0\u21b3' : (t.position || t.i + 1)}  {t.title}{t.duration ? ` (${mmss(t.duration)})` : ''}{t.channels ? ` · ${channelLabel(t.channels)}` : ''}</option>)}
-											</select>
-										</td>
-										<td className="w-16 text-right">{f.rel === null ? <Badge variant="secondary">skip</Badge> : f.conf >= 0.6 ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">match</Badge> : <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">check</Badge>}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
+						<AssignTable rel={rel} files={files} used={used} upd={upd} />
+						<TitlesBox on={titles} set={setTitles} />
 						<div className="mt-3 text-xs text-slate-500">Also fills what the tagger used to import and the album lacks: artist, album artist, album title, catalog number and a missing cover. Existing values are kept.</div>
 						<div className="mt-1 text-xs text-slate-500">Not in this album: {rel.tracks.filter((t: any) => !used[t.i] && !t.part_of && !rel.tracks.some((p: any) => p.part_of === t.title && used[p.i])).map((t: any) => t.title).join(', ') || 'none'}</div>
 					</>
@@ -159,7 +179,7 @@ const L = ({ kind, id, text }: { kind: string; id: string; text: string }) => <a
 
 export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () => void; done: (path: string) => void }) {
 	const [q, setQ] = useState(''), [rows, setRows] = useState<any[] | null>(null), [sort, setSort] = useState<Sort>({ key: '', dir: 1 })
-	const [rel, setRel] = useState<any>(null), [busy, setBusy] = useState(false), [applying, setApplying] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState('')
+	const [rel, setRel] = useState<any>(null), [busy, setBusy] = useState(false), [applying, setApplying] = useState(false), [what, setWhat] = useState(''), [err, setErr] = useState(''), [files, setFiles] = useState<any[]>([]), [titles, setTitles] = useState(false)
 	useEffect(() => {
 		if (!a) return
 		setRows(null); setRel(null); setErr(''); setBusy(false); setWhat(''); setQ([a.artist, a.album].filter(Boolean).join(' '))
@@ -168,7 +188,10 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 	if (!a) return null
 	async function pick(id: string) {
 		setBusy(true); setWhat('Loading the release from MusicBrainz…'); setErr('')
-		try { setRel(await api(`/api/musicbrainz/release?id=${encodeURIComponent(id)}&path=${encodeURIComponent(a!.path)}`)) } catch (e: any) { setErr(e.message) }
+		try {
+			const d = await post('/api/tracks/propose', { path: a!.path, release_id: id, source: 'musicbrainz' })
+			setRel(d.release); setFiles(d.files); setTitles(d.import_titles)
+		} catch (e: any) { setErr(e.message) }
 		setBusy(false)
 	}
 	async function search(e: React.FormEvent) {
@@ -180,12 +203,14 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 	}
 	const apply = async () => {
 		setBusy(true); setApplying(true); setWhat('Writing the MusicBrainz tags…')
-		try { await post('/api/musicbrainz/apply', { path: a.path, id: rel.id }); toast.success('MusicBrainz release applied'); setBusy(false); setApplying(false); onClose(); done(a.path) }
+		try { await post('/api/musicbrainz/apply', { path: a.path, id: rel.id, import_titles: titles, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at })) }); toast.success('MusicBrainz release applied'); setBusy(false); setApplying(false); onClose(); done(a.path) }
 		catch (e: any) { setErr(e.message); setBusy(false); setApplying(false) }
 	}
+	const { used, dup, n } = numbering(rel, files)
+	const upd = (k: number, p: any) => setFiles(files.map((f, i) => (i === k ? { ...f, ...p } : f)))
 	const commas = (xs: any[]) => xs.map((x, i) => <span key={x.id}>{i ? ', ' : ''}<L kind="artist" id={x.id} text={x.name} /></span>)
 	return (
-		<Shell open onClose={onClose} wide="sm:max-w-[64rem]" title="Choose a MusicBrainz release" err={err} save={apply} saveLabel={applying ? 'Applying…' : 'Save'} saveDisabled={!rel || busy} danger={applying}>
+		<Shell open onClose={onClose} wide="sm:max-w-[64rem]" title="Choose a MusicBrainz release" err={dup ? 'A release track is assigned to more than one file.' : err} save={apply} saveLabel={applying ? 'Applying…' : rel ? `Apply (${n} of ${files.length})` : 'Apply'} saveDisabled={!rel || dup || busy} danger={applying}>
 			<form className="flex gap-2" onSubmit={search}>
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a MusicBrainz release ID" />
 				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search MusicBrainz</Button>
@@ -196,17 +221,15 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>
 				{rel ? (
 					<>
-						<div className="mb-3 text-sm"><span className="font-medium">{rel.artist} - {rel.name}</span> <span className="text-slate-500">{[rel.year, rel.country, rel.format, rel.label, rel.catno].filter(Boolean).join(' · ')} · {rel.tracks.length} tracks on release · {rel.files} files</span></div>
+						<div className="mb-3 text-sm"><span className="font-medium">{rel.artist} - {rel.name}</span> <span className="text-slate-500">{[rel.year, rel.country, rel.format, rel.label, rel.catno].filter(Boolean).join(' · ')} · {rel.tracks.length} tracks on release · {files.length} files</span></div>
 						<table className="mb-3 w-full text-sm"><tbody>
 							<tr className="border-b"><td className="w-40 py-1 text-slate-500">Release</td><td className="font-mono text-xs"><L kind="release" id={rel.id} text={rel.id} /></td></tr>
 							<tr className="border-b"><td className="py-1 text-slate-500">Release group (master)</td><td>{rel.group.id ? <><L kind="release-group" id={rel.group.id} text={rel.group.title || rel.group.id} /> <span className="text-xs text-slate-500">{[rel.group.type, rel.group.first].filter(Boolean).join(' · ')}</span></> : <span className="text-slate-500">none</span>}</td></tr>
 							<tr><td className="py-1 text-slate-500">Album artist</td><td>{rel.artists.length ? commas(rel.artists) : <span className="text-slate-500">none</span>}</td></tr>
 						</tbody></table>
-						<table className="w-full text-sm">
-							<thead><tr className="text-left text-xs text-slate-500"><th className="w-16">Disc</th><th className="w-16">Track</th><th>Title</th><th>Artist</th><th className="w-16 text-right">Length</th><th className="w-16 pl-2">Channels</th></tr></thead>
-							<tbody>{rel.tracks.map((t: any, i: number) => <tr key={i} className="border-t"><td>{t.disc}</td><td>{t.position}</td><td>{t.title}</td><td className="text-slate-700">{commas(t.artists)}</td><td className="text-right text-slate-500">{mmss(t.duration)}</td><td className="pl-2"><ChannelBadge n={t.channels} hint /></td></tr>)}</tbody>
-						</table>
-						<div className="mt-3 text-xs text-slate-500">Apply writes the release ID, the release group and album artist IDs and links to every file, and the artist ID and link to each file whose title matches a release track. Barcode, ASIN, release country, status, type and disambiguation are filled only where the file has none yet. Titles, track numbers and everything else stay as they are.</div>
+						<AssignTable rel={rel} files={files} used={used} upd={upd} />
+						<TitlesBox on={titles} set={setTitles} />
+						<div className="mt-3 text-xs text-slate-500">Apply writes the release ID, the release group and album artist IDs and links to every file, and the artist ID and link to each assigned file. Assigned files get their disc and track numbers and are renamed; their titles are replaced only with Import song titles on. Barcode, ASIN, release country, status, type and disambiguation are filled only where the file has none yet.</div>
 					</>
 				) : rows && <Results rows={rows} sort={sort} setSort={setSort} pick={pick} />}
 			</div>

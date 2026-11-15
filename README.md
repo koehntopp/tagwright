@@ -52,7 +52,7 @@ Tags Tagwright writes are never read back as input, tags owned by Discogs are re
 
 ![Tag editor, Tracks tab](docs/screenshots/tag-editor-tracks.png)
 
-**Discogs** search assigns an album's files to the tracks of a release, which matters when the download holds only a subset of the release. The Discogs-owned tags (album name, version, catalog number, year, ...) are written at once. **MusicBrainz** search picks the matching release and stores its IDs and links, and warns when its year differs from the Discogs release.
+**Discogs** search assigns an album's files to the tracks of a release, which matters when the download holds only a subset of the release. The Discogs-owned tags (album name, version, catalog number, year, ...) are written at once. **MusicBrainz** search picks the matching release, assigns the files to its tracks the same way, stores its IDs and links, and warns when its year differs from the Discogs release. Both dialogs have an *Import song titles* checkbox (remembered; on for Discogs, off for MusicBrainz), so titles you prefer, for example without kanji, stay in the files.
 
 **Lyrics** are edited per track, optionally after searching lrclib.net under another title or artist.
 

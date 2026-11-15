@@ -1,0 +1,144 @@
+"""The "import song titles" checkbox of the Discogs and MusicBrainz dialogs (ADR 0078, 0013, 0023)."""
+
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+from mutagen.flac import FLAC
+
+import app as tagwright
+
+from .test_assign import REL, apply
+
+MB_ID = '11111111-1111-1111-1111-111111111111'
+MB = {
+	'id': MB_ID,
+	'artist': 'Test Artist',
+	'name': 'MB Release',
+	'artists': [{'id': 'a1', 'name': 'Test Artist'}],
+	'group': {'id': '', 'title': '', 'type': '', 'first': ''},
+	'barcode': '',
+	'asin': '',
+	'country': '',
+	'status': '',
+	'types': '',
+	'disambiguation': '',
+	'tracks': [
+		{
+			'i': i,
+			'disc': 1,
+			'track': i + 1,
+			'part_of': '',
+			'position': str(i + 1),
+			'title': title,
+			'duration': 0,
+			'channels': 0,
+			'artist': 'Test Artist',
+			'artists': [{'id': 'a1', 'name': 'Test Artist'}],
+		}
+		for i, title in enumerate(['Uno', 'Dos'])
+	],
+}
+
+
+@pytest.fixture
+def stubbed(monkeypatch: pytest.MonkeyPatch) -> None:
+	monkeypatch.setattr(tagwright, 'release_tracks', lambda rid: REL)
+	monkeypatch.setitem(
+		tagwright.raw_releases, '777', {'id': 777, 'title': 'New Release', 'year': 1987}
+	)
+
+
+@pytest.fixture
+def mb(monkeypatch: pytest.MonkeyPatch) -> None:
+	monkeypatch.setitem(tagwright.mb_releases, MB_ID, MB)
+
+
+def titles(album: Path) -> list[str]:
+	return [FLAC(f)['TITLE'][0] for f in sorted(album.glob('*.flac'))]
+
+
+def mb_apply(client: TestClient, album: Path, **extra: object) -> dict:
+	files = [f.name for f in tagwright.flacs(album)]
+	r = client.post(
+		'/api/musicbrainz/apply',
+		json={
+			'path': str(album),
+			'id': MB_ID,
+			'assignments': [{'file': f, 'rel': i} for i, f in enumerate(files)],
+			**extra,
+		},
+	)
+	assert r.status_code == 200, r.text
+	return r.json()
+
+
+def test_defaults_are_discogs_on_and_musicbrainz_off() -> None:
+	assert tagwright.import_titles('discogs') is True
+	assert tagwright.import_titles('musicbrainz') is False
+
+
+def test_discogs_writes_titles_by_default(client: TestClient, album: Path, stubbed: None) -> None:
+	REL['tracks'][0]['title'] = 'Eins'
+	try:
+		apply(client, album)
+	finally:
+		REL['tracks'][0]['title'] = 'One'
+	assert 'Eins' in titles(album)
+
+
+def test_discogs_keeps_titles_when_the_box_is_off(
+	client: TestClient, album: Path, stubbed: None
+) -> None:
+	REL['tracks'][0]['title'] = 'Eins'
+	try:
+		files = [f.name for f in tagwright.flacs(album)]
+		r = client.post(
+			'/api/tracks/apply',
+			json={
+				'path': str(album),
+				'release_id': '777',
+				'import_titles': False,
+				'assignments': [{'file': f, 'rel': i} for i, f in enumerate(files)],
+			},
+		)
+		assert r.status_code == 200, r.text
+	finally:
+		REL['tracks'][0]['title'] = 'One'
+	assert sorted(titles(album)) == ['One', 'Two']
+	assert tagwright.import_titles('discogs') is False  # remembered
+
+
+def test_musicbrainz_keeps_titles_by_default_and_numbers_the_files(
+	client: TestClient, album: Path, mb: None
+) -> None:
+	out = mb_apply(client, album)
+	assert sorted(titles(album)) == ['One', 'Two']
+	tags = {k.upper(): list(v) for k, v in FLAC(sorted(album.glob('*.flac'))[0]).tags.items()}
+	assert tags['MUSICBRAINZ_ALBUMID'] == [MB_ID]
+	assert tags['MUSICBRAINZ_ARTISTID'] == ['a1']
+	assert tags['TRACKNUMBER'] == ['1']
+	assert any('titles kept' in x for x in out['log'])
+
+
+def test_musicbrainz_writes_titles_when_the_box_is_on_and_remembers_it(
+	client: TestClient, album: Path, mb: None
+) -> None:
+	mb_apply(client, album, import_titles=True)
+	assert sorted(titles(album)) == ['Dos', 'Uno']
+	assert tagwright.import_titles('musicbrainz') is True
+	assert tagwright.import_titles('discogs') is True  # separate flags
+
+
+def test_the_propose_endpoint_serves_musicbrainz_and_the_saved_flag(
+	client: TestClient, album: Path, mb: None
+) -> None:
+	r = client.post(
+		'/api/tracks/propose',
+		json={'path': str(album), 'release_id': MB_ID, 'source': 'musicbrainz'},
+	)
+	assert r.status_code == 200, r.text
+	d = r.json()
+	assert d['import_titles'] is False
+	assert len(d['release']['tracks']) == 2
+	assert [f['rel'] for f in d['files']] == [0, 1]  # matched by disc and track number
