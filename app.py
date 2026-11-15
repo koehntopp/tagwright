@@ -1912,12 +1912,12 @@ def tracks_apply(body: dict) -> dict:
 			a['TRACK_NUMBER_TEXT'] = [t['position']]
 		if with_titles:
 			a['TITLE'] = [t['title']]
-		a['TRACKNUMBER'] = [str(n)]
-		a['DISCNUMBER'] = [str(d)]
-		a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]
-		a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(per_disc))]
+			a['TRACKNUMBER'] = [str(n)]
+			a['DISCNUMBER'] = [str(d)]
+			a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]
+			a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(per_disc))]
 		a.save()
-		log.append(f'{fn}: {d}-{n:02d} {t["title"] if with_titles else "(title kept)"}')
+		log.append(f'{fn}: {d}-{n:02d} {t["title"]}' if with_titles else f'{fn}: album data only')
 	if cover:
 		embed_cover(album, cover, only_missing=True)
 		filled['cover'] = 1
@@ -2297,10 +2297,9 @@ def musicbrainz_apply(body: dict) -> dict:
 			match = [rel['tracks'][chosen[fn]]] if fn in chosen else []
 		else:
 			match = by_title.get(norm_title(tag(a.tags, 'TITLE')), [])
-		if assigned and match:
+		if assigned and match and with_titles:
 			d, n = final[fn]
-			if with_titles:
-				a['TITLE'] = [match[0]['title']]
+			a['TITLE'] = [match[0]['title']]
 			a['TRACKNUMBER'] = [str(n)]
 			a['DISCNUMBER'] = [str(d)]
 			a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]
@@ -2323,8 +2322,12 @@ def musicbrainz_apply(body: dict) -> dict:
 		)
 	if assigned:
 		log.append(
-			f'{renumbered} files assigned to release tracks, '
-			+ ('titles written' if with_titles else 'titles kept')
+			f'{len(chosen)} files assigned to release tracks; '
+			+ (
+				f'titles and numbers written to {renumbered}'
+				if with_titles
+				else 'titles and numbers kept (album data only)'
+			)
 		)
 		log += rename_album_files(album)
 	logging.getLogger('app').info(

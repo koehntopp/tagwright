@@ -58,7 +58,7 @@ It needs one MusicBrainz lookup (cached for the life of the process, rate limite
 
 ## Consequences
 
-- ~~No MusicBrainz tracklist assignment~~: superseded by [0078](0078-musicbrainz-track-assignment-and-import-song-titles.md); picking a release now assigns tracks, and retitles files only with Import song titles on.
+- ~~No MusicBrainz tracklist assignment~~: superseded by [0078](0078-musicbrainz-track-assignment-and-import-song-titles.md); picking a release now assigns tracks, and retitles and renumbers files only with "Import song titles" on.
 - The thumbnails and the cover images come from coverartarchive.org straight to the browser; a release without art gives a 404 in the browser console that the app cannot avoid.
 - Possible later additions, not built: original release date from the release group, label and catalogue number when empty, and the track IDs (needs a track assignment).
 

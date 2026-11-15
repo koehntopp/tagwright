@@ -118,7 +118,28 @@ def test_musicbrainz_keeps_titles_by_default_and_numbers_the_files(
 	assert tags['MUSICBRAINZ_ALBUMID'] == [MB_ID]
 	assert tags['MUSICBRAINZ_ARTISTID'] == ['a1']
 	assert tags['TRACKNUMBER'] == ['1']
-	assert any('titles kept' in x for x in out['log'])
+	assert any('album data only' in x for x in out['log'])
+
+
+def test_the_box_off_keeps_track_and_disc_numbers_too(
+	client: TestClient, album: Path, mb: None
+) -> None:
+	files = [f.name for f in tagwright.flacs(album)]
+	r = client.post(
+		'/api/musicbrainz/apply',
+		json={
+			'path': str(album),
+			'id': MB_ID,
+			'assignments': [
+				{'file': f, 'rel': i, 'disc': 3, 'track': 9} for i, f in enumerate(files)
+			],
+		},
+	)
+	assert r.status_code == 200, r.text
+	tags = {k.upper(): list(v) for k, v in FLAC(sorted(album.glob('*.flac'))[0]).tags.items()}
+	assert tags['TRACKNUMBER'] == ['1']
+	assert tags['DISCNUMBER'] == ['1']
+	assert tags['MUSICBRAINZ_ALBUMID'] == [MB_ID]  # album data is still written
 
 
 def test_musicbrainz_writes_titles_when_the_box_is_on_and_remembers_it(
@@ -126,6 +147,8 @@ def test_musicbrainz_writes_titles_when_the_box_is_on_and_remembers_it(
 ) -> None:
 	mb_apply(client, album, import_titles=True)
 	assert sorted(titles(album)) == ['Dos', 'Uno']
+	tags = {k.upper(): list(v) for k, v in FLAC(sorted(album.glob('*.flac'))[0]).tags.items()}
+	assert tags['TRACKNUMBER'] == ['1']
 	assert tagwright.import_titles('musicbrainz') is True
 	assert tagwright.import_titles('discogs') is True  # separate flags
 
