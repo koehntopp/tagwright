@@ -16,8 +16,8 @@ The **Tag Editor** button (dark `btn-neutral`, left of Run fixes) opens one dial
 Written to every file of the album; an emptied field removes the tag. Field labels and order (two columns, then three, then two):
 
 1. **Album Artist Override**, **Album Title Override**: empty unless the override tag is really set (`GET /api/tags` no longer falls back to `ALBUMARTIST` / `ALBUM` for them), without help text. When the album has a Discogs release, small print under each shows what Discogs says: `ALBUM ARTIST: <ALBUMARTIST tag>` (the artist currently written, which is the Discogs artist unless an override is set) and `ALBUM TITLE: <ALBUM_MASTER_TITLE, else ALBUM_RELEASE_TITLE>`.
-2. **Album Format**, **Album Edition**.
-3. **Catalog #** (editable), **Year Release** and **Year Master Release** (read-only, from `ALBUM_RELEASE_YEAR` and `ALBUM_MASTER_YEAR`; Discogs-owned, so never editable).
+2. **Album Format Override** and **Album Edition** (the format is led by Discogs, the override keeps a manual one, [0080](0080-discogs-leads-album-level-tags.md)).
+3. **Catalog # Override** (the number is led by Discogs, [0080](0080-discogs-leads-album-level-tags.md)), **Year Release** and **Year Master Release** (read-only, from `ALBUM_RELEASE_YEAR` and `ALBUM_MASTER_YEAR`; Discogs-owned, so never editable).
 4. **Discogs Release ID** (read-only: the ID badge with its icon and link, the same as in the inspector but with the full ID, followed by a pen that opens the release dialog) and **Musicbrainz Release ID** (`MUSICBRAINZ_ALBUMID`, the same badge and pen; the ID is set only through the MusicBrainz dialog, which also accepts a pasted ID, so it is no longer typed in this tab). There are no help texts under the two ID fields and no separate release bars below.
 
 | Tag | Meaning |

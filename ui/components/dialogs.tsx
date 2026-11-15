@@ -211,12 +211,10 @@ export function TagEditor({ a, tab, reload, onClose, done, begin, openLyrics, op
 		Object.keys(fields).forEach(k => { if (fields[k].trim() !== d.fields[k]) changed[k] = fields[k] })
 		tracks.forEach(x => { const o = d.tracks.find((y: any) => y.file === x.file); if (o && KTRACK.some(([k]) => x[k] !== o[k])) edited.push(x) })
 		if (!Object.keys(changed).length && !edited.length) return onClose()
-		if ('ALBUM_FORMAT' in changed && !changed.ALBUM_FORMAT.trim()) return setErr('Album format must not be empty (for example CD, SACD, Vinyl).')
-		if ('CATALOGNUMBER' in changed && !changed.CATALOGNUMBER.trim()) return setErr("Add a catalog number (enter 'none' if the release has none).")
 		if (edited.some(x => !['title', 'disc', 'track'].every(k => String(x[k]).trim()))) return setErr('Title, disc and track must not be empty.')
 		// The dialog closes at once; the step circles of the inspector spin until the server answers (a format, catalog # or
 		// edition edit rewrites the Discogs tags, ADR 0049, and every save renames the files)
-		const end = begin(a.path, ['ALBUM_FORMAT', 'CATALOGNUMBER', 'ALBUM_EDITION'].some(k => k in changed) ? ['Tags and cover', 'Filenames'] : ['Filenames'])
+		const end = begin(a.path, ['ALBUM_FORMAT_OVERRIDE', 'CATALOGNUMBER_OVERRIDE', 'ALBUM_EDITION'].some(k => k in changed) ? ['Tags and cover', 'Filenames'] : ['Filenames'])
 		onClose()
 		try { await post('/api/tags', { path: a.path, fields: changed, tracks: edited }); toast.success('Tags saved'); done(a.path) }
 		catch (e: any) { toast.error(e.message) }
@@ -244,11 +242,17 @@ export function TagEditor({ a, tab, reload, onClose, done, begin, openLyrics, op
 								<Input value={fields.ALBUM_TITLE_OVERRIDE ?? ''} onChange={e => setFields({ ...fields, ALBUM_TITLE_OVERRIDE: e.target.value })} />
 								{d.discogs_id && discogsTitle && <Small>ALBUM TITLE: {discogsTitle}</Small>}
 							</Field>
-							<Field label="Album Format" help="For example CD, SACD, Vinyl. Required."><Input value={fields.ALBUM_FORMAT ?? ''} onChange={e => setFields({ ...fields, ALBUM_FORMAT: e.target.value })} /></Field>
+							<Field label="Album Format Override" help="For example CD, SACD, Vinyl. Saved as ALBUM_FORMAT_OVERRIDE and kept when a Discogs release is assigned. Empty restores the Discogs format.">
+								<Input value={fields.ALBUM_FORMAT_OVERRIDE ?? ''} onChange={e => setFields({ ...fields, ALBUM_FORMAT_OVERRIDE: e.target.value })} />
+								{d.album_format && <Small>ALBUM FORMAT: {d.album_format}</Small>}
+							</Field>
 							<Field label="Album Edition" help="For example Remastered or Gold Disc. Part of the version string."><Input value={fields.ALBUM_EDITION ?? ''} onChange={e => setFields({ ...fields, ALBUM_EDITION: e.target.value })} /></Field>
 						</div>
 						<div className="grid grid-cols-3 gap-x-6">
-							<Field label="Catalog #" help="Part of the version string. Enter 'none' if the release has none."><Input value={fields.CATALOGNUMBER ?? ''} onChange={e => setFields({ ...fields, CATALOGNUMBER: e.target.value })} /></Field>
+							<Field label="Catalog # Override" help="Part of the version string. Saved as CATALOGNUMBER_OVERRIDE and kept when a Discogs release is assigned. Empty restores the Discogs number.">
+								<Input value={fields.CATALOGNUMBER_OVERRIDE ?? ''} onChange={e => setFields({ ...fields, CATALOGNUMBER_OVERRIDE: e.target.value })} />
+								{d.catalog && <Small>CATALOGNUMBER: {d.catalog}</Small>}
+							</Field>
 							<Field label="Year Release" help="From Discogs, read-only."><Input readOnly tabIndex={-1} className="bg-slate-50 text-slate-600" value={dval('ALBUM_RELEASE_YEAR')} /></Field>
 							<Field label="Year Master Release" help="From Discogs, read-only."><Input readOnly tabIndex={-1} className="bg-slate-50 text-slate-600" value={dval('ALBUM_MASTER_YEAR')} /></Field>
 						</div>

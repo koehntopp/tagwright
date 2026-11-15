@@ -1892,6 +1892,17 @@ def tracks_apply(body: dict) -> dict:
 			a[key] = values
 			filled[key] = filled.get(key, 0) + 1
 
+	def lead(a: Audio, key: str, value: str | list[str], *alts: str) -> None:
+		# Album-level tags Discogs leads (ADR 0080): replaced on every assignment; nothing is written when Discogs
+		# has no value. An override tag (a manual value) blocks it for the keys that have one.
+		values = [value] if isinstance(value, str) else value
+		if values and list(a.tags.get(key) or []) != values:
+			for k in alts:
+				if k in a.tags:
+					del a.tags[k]
+			a[key] = values
+			filled[key] = filled.get(key, 0) + 1
+
 	player, discogs_tags = release_tags(raw_releases[rel['id']])
 	writers = by_role(raw_releases[rel['id']].get('extraartists') or [], *WRITER_ROLES)
 
@@ -1912,13 +1923,14 @@ def tracks_apply(body: dict) -> dict:
 		if before and before != rel['id']:
 			prev_vals.update(release_level(before))
 		a['DISCOGS_RELEASE_ID'] = [rel['id']]
-		if rel['catno'].lower() != 'none' and tag(a.tags, *CATALOG_KEYS).lower() == 'none':
-			for k in CATALOG_KEYS:  # Discogs' own 'none' is a placeholder, a real catalogue number replaces it (ADR 0047)
-				if k in a:
-					del a[k]
-		fill(a, 'CATALOGNUMBER', rel['catno'], *CATALOG_KEYS[1:])
-		fill(a, 'ALBUM_FORMAT', release_format(raw_releases[rel['id']]))
-		fill(a, 'ARTIST', t['artist'])
+		if not tag(a.tags, 'CATALOGNUMBER_OVERRIDE'):
+			lead(a, 'CATALOGNUMBER', rel['catno'], *CATALOG_KEYS[1:])
+		if not tag(a.tags, 'ALBUM_FORMAT_OVERRIDE'):
+			lead(a, 'ALBUM_FORMAT', release_format(raw_releases[rel['id']]))
+		if with_titles:
+			lead(a, 'ARTIST', t['artist'])  # the artist goes with the title (ADR 0080)
+		else:
+			fill(a, 'ARTIST', t['artist'])
 		if rel['artist'] and not tag(a.tags, 'ALBUM_ARTIST_OVERRIDE'):
 			if tag(a.tags, 'ALBUMARTIST') != rel['artist']:  # the release artist wins (ADR 0079)
 				a['ALBUMARTIST'] = [rel['artist']]
@@ -1927,10 +1939,10 @@ def tracks_apply(body: dict) -> dict:
 			fill(a, 'ALBUM', release_album_title(rel))
 		for key, values in player.items():
 			if key not in ('PRODUCER', 'ENGINEER'):
-				fill(a, key, values)
-		fill(a, 'COMPOSER', t['composers'] or writers)  # track credits win over release credits
-		fill(a, 'PRODUCER', t['producers'] or player.get('PRODUCER', []))
-		fill(a, 'ENGINEER', t['engineers'] or player.get('ENGINEER', []))
+				lead(a, key, values)
+		lead(a, 'COMPOSER', t['composers'] or writers)  # track credits win over release credits
+		lead(a, 'PRODUCER', t['producers'] or player.get('PRODUCER', []))
+		lead(a, 'ENGINEER', t['engineers'] or player.get('ENGINEER', []))
 		for key in [
 			k
 			for k in a.tags.keys()
@@ -2344,6 +2356,8 @@ def musicbrainz_apply(body: dict) -> dict:
 		if assigned and match and with_titles:
 			d, n = final[fn]
 			a['TITLE'] = [titles.get(fn) or match[0]['title']]
+			if match[0]['artist']:
+				a['ARTIST'] = [match[0]['artist']]  # the artist goes with the title (ADR 0080)
 			set_disc_subtitle(a, rel, match[0]['disc'])
 			a['TRACKNUMBER'] = [str(n)]
 			a['DISCNUMBER'] = [str(d)]
@@ -2417,12 +2431,17 @@ def lrclib_search(title: str, artist: str = '') -> list[dict]:
 ALBUM_FIELDS = {
 	'ALBUM_ARTIST_OVERRIDE': ('ALBUMARTIST',),
 	'ALBUM_TITLE_OVERRIDE': ('ALBUM',),
-	'ALBUM_FORMAT': (),
+	'ALBUM_FORMAT_OVERRIDE': ('ALBUM_FORMAT',),
 	'ALBUM_EDITION': (),
-	'CATALOGNUMBER': CATALOG_KEYS[1:],
+	'CATALOGNUMBER_OVERRIDE': CATALOG_KEYS,
 	'MUSICBRAINZ_ALBUMID': ('MUSICBRAINZ ALBUM ID',),
 }
-OVERRIDES = {'ALBUM_ARTIST_OVERRIDE': 'ALBUMARTIST', 'ALBUM_TITLE_OVERRIDE': 'ALBUM'}
+OVERRIDES = {
+	'ALBUM_ARTIST_OVERRIDE': 'ALBUMARTIST',
+	'ALBUM_TITLE_OVERRIDE': 'ALBUM',
+	'ALBUM_FORMAT_OVERRIDE': 'ALBUM_FORMAT',
+	'CATALOGNUMBER_OVERRIDE': 'CATALOGNUMBER',
+}
 # Tags the Discogs tags step writes (pipeline/fixtags.py; tests/test_tag_contract.py keeps both in line); shown read-only.
 DISCOGS_FIXED = (
 	'DATE',
@@ -2547,6 +2566,8 @@ def get_tags(path: str) -> dict:
 		],
 		'musicbrainz': [{'key': k, 'value': ' / '.join(str(v) for v in t0[keys[k]])} for k in mb],
 		'album_artist': tag(t0, 'ALBUMARTIST'),
+		'album_format': tag(t0, 'ALBUM_FORMAT'),
+		'catalog': tag(t0, *CATALOG_KEYS),
 		'tracks': tracks,
 	}
 
@@ -2560,7 +2581,13 @@ def discogs_defaults(rid: str) -> dict[str, str]:
 			title = discogs(f'/masters/{r["master_id"]}').get('title', title).strip()
 		except HTTPException:
 			pass  # fixtags falls back to the release title as well
-	return {'ALBUMARTIST': artist_names(r.get('artists', [])), 'ALBUM': title}
+	catno = next((c for lb in r.get('labels', []) if (c := (lb.get('catno') or '').strip())), '')
+	return {
+		'ALBUMARTIST': artist_names(r.get('artists', [])),
+		'ALBUM': title,
+		'ALBUM_FORMAT': release_format(r),
+		'CATALOGNUMBER': catno,
+	}
 
 
 def write_album_fields(album: Path, fields: dict) -> bool:
@@ -2582,8 +2609,10 @@ def write_album_fields(album: Path, fields: dict) -> bool:
 	# and rewritten at once by the caller (ADR 0049); if that cannot be done the missing VERSION reopens the Tags
 	# step (ADR 0006) until the next run.
 	stale = bool(tag(first, 'DISCOGS_RELEASE_ID')) and any(
-		k in fields and str(fields[k]).strip() != tag(first, k, *ALBUM_FIELDS[k])
-		for k in ('ALBUM_EDITION', 'ALBUM_FORMAT', 'CATALOGNUMBER')
+		k in fields
+		and str(fields[k]).strip()
+		!= (tag(first, k) if k in OVERRIDES else tag(first, k, *ALBUM_FIELDS[k]))
+		for k in ('ALBUM_EDITION', 'ALBUM_FORMAT_OVERRIDE', 'CATALOGNUMBER_OVERRIDE')
 	)
 	for f in files:
 		a = open_audio(f)
@@ -2597,6 +2626,10 @@ def write_album_fields(album: Path, fields: dict) -> bool:
 				a[key] = [value]
 				if key in OVERRIDES:
 					a[OVERRIDES[key]] = [value]
+					if key == 'CATALOGNUMBER_OVERRIDE':
+						for k in CATALOG_KEYS[1:]:  # one spelling only
+							if k in a.tags:
+								del a.tags[k]
 			elif key in OVERRIDES:
 				if key in a.tags:
 					del a.tags[key]
@@ -2620,10 +2653,6 @@ def set_tags(body: dict) -> dict:
 		if not all(str(tr.get(k, '')).strip() for k in ('title', 'disc', 'track')):
 			raise HTTPException(400, f'title, disc and track must not be empty ({tr.get("file")})')
 	fields = {k: v for k, v in body.get('fields', {}).items() if k in ALBUM_FIELDS}
-	if 'CATALOGNUMBER' in fields and not str(fields['CATALOGNUMBER']).strip():
-		raise HTTPException(400, "Add a catalog number (enter 'none' if the release has none).")
-	if 'ALBUM_FORMAT' in fields and not str(fields['ALBUM_FORMAT']).strip():
-		raise HTTPException(400, 'album format must not be empty (for example CD, SACD, Vinyl)')
 	stale = write_album_fields(album, fields) if fields else False
 	log = [f'album: {k} = {v or "(removed)"}' for k, v in fields.items()]
 	for tr in body.get('tracks', []):

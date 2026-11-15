@@ -14,6 +14,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
+- Discogs now leads the catalogue number, album format and credits (composer, producer, engineer ...): assigning a release writes them. A manual value is kept with the new Album Format Override and Catalog # Override fields in the Tag Editor. With "Import song titles" on, the track artist is written together with the title, in the Discogs and the MusicBrainz dialog [0080].
+
 - The album artist now comes from Discogs: assigning a release and Run fixes both write it, replacing a different spelling in the files (for example "Simon and Garfunkel" becomes "Simon & Garfunkel"), so the library groups an artist's albums in one folder. An Album Artist Override is kept [0079].
 
 ### Fixed

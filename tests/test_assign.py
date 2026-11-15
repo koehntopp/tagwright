@@ -176,17 +176,21 @@ def test_a_real_catalogue_number_replaces_the_placeholder_none(
 	for f, value in ((first, 'none'), (second, 'USER-1')):
 		a = FLAC(f)
 		a['CATALOGNUMBER'] = [value]
+		if f == second:
+			a['CATALOGNUMBER_OVERRIDE'] = [
+				value
+			]  # a manual value is kept by its override (ADR 0080)
 		a.save()
 	apply(client, album)
 	got = {f.name: FLAC(f)['CATALOGNUMBER'] for f in (first, second)}
 	assert got[first.name] == ['CAT-9']  # 'none' was a placeholder
-	assert got[second.name] == ['USER-1']  # a value the owner set stays
+	assert got[second.name] == ['USER-1']  # the override keeps it
 
 
-def test_values_the_previous_release_filled_follow_the_new_release(
+def test_discogs_leads_the_album_format_and_catalogue_number_an_override_keeps_a_manual_value(
 	client: TestClient, album: Path, stubbed: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-	"""A re-assignment replaces release-level tags equal to what the old release gives; a value of the owner's stays."""
+	"""A (re-)assignment writes ALBUM_FORMAT and CATALOGNUMBER from Discogs; ALBUM_FORMAT_OVERRIDE keeps a manual one."""
 	monkeypatch.setattr(tagwright, 'fix_album', lambda path, cfg: fixtags.FixResult(2, 'X', 'V'))
 	old = {**REL, 'id': '555', 'catno': 'OLD-1', 'artist': 'Old Artist', 'title': 'Old Title'}
 	monkeypatch.setattr(tagwright, 'release_tracks', lambda rid: REL if rid == '777' else old)
@@ -202,11 +206,13 @@ def test_values_the_previous_release_filled_follow_the_new_release(
 		a['DISCOGS_RELEASE_ID'] = ['555']
 		a['ALBUM_FORMAT'] = [fmt]
 		a['CATALOGNUMBER'] = ['OLD-1']
+		if fmt == 'Mine':
+			a['ALBUM_FORMAT_OVERRIDE'] = ['Mine']
 		a.save()
 	apply(client, album)
-	assert FLAC(first)['ALBUM_FORMAT'] == ['CD']  # the old release's value
+	assert FLAC(first)['ALBUM_FORMAT'] == ['CD']
 	assert FLAC(first)['CATALOGNUMBER'] == ['CAT-9']
-	assert FLAC(second)['ALBUM_FORMAT'] == ['Mine']  # not what release 555 gives: the owner's
+	assert FLAC(second)['ALBUM_FORMAT'] == ['Mine']  # the override
 
 
 def test_editing_format_or_catalog_rewrites_version_at_once(
@@ -220,7 +226,8 @@ def test_editing_format_or_catalog_rewrites_version_at_once(
 
 	monkeypatch.setattr(tagwright, 'fix_album', fake)
 	r = client.post(
-		'/api/tags', json={'path': str(album), 'fields': {'ALBUM_FORMAT': 'SACD'}, 'tracks': []}
+		'/api/tags',
+		json={'path': str(album), 'fields': {'ALBUM_FORMAT_OVERRIDE': 'SACD'}, 'tracks': []},
 	)
 	assert seen == [album]
 	assert (
@@ -229,7 +236,8 @@ def test_editing_format_or_catalog_rewrites_version_at_once(
 	)
 	seen.clear()
 	client.post(
-		'/api/tags', json={'path': str(album), 'fields': {'ALBUM_FORMAT': 'SACD'}, 'tracks': []}
+		'/api/tags',
+		json={'path': str(album), 'fields': {'ALBUM_FORMAT_OVERRIDE': 'SACD'}, 'tracks': []},
 	)
 	assert seen == []  # nothing changed
 
@@ -242,7 +250,8 @@ def test_when_the_refresh_fails_the_missing_version_reopens_the_tags_step(
 
 	monkeypatch.setattr(tagwright, 'fix_album', down)
 	r = client.post(
-		'/api/tags', json={'path': str(album), 'fields': {'CATALOGNUMBER': 'NEW-1'}, 'tracks': []}
+		'/api/tags',
+		json={'path': str(album), 'fields': {'CATALOGNUMBER_OVERRIDE': 'NEW-1'}, 'tracks': []},
 	)
 	assert r.status_code == 200
 	assert 'VERSION' not in FLAC(sorted(album.glob('*.flac'))[0]).tags

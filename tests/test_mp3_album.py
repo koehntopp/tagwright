@@ -93,7 +93,7 @@ def test_the_tag_editor_and_the_player_work_on_mp3(client: TestClient, make_mp3:
 	folder = tagwright.ROOT / 'Test Artist-Test Album'
 	mp3_album(make_mp3, folder)
 	r = client.get('/api/tags', params={'path': str(folder)}).json()
-	assert r['fields']['ALBUM_FORMAT'] == 'CD' and r['tracks'][0]['title'] == 'One'
+	assert r['album_format'] == 'CD' and r['tracks'][0]['title'] == 'One'
 	assert 'REPLAYGAIN_ALBUM_GAIN' in {o['key'] for o in r['other']}
 	r = client.post(
 		'/api/tags',

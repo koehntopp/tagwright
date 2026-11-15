@@ -249,3 +249,53 @@ def test_a_title_typed_in_the_dialog_wins_over_the_release_title(
 	)
 	assert r.status_code == 200, r.text
 	assert sorted(titles(album)) == ['Dos', 'Uno (fixed)']
+
+
+def test_the_artist_is_written_whenever_the_title_is(
+	client: TestClient, album: Path, stubbed: None, mb: None
+) -> None:
+	def artists() -> set[str]:
+		return {FLAC(f)['ARTIST'][0] for f in album.glob('*.flac')}
+
+	for f in album.glob('*.flac'):
+		x = FLAC(f)
+		x['ARTIST'] = ['Somebody Else']
+		x.save()
+	files = [f.name for f in tagwright.flacs(album)]
+	off = {'path': str(album), 'release_id': '777', 'import_titles': False}
+	assert (
+		client.post(
+			'/api/tracks/apply',
+			json={**off, 'assignments': [{'file': f, 'rel': i} for i, f in enumerate(files)]},
+		).status_code
+		== 200
+	)
+	assert artists() == {'Somebody Else'}  # box off: an existing artist stays
+	tagwright.settings['import_titles_discogs'] = True  # the box is remembered from the last apply
+	apply(client, album)
+	assert artists() == {'Test Artist'}
+	for f in album.glob('*.flac'):
+		x = FLAC(f)
+		x['ARTIST'] = ['Somebody Else']
+		x.save()
+	mb_apply(client, album, import_titles=True)
+	assert artists() == {'Test Artist'}  # the MusicBrainz track artist
+
+
+def test_discogs_leads_the_credits_and_an_empty_discogs_value_changes_nothing(
+	client: TestClient, album: Path, stubbed: None
+) -> None:
+	for f in album.glob('*.flac'):
+		x = FLAC(f)
+		x['COMPOSER'] = ['Old Composer']
+		x.save()
+	apply(client, album)  # REL's tracks name no composer: nothing to replace it with
+	assert {FLAC(f)['COMPOSER'][0] for f in album.glob('*.flac')} == {'Old Composer'}
+	for t in REL['tracks']:
+		t['composers'] = ['New Composer']
+	try:
+		apply(client, album)
+	finally:
+		for t in REL['tracks']:
+			t['composers'] = []
+	assert {FLAC(f)['COMPOSER'][0] for f in album.glob('*.flac')} == {'New Composer'}
