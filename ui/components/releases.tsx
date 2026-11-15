@@ -65,11 +65,24 @@ function numbering(rel: any, files: any[]) {
 function AssignTable({ rel, files, used, upd, numbers }: { rel: any; files: any[]; used: Record<number, number>; upd: (k: number, p: any) => void; numbers: boolean }) {
 	return (
 		<table className="w-full text-sm">
-			<thead><tr className="text-left text-xs text-slate-500"><th>File</th><th className="w-16">Disc</th><th className="w-16">Track</th><th>Release track</th><th /></tr></thead>
+			<thead><tr className="text-left text-xs text-slate-500"><th>File and title</th><th className="w-16">Disc</th><th className="w-16">Track</th><th>Release track</th><th /></tr></thead>
 			<tbody>
 				{files.map((f, k) => (
 					<tr key={f.file} className="border-t">
-						<td className="w-1/2 py-1"><div className="flex items-center gap-2"><span className="max-w-xs truncate" title={f.file}>{f.title}</span><ChannelBadge n={f.channels} /></div><div className="text-xs text-slate-500">{f.file} · {mmss(f.duration)}</div></td>
+						<td className="w-1/2 py-1">
+							{numbers && f.rel !== null ? (
+								<>
+									<div className="flex items-center gap-2">
+										<Input className="h-7 border-sky-300 bg-sky-50 text-sm" aria-label="New title" title="New title from the release; editable" value={f.nt ?? rel.tracks[f.rel].title} onChange={e => upd(k, { nt: e.target.value })} />
+										<ChannelBadge n={f.channels} />
+									</div>
+									<div className="mt-0.5 flex items-center text-xs text-slate-400"><span className="truncate">Was: {f.title}</span><CopyBtn text={f.title} title="Copy the old title" /></div>
+								</>
+							) : (
+								<div className="flex items-center gap-2"><span className="max-w-xs truncate text-slate-400" title={f.file}>{f.title}</span><ChannelBadge n={f.channels} /></div>
+							)}
+							<div className="text-xs text-slate-400">{f.file} · {mmss(f.duration)}</div>
+						</td>
 						<td>{f.rel !== null && <Input type="number" min={1} disabled={!numbers} className={`h-7 w-14 text-xs ${numbers ? '' : 'bg-slate-50 text-slate-400'}`} value={f.d ?? f.ad} onChange={e => upd(k, { d: e.target.value === '' ? null : +e.target.value })} />}</td>
 						<td>{f.rel !== null && <Input type="number" min={1} disabled={!numbers} className={`h-7 w-14 text-xs ${numbers ? '' : 'bg-slate-50 text-slate-400'}`} value={f.t ?? f.at} onChange={e => upd(k, { t: e.target.value === '' ? null : +e.target.value })} />}</td>
 						<td>
@@ -77,12 +90,6 @@ function AssignTable({ rel, files, used, upd, numbers }: { rel: any; files: any[
 								<option value="">Skip (leave as is)</option>
 								{rel.tracks.map((t: any) => <option key={t.i} value={t.i}>{t.part_of ? '\u00a0\u00a0\u21b3' : (t.position || t.i + 1)}  {t.title}{t.duration ? ` (${mmss(t.duration)})` : ''}{t.channels ? ` · ${channelLabel(t.channels)}` : ''}</option>)}
 							</select>
-							{numbers && f.rel !== null && (
-								<div className="mt-1">
-									<Input className="h-7 text-xs" aria-label="Title" value={f.nt ?? rel.tracks[f.rel].title} onChange={e => upd(k, { nt: e.target.value })} />
-									<div className="mt-0.5 flex items-center text-xs text-slate-400"><span className="truncate">Was: {f.title}</span><CopyBtn text={f.title} title="Copy the old title" /></div>
-								</div>
-							)}
 						</td>
 						<td className="w-16 text-right">{f.rel === null ? <Badge variant="secondary">skip</Badge> : f.conf >= 0.6 ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">match</Badge> : <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">check</Badge>}</td>
 					</tr>
@@ -98,6 +105,7 @@ function TitlesBox({ on, set, rel }: { on: boolean; set: (v: boolean) => void; r
 		<div className="mt-3 text-sm">
 			<label className="flex items-center gap-2"><input type="checkbox" className="size-4" checked={on} onChange={e => set(e.target.checked)} />Import song titles</label>
 			<p className="mt-1 text-xs text-slate-500">Off: only the album data is imported (release IDs, CATALOGNUMBER, year and country); the files keep their TITLE, TRACKNUMBER, DISCNUMBER and DISCSUBTITLE.<br />On: the files also get the release's TITLE, TRACKNUMBER, DISCNUMBER and DISCSUBTITLE.</p>
+			{on && <p className="mt-1 text-xs text-slate-500">Blue fields: data from the release that will be written (editable). Grey text: what the file has now.</p>}
 			{rel.discs?.length > 0 && <p className={`mt-1 text-xs ${on ? 'text-slate-700' : 'text-slate-400'}`}>Disc subtitles of the release: {rel.discs.map((d: any) => `${d.disc}: ${d.title}`).join(' · ')}</p>}
 		</div>
 	)

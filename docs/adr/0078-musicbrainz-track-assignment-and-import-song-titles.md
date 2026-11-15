@@ -20,8 +20,8 @@ Japanese releases often carry kanji in the titles Discogs gives; MusicBrainz usu
 
 The Discogs and the MusicBrainz dialog **must stay consistent**: they use one shared table component and one checkbox component (`AssignTable`, `TitlesBox` in `ui/components/releases.tsx`), and a change to how assignment, titles, numbers or the checkbox look or behave is made once for both. Specifically:
 
-- With "Import song titles" **on**, each assigned file shows an **editable title field** under its release track choice, filled with the release's title, so a title can be corrected during the import. Under it, in small light grey text, `Was: <the file's current title>` with a copy button. The typed title is sent as `title` in the assignment and written instead of the release's title (a blank field means the release's title).
-- Whatever the apply will **not change** is shown light grey: with the box off the disc and track fields (and the disc subtitles line) are grey and disabled, and the title fields are not shown.
+- With "Import song titles" **on**, each assigned file shows, **in its left (File and title) cell**, an **editable title field** filled with the release's title, so a title can be corrected during the import. Under it, in small light grey text, `Was: <the file's current title>` with a copy button, then the file name and length. The field is tinted blue: **blue is data from the release (database data) that will be written, grey is what the file has now (file data)**, and a legend line under the checkbox says so. The typed title is sent as `title` in the assignment and written instead of the release's title (a blank field means the release's title).
+- Whatever the apply will **not change** is shown light grey: with the box off the file's title, the disc and track fields and the disc subtitles line are grey (the fields disabled) and the title fields are not shown.
 - Hints under the table name tags in capitals.
 
 ## Consequences
