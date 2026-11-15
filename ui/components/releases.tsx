@@ -70,6 +70,7 @@ function AssignTable({ rel, files, used, upd, numbers }: { rel: any; files: any[
 				{files.map((f, k) => (
 					<tr key={f.file} className="border-t">
 						<td className="w-1/2 py-1">
+							<div className="mb-0.5 truncate text-xs text-slate-400" title={f.file}>File: {f.file} · {mmss(f.duration)}</div>
 							{numbers && f.rel !== null ? (
 								<>
 									<div className="flex items-center gap-2">
@@ -81,7 +82,6 @@ function AssignTable({ rel, files, used, upd, numbers }: { rel: any; files: any[
 							) : (
 								<div className="flex items-center gap-2"><span className="max-w-xs truncate text-slate-400" title={f.file}>{f.title}</span><ChannelBadge n={f.channels} /></div>
 							)}
-							<div className="text-xs text-slate-400">{f.file} · {mmss(f.duration)}</div>
 						</td>
 						<td>{f.rel !== null && <Input type="number" min={1} disabled={!numbers} className={`h-7 w-14 text-xs ${numbers ? '' : 'bg-slate-50 text-slate-400'}`} value={f.d ?? f.ad} onChange={e => upd(k, { d: e.target.value === '' ? null : +e.target.value })} />}</td>
 						<td>{f.rel !== null && <Input type="number" min={1} disabled={!numbers} className={`h-7 w-14 text-xs ${numbers ? '' : 'bg-slate-50 text-slate-400'}`} value={f.t ?? f.at} onChange={e => upd(k, { t: e.target.value === '' ? null : +e.target.value })} />}</td>
