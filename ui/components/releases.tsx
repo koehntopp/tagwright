@@ -91,7 +91,7 @@ function TitlesBox({ on, set, rel }: { on: boolean; set: (v: boolean) => void; r
 	return (
 		<div className="mt-3 text-sm">
 			<label className="flex items-center gap-2"><input type="checkbox" className="size-4" checked={on} onChange={e => set(e.target.checked)} />Import song titles</label>
-			<p className="mt-1 text-xs text-slate-500">Off: only the album data is imported (release IDs, catalogue number, year and country); the files keep their titles, track and disc numbers and disc subtitles.<br />On: the files also get the release's title, track number, disc number and disc subtitle.</p>
+			<p className="mt-1 text-xs text-slate-500">Off: only the album data is imported (release IDs, CATALOGNUMBER, year and country); the files keep their TITLE, TRACKNUMBER, DISCNUMBER and DISCSUBTITLE.<br />On: the files also get the release's TITLE, TRACKNUMBER, DISCNUMBER and DISCSUBTITLE.</p>
 			{rel.discs?.length > 0 && <p className={`mt-1 text-xs ${on ? 'text-slate-700' : 'text-slate-400'}`}>Disc subtitles of the release: {rel.discs.map((d: any) => `${d.disc}: ${d.title}`).join(' · ')}</p>}
 		</div>
 	)
@@ -159,7 +159,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 						<div className="mb-3 text-sm"><span className="font-medium">{rel.artist} - {rel.title}</span> <span className="text-slate-500">{rel.year} · {rel.tracks.length} tracks on release · {files.length} files</span></div>
 						<AssignTable rel={rel} files={files} used={used} upd={upd} numbers={titles} />
 						<TitlesBox on={titles} set={setTitles} rel={rel} />
-						<div className="mt-3 text-xs text-slate-500">Also fills what the tagger used to import and the album lacks: artist, album artist, album title, catalog number and a missing cover. Existing values are kept.</div>
+						<div className="mt-3 text-xs text-slate-500">Always written: DISCOGS_RELEASE_ID, ALBUMARTIST (replacing a different value, unless ALBUM_ARTIST_OVERRIDE is set), ALBUM (unless ALBUM_TITLE_OVERRIDE is set) and the DISCOGS_* tags.<br />Written only where a file has no value: ARTIST, CATALOGNUMBER, ALBUM_FORMAT, COMPOSER, PRODUCER, ENGINEER and a missing cover.</div>
 						<div className="mt-1 text-xs text-slate-500">Not in this album: {rel.tracks.filter((t: any) => !used[t.i] && !t.part_of && !rel.tracks.some((p: any) => p.part_of === t.title && used[p.i])).map((t: any) => t.title).join(', ') || 'none'}</div>
 					</>
 				) : rows && <Results rows={rows} sort={sort} setSort={setSort} pick={pick} count={r => (r.n == null ? '…' : r.n < 0 ? '?' : r.n + ' tracks')} />}
@@ -233,7 +233,7 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 						</tbody></table>
 						<AssignTable rel={rel} files={files} used={used} upd={upd} numbers={titles} />
 						<TitlesBox on={titles} set={setTitles} rel={rel} />
-						<div className="mt-3 text-xs text-slate-500">Apply writes the release ID, the release group and album artist IDs and links to every file, and the artist ID and link to each assigned file. With “Import song titles” on, assigned files also get the release's titles, numbers and disc subtitles and are renamed. Barcode, ASIN, release country, status, type and disambiguation are filled only where the file has none yet.</div>
+						<div className="mt-3 text-xs text-slate-500">Apply writes MUSICBRAINZ_ALBUMID, the release group and album artist IDs and links to every file, and MUSICBRAINZ_ARTISTID and its link to each assigned file. With “Import song titles” on, assigned files also get the release's TITLE, TRACKNUMBER, DISCNUMBER and DISCSUBTITLE and are renamed. BARCODE, ASIN, MUSICBRAINZ_ALBUM_RELEASECOUNTRY, MUSICBRAINZ_ALBUMSTATUS, MUSICBRAINZ_ALBUMTYPE and MUSICBRAINZ_ALBUM_DISAMBIGUATION are filled only where the file has none yet.</div>
 					</>
 				) : rows && <Results rows={rows} sort={sort} setSort={setSort} pick={pick} />}
 			</div>
