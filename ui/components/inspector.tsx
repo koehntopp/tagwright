@@ -1,11 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ChartColumn, Check, ChevronDown, Copy, Ellipsis, Fingerprint, FileText, Loader2, Mic, ClipboardPaste, Pause, Pencil, Play, RefreshCw, Search, Tags, Trash2, TriangleAlert, Upload, Volume2 } from 'lucide-react'
+import { ChartColumn, Check, ChevronDown, Copy, Ellipsis, Fingerprint, FileText, Loader2, Mic, ClipboardPaste, Pause, Pencil, Play, RefreshCw, Search, Tags, Trash2, OctagonX, TriangleAlert, Upload, Volume2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Alert } from '@/components/ui/alert'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { flagOf } from '@/lib/flags'
 import { Album, Job, LogLine, TrackFile, api, channelLabel, coverUrl, fmtBytes, mmss, title } from '@/lib/api'
@@ -119,6 +118,29 @@ type Props = {
 const STEP_ICON: Record<string, typeof Check> = { 'Dynamic range': ChartColumn, ReplayGain: Volume2, Fingerprints: Fingerprint, 'Tags and cover': Tags, Lyrics: Mic, Filenames: FileText }
 const OPTIONAL_STEP = 'Lyrics'  // ADR 0054
 
+const TONES = {
+	error: ['border-rose-200 bg-rose-50 text-rose-900', 'text-rose-700'],
+	warn: ['border-amber-200 bg-amber-50 text-amber-900', 'text-amber-700'],
+	info: ['border-sky-200 bg-sky-50 text-sky-900', 'text-sky-700'],
+} as const
+
+// One box for every note of the inspector: the type (with a stop symbol for a problem, a warning sign for the rest)
+// at the left, the lines beside it, the action button at the right.
+function NoteBox({ tone, label, action, children }: { tone: keyof typeof TONES; label: string; action?: React.ReactNode; children: React.ReactNode }) {
+	const [box, head] = TONES[tone]
+	const Icon = tone === 'error' ? OctagonX : TriangleAlert
+	return (
+		<div className={`flex items-start gap-3 rounded-xl border px-3 py-1.5 text-[13px] ${box}`}>
+			<div className={`flex w-32 shrink-0 items-center gap-1.5 text-xs font-medium uppercase leading-5 tracking-wider ${head}`}><Icon className="size-3.5 shrink-0" />{label}</div>
+			<div className="min-w-0 flex-1 space-y-0.5 leading-5">{children}</div>
+			{action || null}
+		</div>
+	)
+}
+
+// An album's line in the folder box: the title and its version string (left out when the title holds it already)
+const versionLine = (album: string, version: string) => album + (version && !album.includes(version) ? ' ' + version : '')
+
 export function Inspector(p: Props) {
 	const { a, job } = p
 	const [stepSel, setStep] = useState<number | null>(null)
@@ -150,11 +172,12 @@ export function Inspector(p: Props) {
 	}
 	// non-consequential notes where MusicBrainz and Discogs disagree (selected album only: one cached MusicBrainz lookup)
 	const [mbNotes, setMbNotes] = useState<string[]>([])
+	const [mbMismatch, setMbMismatch] = useState<string[]>([])  // the year differs: stops the move (ADR 0083)
 	useEffect(() => {
-		setMbNotes([])
+		setMbNotes([]); setMbMismatch([])
 		if (!a.discogs || !a.mbid) return
 		let live = true
-		api<{ notes: string[] }>('/api/musicbrainz/check?path=' + encodeURIComponent(a.path)).then(r => live && setMbNotes(r.notes), () => {})
+		api<{ notes: string[]; mismatches: string[] }>('/api/musicbrainz/check?path=' + encodeURIComponent(a.path)).then(r => { if (live) { setMbNotes(r.notes); setMbMismatch(r.mismatches) } }, () => {})
 		return () => { live = false }
 	}, [a.path, a.discogs, a.mbid, a.mtime])
 	// other versions of this album's Discogs master in the library (ADR 0082)
@@ -250,58 +273,54 @@ export function Inspector(p: Props) {
 				</div>
 				<Button className="flex-1 bg-slate-800 text-white hover:bg-slate-700" onClick={() => p.openEditor('album')}>Tag Editor</Button>
 				<Button className={`flex-1 ${running ? 'border-rose-600 bg-rose-600 text-white disabled:opacity-100' : ''}`} variant="outline" disabled={a.status === 'needs' || job.state === 'running'} onClick={() => p.run()}>{running ? 'Running…' : 'Run fixes'}</Button>
-				<Button className="flex-1" variant="outline" disabled={p.inLibrary || a.status !== 'fixed' || a.issues.some(i => i.level === 'ingest') || job.state === 'running'} title={p.inLibrary ? 'This album is already in the library' : undefined} onClick={p.move}>Move to library</Button>
+				<Button className="flex-1" variant="outline" disabled={p.inLibrary || a.status !== 'fixed' || a.issues.some(i => i.level === 'ingest') || mbMismatch.length > 0 || job.state === 'running'} title={p.inLibrary ? 'This album is already in the library' : mbMismatch.length ? `${mbMismatch[0]} Fix the release before moving.` : undefined} onClick={p.move}>Move to library</Button>
 			</div>
 
-			<div className="space-y-2">
-				{a.issues.map(i => (
-					<Alert key={i.text} className={`flex items-center gap-2 text-[13px] ${i.level === 'info' ? 'border-sky-200 bg-sky-50 text-sky-900' : i.level === 'error' ? 'border-rose-300 bg-rose-50 text-rose-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
-						<TriangleAlert className="size-4 shrink-0" />
-						<span className="flex-1">{i.text}</span>
-						{i.action && (
-							<Button size="xs" variant="outline" onClick={() => ({ search: p.openDiscogs, album: () => p.openEditor('album'), tracks: () => p.openEditor('tracks'), cover: () => fileRef.current?.click() } as Record<string, () => void>)[i.action!]()}>
-								{{ search: 'Search', album: 'Tag Editor', tracks: 'Tag Editor', cover: 'Upload' }[i.action]}
-							</Button>
-						)}
-					</Alert>
-				))}
-			</div>
+			{a.issues.map(i => (
+				<NoteBox key={i.text} tone={i.level === 'error' ? 'error' : i.level === 'info' ? 'info' : 'warn'} label={i.level === 'error' ? 'Problem' : i.level === 'info' ? 'Note' : 'Warning'}
+					action={i.action && (
+						<Button size="xs" variant="outline" onClick={() => ({ search: p.openDiscogs, album: () => p.openEditor('album'), tracks: () => p.openEditor('tracks'), cover: () => fileRef.current?.click() } as Record<string, () => void>)[i.action!]()}>
+							{{ search: 'Search', album: 'Tag Editor', tracks: 'Tag Editor', cover: 'Upload' }[i.action]}
+						</Button>
+					)}>
+					{i.text}
+				</NoteBox>
+			))}
 
-			{([[false, 'Missing', 'border-rose-200 bg-rose-50 text-rose-900', 'text-rose-700'], [true, 'Optional', 'border-sky-200 bg-sky-50 text-sky-900', 'text-sky-700']] as const).map(([opt, title, box, head]) => {
+			{mbMismatch.length > 0 && (
+				<NoteBox tone="error" label="Mismatch" action={<Button size="xs" variant="outline" onClick={p.openMb}>MusicBrainz</Button>}>
+					{mbMismatch.map(n => <div key={n}>{n}</div>)}
+				</NoteBox>
+			)}
+
+			{([[false, 'Missing', 'error'], [true, 'Optional', 'info']] as const).map(([opt, title, tone]) => {
 				const items = (a.missing ?? []).filter(m => !!m.optional === opt)
+				const holdsRun = opt ? !(a.missing ?? []).some(m => !m.optional) : true  // Run fixes sits on the first of the two boxes
 				return !!items.length && (
-					<div key={title} className={`flex items-baseline gap-3 rounded-xl border px-3 py-1.5 text-[13px] ${box}`}>
-						<div className={`w-32 shrink-0 text-xs font-medium uppercase tracking-wider ${head}`}>{title}</div>
-						<ul className="min-w-0 flex-1 space-y-0.5">
-							{items.map(m => (
-								<li key={m.step}>
-									<button className="w-full text-left hover:underline" title="Mark these tracks in the track list" onClick={() => { setStep(a.steps.findIndex(s => s.name === m.step)); setTracksOpen(true) }}>
-										<span className="font-medium">{m.label}</span> on {m.count === m.of ? `all ${m.of} tracks` : `${m.count} of ${m.of} tracks`}
-									</button>
-								</li>
-							))}
-						</ul>
-					</div>
+					<NoteBox key={title} tone={tone} label={title}
+						action={holdsRun && <Button size="xs" variant="outline" disabled={a.status === 'needs' || job.state === 'running'} title="Run the pipeline for the missing data" onClick={() => p.run()}>Run fixes</Button>}>
+						{items.map(m => (
+							<div key={m.step}>
+								<button className="w-full text-left hover:underline" title="Mark these tracks in the track list" onClick={() => { setStep(a.steps.findIndex(s => s.name === m.step)); setTracksOpen(true) }}>
+									<span className="font-medium">{m.label}</span> on {m.count === m.of ? `all ${m.of} tracks` : `${m.count} of ${m.of} tracks`}
+								</button>
+							</div>
+						))}
+					</NoteBox>
 				)
 			})}
 
 			{mbNotes.length > 0 && (
-				<div className="space-y-2">
-					{mbNotes.map(n => (
-						<Alert key={n} className="flex items-center gap-2 border-sky-200 bg-sky-50 text-[13px] text-sky-900">
-							<TriangleAlert className="size-4 shrink-0" />
-							<span className="flex-1">{n}</span>
-							<Button size="xs" variant="outline" onClick={p.openMb}>MusicBrainz</Button>
-						</Alert>
-					))}
-				</div>
+				<NoteBox tone="info" label="Note" action={<Button size="xs" variant="outline" onClick={p.openMb}>MusicBrainz</Button>}>
+					{mbNotes.map(n => <div key={n}>{n}</div>)}
+				</NoteBox>
 			)}
 
 			<div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-[13px] text-slate-800">
 				{([
 					['Current folder', [<code key="c" className="break-all text-xs">{a.folder || a.name}</code>]],
-					['New folder', [a.new_title ? <code key="n" className="break-all text-xs">{a.new_title}</code> : <span key="n" className="text-xs text-slate-400">Not ready: artist or album is empty</span>]],
-					...(versions.length > 0 ? [['In your library', versions.map(v => <span key={v.path} className="block break-words text-xs" title={v.path}>{v.album}{v.version && !v.album.includes(v.version) ? ' ' + v.version : ''}</span>)] as const] : []),
+					['New folder', a.new_title ? [<code key="n" className="break-all text-xs">{a.new_title}</code>, <span key="t" className="block break-words text-xs">{versionLine(a.album || a.name, a.version)}</span>] : [<span key="n" className="text-xs text-slate-400">Not ready: artist or album is empty</span>]],
+					...(versions.length > 0 ? [['In your library', versions.map(v => <span key={v.path} className="block break-words text-xs" title={v.path}>{versionLine(v.album, v.version)}</span>)] as const] : []),
 				] as const).map(([label, lines]) => (
 					<div key={label} className="flex items-baseline gap-3">
 						<div className="w-32 shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">{label}</div>

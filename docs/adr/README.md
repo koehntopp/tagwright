@@ -70,6 +70,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0080](0080-discogs-leads-album-level-tags.md) | Discogs leads CATALOGNUMBER, ALBUM_FORMAT and the credits (overrides keep manual values); ARTIST goes with the title | Accepted |
 | [0081](0081-subtitle-dividers-in-track-lists.md) | Disc subtitles are dividers in the track lists (Tag Editor first, then the import dialogs) | Accepted |
 | [0082](0082-in-your-library-box.md) | "In your library" box: other versions of the album's Discogs master (`/api/library/versions`) | Accepted |
+| [0083](0083-inspector-note-boxes-and-year-mismatch.md) | One style for the inspector's note boxes (types, symbols, buttons); a year mismatch Discogs/MusicBrainz stops the move | Accepted |
 
 ## History: superseded ADRs
 
@@ -106,6 +107,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | tests, fixtures, the `test` dependency group | 0035, 0018 |
 | the library as CSV for other programs (`/api/library/albums.csv`) | 0077, 0067 |
 | the "In your library" box, other versions of a master (`/api/library/versions`) | 0082, 0067 |
+| inspector note boxes (Problem, Mismatch, Missing, Optional, Note), their symbols and buttons, the year mismatch that stops the move | 0083, 0023, 0054 |
 | the `pipeline/` package, API clients, Discogs tags, `drcalc` | 0036, 0014, 0053 |
 | the output folder layout, the watcher, the Library tab, the status indicator, Move to library | 0037, 0010, 0011 |
 | the Staging / Library switch, folder names, which folders the UI may read | 0038, 0007 |

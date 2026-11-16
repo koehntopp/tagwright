@@ -24,6 +24,9 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
+- All notes in the inspector (problems, warnings, Missing, Optional, mismatches, hints) look the same: the type at the left, the text beside it, a button at the right; a red problem gets a stop symbol, a warning or hint a warning sign. **Missing** has a **Run fixes** button, a note about MusicBrainz has a **MusicBrainz** button, and **New folder** shows the album title with its version under the path, like the library versions [0083].
+- A **year mismatch** between the Discogs and the MusicBrainz release is now a red **Mismatch** and stops **Move to library** until the release is fixed; there is no way to accept it [0083, 0023].
+
 - Current folder, New folder and In your library are rows of one light grey box, the label at the left of its value (no separate headings), in the same style as the Missing and Optional boxes; further versions in the library are indented under the first [0082].
 
 - The Missing and Optional boxes take one line per item ("MISSING  No fingerprints on all 9 tracks") and no longer list track names; the track list shows which tracks [0054, 0039].

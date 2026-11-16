@@ -1260,6 +1260,7 @@ def move_plan(path: Path) -> tuple[dict, list[lib_planner.Move]]:
 		problems.append(
 			'the cover is below the minimum size; replace it or lower the minimum in settings'
 		)
+	problems += [f'{m} Fix the release before moving.' for m in mb_mismatches(path)]
 	for f in flacs(path):
 		tags, error = read_tags(f)
 		if error:
@@ -2304,9 +2305,39 @@ def musicbrainz_release(id: str, path: str = '') -> dict:
 	}
 
 
+def year_mismatch(t0: Tags, rid: str, mb: dict) -> str:
+	""" "Year: Discogs A, MusicBrainz B." when the two releases name different years, else '' (ADR 0083)."""
+	# The year of the Discogs release itself (cached after the first request), not the year tags in the files: those
+	# keep the old release's year until the next run rewrites them (ADR 0023).
+	try:
+		year = str(release_tracks(rid).get('year') or '')
+	except HTTPException:  # Discogs unreachable: the tags are the best there is
+		year = ''
+	year = year or (tag(t0, 'ALBUM_RELEASE_YEAR', 'YEAR', 'DATE') or '')[:4]
+	if year and mb['year'] and year != mb['year']:
+		return f'Year: Discogs {year}, MusicBrainz {mb["year"]}.'
+	return ''
+
+
+def mb_mismatches(album: Path) -> list[str]:
+	"""Differences between the album's Discogs and MusicBrainz release that stop "Move to library" (ADR 0083): the year.
+	Empty without both IDs, or when either service cannot be reached (an unknown is not a mismatch)."""
+	files = flacs(album)
+	t0 = open_audio(files[0]).tags if files else None
+	rid = tag(t0 or {}, 'DISCOGS_RELEASE_ID')
+	mbid = tag(t0 or {}, 'MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID')
+	if not (rid and mbid and UUID_RE.match(mbid)):
+		return []
+	try:
+		return [m] if (m := year_mismatch(t0 or {}, rid, mb_release(mbid))) else []
+	except HTTPException:
+		return []
+
+
 @app.get('/api/musicbrainz/check')
 def musicbrainz_check(path: str) -> dict:
-	"""Non-consequential notes where the album's MusicBrainz release disagrees with its Discogs release.
+	"""Where the album's MusicBrainz release disagrees with its Discogs release: `mismatches` (the year; they stop the
+	move, ADR 0083) and `notes` (non-consequential hints).
 
 	Read-only and only for the selected album: it needs both IDs and one (cached) MusicBrainz lookup, which is too slow to do for a whole
 	library. Compared: a Discogs link in the MusicBrainz data, the year, and the track count against the album's file count.
@@ -2319,27 +2350,19 @@ def musicbrainz_check(path: str) -> dict:
 		tag(t0 or {}, 'MUSICBRAINZ_ALBUMID', 'MUSICBRAINZ ALBUM ID'),
 	)
 	if not (rid and mbid and UUID_RE.match(mbid)):
-		return {'notes': []}
+		return {'notes': [], 'mismatches': []}
 	mb = mb_release(mbid)
 	notes = []
 	if mb['discogs_ids'] and rid not in mb['discogs_ids']:
 		notes.append(
 			f'MusicBrainz links Discogs release {", ".join(mb["discogs_ids"])}, this album uses {rid}.'
 		)
-	# The year of the Discogs release itself (cached after the first request), not the year tags in the files: those
-	# keep the old release's year until the next run rewrites them (ADR 0023).
-	try:
-		year = str(release_tracks(rid).get('year') or '')
-	except HTTPException:  # Discogs unreachable: the tags are the best there is
-		year = ''
-	year = year or (tag(t0, 'ALBUM_RELEASE_YEAR', 'YEAR', 'DATE') or '')[:4]
-	if year and mb['year'] and year != mb['year']:
-		notes.append(f'Year: Discogs {year}, MusicBrainz {mb["year"]}.')
+	mismatches = [m] if (m := year_mismatch(t0 or {}, rid, mb)) else []
 	if mb['tracks'] and len(mb['tracks']) != len(files):
 		notes.append(
 			f'The MusicBrainz release has {len(mb["tracks"])} tracks, this album has {len(files)} files.'
 		)
-	return {'notes': notes}
+	return {'notes': notes, 'mismatches': mismatches}
 
 
 @app.post('/api/musicbrainz/apply')
