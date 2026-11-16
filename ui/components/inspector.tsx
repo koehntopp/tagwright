@@ -157,6 +157,15 @@ export function Inspector(p: Props) {
 		api<{ notes: string[] }>('/api/musicbrainz/check?path=' + encodeURIComponent(a.path)).then(r => live && setMbNotes(r.notes), () => {})
 		return () => { live = false }
 	}, [a.path, a.discogs, a.mbid, a.mtime])
+	// other versions of this album's Discogs master in the library (ADR 0082)
+	const [versions, setVersions] = useState<{ path: string; album: string; version: string }[]>([])
+	useEffect(() => {
+		setVersions([])
+		if (!a.master) return
+		let live = true
+		api<{ versions: typeof versions }>('/api/library/versions?path=' + encodeURIComponent(a.path)).then(r => live && setVersions(r.versions), () => {})
+		return () => { live = false }
+	}, [a.path, a.master, a.mtime])
 	const running = job.state === 'running' && job.path === a.path
 	const spinning = (name: string) => (running && name === job.step) || !!p.working?.includes(name)
 
@@ -299,6 +308,15 @@ export function Inspector(p: Props) {
 				<div className="mb-1 text-slate-500">New folder</div>
 				{a.new_title ? <code className="break-all text-xs">{a.new_title}</code> : <span className="text-xs text-slate-400">Not ready: artist or album is empty</span>}
 			</div>
+
+			{versions.length > 0 && (
+				<div className="border-b border-slate-200 py-2 text-[13px]">
+					<div className="mb-1 text-slate-500">In your library</div>
+					<ul className="space-y-0.5 text-xs">
+						{versions.map(v => <li key={v.path} className="break-words" title={v.path}>{v.album}{v.version && !v.album.includes(v.version) ? ' ' + v.version : ''}</li>)}
+					</ul>
+				</div>
+			)}
 
 			<div>
 				<h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">Pipeline</h4>

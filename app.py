@@ -372,6 +372,9 @@ def summarize(album: Path) -> dict:
 		'media': tag(t0, 'ALBUM_FORMAT'),
 		'version': tag(t0, 'VERSION'),
 		'discogs': did,
+		'master': tag(t0, 'DISCOGS_MASTER_ID').lstrip(
+			'mM'
+		),  # the Discogs master release (ADR 0082)
 		'mbid': mid,
 		'tracks': len(files),
 		'edition': ' · '.join(x for x in (tag(t0, 'VERSION'), tag(t0, 'CATALOGNUMBER')) if x),
@@ -561,7 +564,7 @@ cache: dict[str, tuple[str, dict]] = {}
 
 
 SUMMARY_VERSION = (
-	3  # bump it when summarize() returns something else: stored summaries are then read again
+	4  # bump it when summarize() returns something else: stored summaries are then read again
 )
 summaries = SummaryStore(DATA / 'summaries.db')
 
@@ -717,6 +720,31 @@ def albums(path: str = '', fresh: bool = False) -> dict:
 		res = list(ex.map(lambda a: safe_summary(a, fresh, sigs), dirs))
 	res.sort(key=lambda s: s['mtime'], reverse=True)
 	return {'base': str(base), 'albums': res}
+
+
+@app.get('/api/library/versions')
+def library_versions(path: str) -> dict:
+	"""The albums of the library that are other versions of this album's Discogs master release (ADR 0082). Read-only,
+	from the stored summaries (nothing is read from the share); empty while the album has no master."""
+	me = safe(path)
+	master = str(get_summary(me).get('master') or '')
+	found = []
+	for rel in sorted(library_signatures() or {}):
+		other = INGEST / rel if rel else INGEST
+		if other == me or not master:
+			continue
+		row = summaries.get(str(other))
+		if row and row[1].get('master') == master:
+			s = row[1]
+			found.append(
+				{
+					'path': s['path'],
+					'artist': s['artist'],
+					'album': s['album'] or s['name'],
+					'version': s['version'],
+				}
+			)
+	return {'master': master, 'versions': found}
 
 
 @app.get('/api/album')

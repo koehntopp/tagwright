@@ -6,6 +6,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Added
 
+- An **"In your library"** box under the folder lines lists the other versions of the album's Discogs master that are already in the library, one line each with the album title and version. It needs the album to have a Discogs release; the first start after the update re-reads the library summaries once in the background [0082].
+
 - The cover menu has **Paste image**: it takes an image from the clipboard and replaces the cover like a drop does. Over plain http on the LAN it asks you to press Cmd/Ctrl+V while the cover is focused [0056].
 
 - The Tag Editor's Tracks tab shows the same read-only columns as the track list: time, sample rate and bit depth, and the lyrics badge, next to the channels [0014].

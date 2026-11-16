@@ -30,6 +30,7 @@ export type Album = {
 	version: string
 	edition: string
 	discogs: string
+	master?: string
 	mbid: string
 	dr: string
 	mtime: number
