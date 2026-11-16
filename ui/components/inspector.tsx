@@ -250,11 +250,11 @@ export function Inspector(p: Props) {
 
 			<div className="flex gap-2">
 				<div className="relative w-36 shrink-0" data-cover-menu>
-					<button aria-label="Cover actions" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(m => !m)}
+					<Button variant="outline" aria-label="Cover actions" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(m => !m)}
 						title={coverSmall ? a.issues.find(i => i.action === 'cover')?.text : cov ? `${cov.embedded ? 'Embedded cover' : 'Folder image, not embedded'}, ${fmtBytes(cov.bytes)}` : 'Cover actions'}
-						className={`flex h-9 w-full items-center justify-center gap-1.5 rounded-md border text-[13px] tabular-nums shadow-xs transition-colors ${coverSmall ? 'border-amber-300 bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
-						{coverSmall && <TriangleAlert className="size-3.5" />}{p.coverBusy ? 'Processing…' : cov ? `${cov.w}×${cov.h}` : 'no cover'}<Ellipsis className="size-4" />
-					</button>
+						className={`w-full tabular-nums ${coverSmall ? 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100' : ''}`}>
+						{coverSmall && <TriangleAlert className="size-3.5 text-amber-700" />}{p.coverBusy ? 'Processing…' : cov ? `${cov.w}×${cov.h}` : 'no cover'}<Ellipsis className="size-4" />
+					</Button>
 						{menu && (
 							<div role="menu" className="absolute left-0 top-10 z-20 w-56 rounded-lg border bg-white p-1 text-sm shadow-md">
 								<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { setMenu(false); fileRef.current?.click() }}><Upload className="size-4" />Upload image</button>
