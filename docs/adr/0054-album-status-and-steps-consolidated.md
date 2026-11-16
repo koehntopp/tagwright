@@ -57,7 +57,7 @@ A track is "missing" only when it is `none`. Any non-empty lyrics, synced, plain
 
 The summary has `missing`: for every open step the tracks that fail it, `{step, label, count, of, tracks, optional}` (up to 12 track names). Labels: **No lyrics**, **No DR**, **No ReplayGain**, **No fingerprints**, **Tags incomplete**, **Names differ**. Lyrics are `optional: true`.
 - **Card**: for an Incomplete album the pill on the cover names the first *required* missing item (`No DR +1`) instead of the status word, never lyrics. Below the DR and lyrics badges, one pill per missing item with its track count (`No DR 2`, hover: the track names): red for required items, **blue for optional ones** (`No lyrics 2`).
-- **Inspector**: a red **Missing** box above the pipeline lists each required item ("No DR on 2 of 4 tracks" and the first track names); a blue **Optional** box lists the optional ones. Clicking an entry marks those tracks in the track list, as clicking the step does.
+- **Inspector**: a red **Missing** box above the pipeline lists each required item ("No DR on 2 of 4 tracks"), one line per item with the box name at its left, without track names (the track list shows which tracks); a blue **Optional** box lists the optional ones. Clicking an entry marks those tracks in the track list, as clicking the step does.
 - Run fixes keeps trying the lyrics step as before. Albums in the library that lack lyrics show as Fixed with the blue notice.
 - No new filter and no search syntax ([0030](0030-ui-layout-and-design-system-v2.md): the top bar navigation is the only filter).
 

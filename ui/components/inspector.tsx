@@ -267,17 +267,16 @@ export function Inspector(p: Props) {
 				))}
 			</div>
 
-			{([[false, 'Missing', 'border-rose-200 bg-rose-50 text-rose-900', 'text-rose-700', 'text-rose-800/70'], [true, 'Optional', 'border-sky-200 bg-sky-50 text-sky-900', 'text-sky-700', 'text-sky-800/70']] as const).map(([opt, title, box, head, sub]) => {
+			{([[false, 'Missing', 'border-rose-200 bg-rose-50 text-rose-900', 'text-rose-700'], [true, 'Optional', 'border-sky-200 bg-sky-50 text-sky-900', 'text-sky-700']] as const).map(([opt, title, box, head]) => {
 				const items = (a.missing ?? []).filter(m => !!m.optional === opt)
 				return !!items.length && (
-					<div key={title} className={`rounded-xl border p-2 text-[13px] ${box}`}>
-						<div className={`mb-1 text-xs font-medium uppercase tracking-wider ${head}`}>{title}</div>
-						<ul className="space-y-1">
+					<div key={title} className={`flex items-baseline gap-3 rounded-xl border px-3 py-1.5 text-[13px] ${box}`}>
+						<div className={`w-16 shrink-0 text-xs font-medium uppercase tracking-wider ${head}`}>{title}</div>
+						<ul className="min-w-0 flex-1 space-y-0.5">
 							{items.map(m => (
 								<li key={m.step}>
 									<button className="w-full text-left hover:underline" title="Mark these tracks in the track list" onClick={() => { setStep(a.steps.findIndex(s => s.name === m.step)); setTracksOpen(true) }}>
 										<span className="font-medium">{m.label}</span> on {m.count === m.of ? `all ${m.of} tracks` : `${m.count} of ${m.of} tracks`}
-										<span className={`block truncate text-xs ${sub}`}>{m.tracks.slice(0, 4).join(' · ')}{m.tracks.length > 4 ? ' …' : ''}</span>
 									</button>
 								</li>
 							))}

@@ -24,6 +24,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
+- The Missing and Optional boxes take one line per item ("MISSING  No fingerprints on all 9 tracks") and no longer list track names; the track list shows which tracks [0054, 0039].
+
 - The cover's size and its "…" menu are one button at the left end of the action row, as wide as the cover and beside Tag Editor, Run fixes and Move to library, instead of a pill and a button under the cover [0056].
 
 - A very long song title no longer makes the rename fail: the file name is cut so that it stays within 255 bytes. Shorter names are unchanged [0010].

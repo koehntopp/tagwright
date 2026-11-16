@@ -13,7 +13,7 @@
 - The filter, the status pill and the status names say **Incomplete** (blue, as before). **Needs input** and **Fixed** are unchanged.
 - The album summary has `missing`: for every open step the tracks that fail it, `{step, label, count, of, tracks}` (up to 12 track names). Labels: **No lyrics**, **No DR**, **No ReplayGain**, **No fingerprints**, **Tags incomplete**, **Names differ**.
 - **Card**: for an Incomplete album the pill on the cover names the first thing that is missing (`No lyrics`, `No DR +1`) instead of the status word; a red badge per missing item with its track count (`No lyrics 2`) sits in a row below the DR and lyrics badges (hover: the track names). This is the red "No lyrics" of 0030, now also for the other steps.
-- **Inspector**: a **Missing** box above the pipeline lists each item ("No lyrics on 2 of 4 tracks" and the first track names); clicking one marks those tracks in the track list, as clicking the step does.
+- **Inspector**: a **Missing** box above the pipeline lists each item ("No lyrics on 2 of 4 tracks"), one line per item with the box name at its left, without track names (the track list shows which tracks); clicking one marks those tracks in the track list, as clicking the step does.
 - **No Discogs release ID, no other checks**: the red "Add a Discogs release ID before running fixes." is then the only line (no cover line either) and there is no `missing` list, so no badges and no Missing box. They appear once the release is assigned.
 - No new filter and no search syntax ([0030](0030-ui-layout-and-design-system-v2.md): the top bar navigation is the only filter).
 
