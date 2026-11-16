@@ -271,7 +271,7 @@ export function Inspector(p: Props) {
 				const items = (a.missing ?? []).filter(m => !!m.optional === opt)
 				return !!items.length && (
 					<div key={title} className={`flex items-baseline gap-3 rounded-xl border px-3 py-1.5 text-[13px] ${box}`}>
-						<div className={`w-16 shrink-0 text-xs font-medium uppercase tracking-wider ${head}`}>{title}</div>
+						<div className={`w-32 shrink-0 text-xs font-medium uppercase tracking-wider ${head}`}>{title}</div>
 						<ul className="min-w-0 flex-1 space-y-0.5">
 							{items.map(m => (
 								<li key={m.step}>
@@ -297,24 +297,18 @@ export function Inspector(p: Props) {
 				</div>
 			)}
 
-			<div className="border-b border-slate-200 py-2 text-[13px]">
-				<div className="mb-1 text-slate-500">Current folder</div>
-				<code className="break-all text-xs">{a.folder || a.name}</code>
+			<div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-[13px] text-slate-800">
+				{([
+					['Current folder', [<code key="c" className="break-all text-xs">{a.folder || a.name}</code>]],
+					['New folder', [a.new_title ? <code key="n" className="break-all text-xs">{a.new_title}</code> : <span key="n" className="text-xs text-slate-400">Not ready: artist or album is empty</span>]],
+					...(versions.length > 0 ? [['In your library', versions.map(v => <span key={v.path} className="block break-words text-xs" title={v.path}>{v.album}{v.version && !v.album.includes(v.version) ? ' ' + v.version : ''}</span>)] as const] : []),
+				] as const).map(([label, lines]) => (
+					<div key={label} className="flex items-baseline gap-3">
+						<div className="w-32 shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">{label}</div>
+						<div className="min-w-0 flex-1 space-y-0.5">{lines}</div>
+					</div>
+				))}
 			</div>
-
-			<div className="border-b border-slate-200 py-2 text-[13px]">
-				<div className="mb-1 text-slate-500">New folder</div>
-				{a.new_title ? <code className="break-all text-xs">{a.new_title}</code> : <span className="text-xs text-slate-400">Not ready: artist or album is empty</span>}
-			</div>
-
-			{versions.length > 0 && (
-				<div className="border-b border-slate-200 py-2 text-[13px]">
-					<div className="mb-1 text-slate-500">In your library</div>
-					<ul className="space-y-0.5 text-xs">
-						{versions.map(v => <li key={v.path} className="break-words" title={v.path}>{v.album}{v.version && !v.album.includes(v.version) ? ' ' + v.version : ''}</li>)}
-					</ul>
-				</div>
-			)}
 
 			<div>
 				<h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">Pipeline</h4>

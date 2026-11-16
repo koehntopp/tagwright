@@ -24,6 +24,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
+- Current folder, New folder and In your library are rows of one light grey box, the label at the left of its value (no separate headings), in the same style as the Missing and Optional boxes; further versions in the library are indented under the first [0082].
+
 - The Missing and Optional boxes take one line per item ("MISSING  No fingerprints on all 9 tracks") and no longer list track names; the track list shows which tracks [0054, 0039].
 
 - The cover's size and its "…" menu are one button at the left end of the action row, as wide as the cover and beside Tag Editor, Run fixes and Move to library, instead of a pill and a button under the cover [0056].
