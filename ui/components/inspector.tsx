@@ -196,29 +196,6 @@ export function Inspector(p: Props) {
 							{p.coverBusy && <div className="absolute inset-0 grid place-items-center rounded-xl bg-white/70" role="status" aria-label="Processing the cover"><Loader2 className="size-8 animate-spin text-slate-700" /></div>}
 						</div>
 					</div>
-					<div className="relative mt-2 flex items-center justify-center gap-1.5" data-cover-menu>
-						<span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] tabular-nums ${coverSmall ? 'border-amber-300 bg-amber-100 text-amber-900' : 'bg-white text-slate-500'}`}
-							title={coverSmall ? a.issues.find(i => i.action === 'cover')?.text : cov ? `${cov.embedded ? 'Embedded cover' : 'Folder image, not embedded'}, ${fmtBytes(cov.bytes)}` : ''}>
-							{coverSmall && <TriangleAlert className="size-3" />}{p.coverBusy ? 'Processing…' : cov ? `${cov.w}×${cov.h}` : 'no cover'}
-						</span>
-						<button aria-label="Cover actions" aria-haspopup="menu" aria-expanded={menu} title="Cover actions" onClick={() => setMenu(m => !m)}
-							className="grid size-6 place-items-center rounded-md border bg-white text-slate-600 hover:bg-slate-50"><Ellipsis className="size-4" /></button>
-						{menu && (
-							<div role="menu" className="absolute left-0 top-8 z-20 w-56 rounded-lg border bg-white p-1 text-sm shadow-md">
-								<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { setMenu(false); fileRef.current?.click() }}><Upload className="size-4" />Upload image</button>
-								<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { setMenu(false); pasteCover() }}><ClipboardPaste className="size-4" />Paste image</button>
-								<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://covers.musichoarders.xyz/?${new URLSearchParams({ artist: a.artist || '', album: title(a) })}`} target="_blank" rel="noopener">
-									{/* eslint-disable-next-line @next/next/no-img-element */}
-									<img src="/static/musichoarders.svg" alt="" className="size-4 rounded-sm bg-slate-800 p-px" />Search musichoarders
-								</a>
-								<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://albumartexchange.com/covers?${new URLSearchParams({ q: [a.artist, title(a)].filter(Boolean).join(' '), fltr: 'ALL', sort: 'SCORE', status: '', size: 'any' })}`} target="_blank" rel="noopener">
-									{/* eslint-disable-next-line @next/next/no-img-element */}
-									<img src="/static/albumartexchange.ico" alt="" className="size-4 rounded-sm" />Search albumartexchange
-								</a>
-								{cov && <button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-rose-600 hover:bg-rose-50" onClick={() => { setMenu(false); p.delCover() }}><Trash2 className="size-4" />Remove cover</button>}
-							</div>
-						)}
-					</div>
 					<input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && p.putCover(e.target.files[0])} />
 				</div>
 				<div className="min-w-0">
@@ -249,6 +226,28 @@ export function Inspector(p: Props) {
 			</div>
 
 			<div className="flex gap-2">
+				<div className="relative w-36 shrink-0" data-cover-menu>
+					<button aria-label="Cover actions" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(m => !m)}
+						title={coverSmall ? a.issues.find(i => i.action === 'cover')?.text : cov ? `${cov.embedded ? 'Embedded cover' : 'Folder image, not embedded'}, ${fmtBytes(cov.bytes)}` : 'Cover actions'}
+						className={`flex h-9 w-full items-center justify-center gap-1.5 rounded-md border text-[13px] tabular-nums shadow-xs transition-colors ${coverSmall ? 'border-amber-300 bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
+						{coverSmall && <TriangleAlert className="size-3.5" />}{p.coverBusy ? 'Processing…' : cov ? `${cov.w}×${cov.h}` : 'no cover'}<Ellipsis className="size-4" />
+					</button>
+						{menu && (
+							<div role="menu" className="absolute left-0 top-10 z-20 w-56 rounded-lg border bg-white p-1 text-sm shadow-md">
+								<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { setMenu(false); fileRef.current?.click() }}><Upload className="size-4" />Upload image</button>
+								<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { setMenu(false); pasteCover() }}><ClipboardPaste className="size-4" />Paste image</button>
+								<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://covers.musichoarders.xyz/?${new URLSearchParams({ artist: a.artist || '', album: title(a) })}`} target="_blank" rel="noopener">
+									{/* eslint-disable-next-line @next/next/no-img-element */}
+									<img src="/static/musichoarders.svg" alt="" className="size-4 rounded-sm bg-slate-800 p-px" />Search musichoarders
+								</a>
+								<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://albumartexchange.com/covers?${new URLSearchParams({ q: [a.artist, title(a)].filter(Boolean).join(' '), fltr: 'ALL', sort: 'SCORE', status: '', size: 'any' })}`} target="_blank" rel="noopener">
+									{/* eslint-disable-next-line @next/next/no-img-element */}
+									<img src="/static/albumartexchange.ico" alt="" className="size-4 rounded-sm" />Search albumartexchange
+								</a>
+								{cov && <button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-rose-600 hover:bg-rose-50" onClick={() => { setMenu(false); p.delCover() }}><Trash2 className="size-4" />Remove cover</button>}
+							</div>
+						)}
+				</div>
 				<Button className="flex-1 bg-slate-800 text-white hover:bg-slate-700" onClick={() => p.openEditor('album')}>Tag Editor</Button>
 				<Button className={`flex-1 ${running ? 'border-rose-600 bg-rose-600 text-white disabled:opacity-100' : ''}`} variant="outline" disabled={a.status === 'needs' || job.state === 'running'} onClick={() => p.run()}>{running ? 'Running…' : 'Run fixes'}</Button>
 				<Button className="flex-1" variant="outline" disabled={p.inLibrary || a.status !== 'fixed' || a.issues.some(i => i.level === 'ingest') || job.state === 'running'} title={p.inLibrary ? 'This album is already in the library' : undefined} onClick={p.move}>Move to library</Button>

@@ -24,6 +24,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
+- The cover's size and its "…" menu are one button at the left end of the action row, as wide as the cover and beside Tag Editor, Run fixes and Move to library, instead of a pill and a button under the cover [0056].
+
 - A very long song title no longer makes the rename fail: the file name is cut so that it stays within 255 bytes. Shorter names are unchanged [0010].
 
 - Discogs now leads the catalogue number, album format and credits (composer, producer, engineer ...): assigning a release writes them. A manual value is kept with the new Album Format Override and Catalog # Override fields in the Tag Editor. With "Import song titles" on, the track artist is written together with the title, in the Discogs and the MusicBrainz dialog [0080].
