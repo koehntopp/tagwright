@@ -346,3 +346,67 @@ def test_discogs_leads_the_credits_and_an_empty_discogs_value_changes_nothing(
 		for t in REL['tracks']:
 			t['composers'] = []
 	assert {FLAC(f)['COMPOSER'][0] for f in album.glob('*.flac')} == {'New Composer'}
+
+
+def drop_numbers(album: Path) -> None:
+	"""Make the files look like a raw download: title only, no disc or track number."""
+	for f in album.glob('*.flac'):
+		audio = FLAC(f)
+		for key in ('TRACKNUMBER', 'DISCNUMBER', 'TRACKTOTAL', 'DISCTOTAL'):
+			if key in audio:
+				del audio[key]
+		audio.save()
+
+
+def numbers(album: Path) -> list[tuple[str, str]]:
+	out = []
+	for f in sorted(album.glob('*.flac')):
+		t = FLAC(f)
+		out.append((t.get('DISCNUMBER', [''])[0], t.get('TRACKNUMBER', [''])[0]))
+	return out
+
+
+def test_discogs_with_the_box_off_fills_an_empty_disc_and_track_number(
+	client: TestClient, album: Path, stubbed: None
+) -> None:
+	drop_numbers(album)
+	files = [f.name for f in tagwright.flacs(album)]
+	r = client.post(
+		'/api/tracks/apply',
+		json={
+			'path': str(album),
+			'release_id': '777',
+			'import_titles': False,
+			'assignments': [{'file': f, 'rel': i} for i, f in enumerate(files)],
+		},
+	)
+	assert r.status_code == 200, r.text
+	assert numbers(album) == [('1', '1'), ('1', '2')]
+	assert titles(album) == ['One', 'Two']  # the files' own titles stay
+
+
+def test_discogs_with_the_box_off_never_changes_existing_numbers(
+	client: TestClient, album: Path, stubbed: None
+) -> None:
+	files = [f.name for f in tagwright.flacs(album)]
+	r = client.post(
+		'/api/tracks/apply',
+		json={
+			'path': str(album),
+			'release_id': '777',
+			'import_titles': False,
+			'assignments': [
+				{'file': f, 'rel': i, 'disc': 3, 'track': 9} for i, f in enumerate(files)
+			],
+		},
+	)
+	assert r.status_code == 200, r.text
+	assert numbers(album) == [('1', '1'), ('1', '2')]
+
+
+def test_musicbrainz_with_the_box_off_fills_an_empty_disc_and_track_number(
+	client: TestClient, album: Path, mb: None
+) -> None:
+	drop_numbers(album)
+	mb_apply(client, album)
+	assert numbers(album) == [('1', '1'), ('1', '2')]

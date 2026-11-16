@@ -30,6 +30,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Fixed
 
+- With "Import song titles" off, the Discogs and MusicBrainz assignments now fill an empty disc number, track number or title from the release (a raw download has no disc number, so the album could not be named). Numbers and titles the files already have are still left alone [0078].
+
 - A dialog no longer keeps showing "a job is running" after the job has finished.
 
 ## 0.3.0 (2026-11-13)

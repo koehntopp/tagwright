@@ -1647,6 +1647,24 @@ def release_tracks(rid: str) -> dict:
 	return out
 
 
+def fill_numbers(a: Audio, title: str, d: int, n: int, per_disc: dict[int, int]) -> list[str]:
+	"""With "Import song titles" off: an empty TITLE, TRACKNUMBER or DISCNUMBER is filled from the assignment (with
+	its total), so the album can be named; a tag the file has is never touched (ADR 0078). Returns the keys written."""
+	wrote = []
+	if title and not tag(a.tags, 'TITLE'):
+		a['TITLE'] = [title]
+		wrote.append('TITLE')
+	if not tag(a.tags, 'TRACKNUMBER'):
+		a['TRACKNUMBER'] = [str(n)]
+		a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]
+		wrote.append('TRACKNUMBER')
+	if not tag(a.tags, 'DISCNUMBER'):
+		a['DISCNUMBER'] = [str(d)]
+		a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(per_disc))]
+		wrote.append('DISCNUMBER')
+	return wrote
+
+
 def set_subtitle(a: Audio, item: dict | None, track: dict) -> None:
 	"""SET SUBTITLE and DISCSUBTITLE (the pair the Tag Editor writes) of an assigned file (ADR 0081). The dialog sends
 	the subtitle per file: a text writes it, null (Keep mine) leaves the file alone; without the key the release track's
@@ -1968,6 +1986,9 @@ def tracks_apply(body: dict) -> dict:
 			a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]
 			a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(per_disc))]
 			set_subtitle(a, items.get(fn), t)
+		else:
+			for key in fill_numbers(a, t['title'], d, n, per_disc):
+				filled[key] = filled.get(key, 0) + 1
 		a.save()
 		log.append(
 			f'{fn}: {d}-{n:02d} {titles.get(fn) or t["title"]}'
@@ -2369,6 +2390,10 @@ def musicbrainz_apply(body: dict) -> dict:
 			a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]
 			a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(per_disc))]
 			renumbered += 1
+		elif assigned and match and fn in chosen:
+			d, n = final[fn]
+			for k in fill_numbers(a, match[0]['title'], d, n, per_disc):
+				filled[k] = filled.get(k, 0) + 1
 		if len(match) == 1 and match[0]['artists']:
 			for k in [k for k in a.tags.keys() if k.upper() in MB_TRACK_KEYS]:
 				del a.tags[k]
