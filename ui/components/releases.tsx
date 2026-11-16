@@ -118,7 +118,7 @@ function AssignTable({ rel, files, used, upd, numbers, ovr, setOvr }: { rel: any
 					)}
 					{numbers && f.rel !== null && !run && lastAssigned(k) && <DividerGap cols={5} onAdd={() => { setO(f.file, { split: true, text: '' }); setEditing(f.file) }} />}
 					<tr className="border-t">
-						<td className="w-1/2 py-1">
+						<td className="w-1/2 py-1 pr-3">
 							<div className="mb-0.5 truncate text-xs text-slate-400" title={f.file}>File: {f.file} · {mmss(f.duration)}</div>
 							{numbers && f.rel !== null ? (
 								<>
@@ -140,7 +140,7 @@ function AssignTable({ rel, files, used, upd, numbers, ovr, setOvr }: { rel: any
 								{rel.tracks.map((t: any) => <option key={t.i} value={t.i}>{t.part_of ? '\u00a0\u00a0\u21b3' : (t.position || t.i + 1)}  {t.title}{t.duration ? ` (${mmss(t.duration)})` : ''}{t.channels ? ` · ${channelLabel(t.channels)}` : ''}</option>)}
 							</select>
 						</td>
-						<td className="w-16 text-right">{f.rel === null ? <Badge variant="secondary">skip</Badge> : f.conf >= 0.6 ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">match</Badge> : <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">check</Badge>}</td>
+						<td className="w-16 pl-2 pr-3 text-right">{f.rel === null ? <Badge variant="secondary">skip</Badge> : f.conf >= 0.6 ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">match</Badge> : <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">check</Badge>}</td>
 					</tr>
 					</Fragment>
 					)
