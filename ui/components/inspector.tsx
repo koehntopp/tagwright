@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ChartColumn, Check, ChevronDown, Copy, Ellipsis, Fingerprint, FileText, Loader2, Mic, Pause, Pencil, Play, RefreshCw, Search, Tags, Trash2, TriangleAlert, Upload, Volume2 } from 'lucide-react'
+import { ChartColumn, Check, ChevronDown, Copy, Ellipsis, Fingerprint, FileText, Loader2, Mic, ClipboardPaste, Pause, Pencil, Play, RefreshCw, Search, Tags, Trash2, TriangleAlert, Upload, Volume2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -134,6 +134,20 @@ export function Inspector(p: Props) {
 		return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc) }
 	}, [menu])
 	const fileRef = useRef<HTMLInputElement>(null)
+	const coverRef = useRef<HTMLDivElement>(null)
+	// "Paste image" (ADR 0016): read the clipboard where the browser allows it (https, localhost); over plain http on
+	// the LAN there is no clipboard API, so the cover takes focus and the paste key (Cmd/Ctrl+V) delivers the image
+	const pasteCover = async () => {
+		const fail = () => toast.error('No image on the clipboard')
+		if (!navigator.clipboard?.read) { coverRef.current?.focus(); toast.info('Press Cmd/Ctrl+V to paste the image'); return }
+		try {
+			for (const item of await navigator.clipboard.read()) {
+				const type = item.types.find(t => t.startsWith('image/'))
+				if (type) return p.putCover(new File([await item.getType(type)], 'pasted.' + type.split('/')[1], { type }))
+			}
+			fail()
+		} catch { fail() }
+	}
 	// non-consequential notes where MusicBrainz and Discogs disagree (selected album only: one cached MusicBrainz lookup)
 	const [mbNotes, setMbNotes] = useState<string[]>([])
 	useEffect(() => {
@@ -153,8 +167,13 @@ export function Inspector(p: Props) {
 			<div className="flex gap-4">
 				<div className="w-36 shrink-0">
 					<div
-						className={`rounded-xl transition-shadow ${drag ? 'ring-4 ring-slate-800' : coverSmall ? 'outline-dashed outline-2 outline-offset-2 outline-amber-400' : ''}`}
+						ref={coverRef} tabIndex={-1}
+						className={`rounded-xl transition-shadow focus:ring-4 focus:ring-slate-300 ${drag ? 'ring-4 ring-slate-800' : coverSmall ? 'outline-dashed outline-2 outline-offset-2 outline-amber-400' : ''}`}
 						title="Drop an image here to replace the cover"
+						onPaste={e => {
+							const f = [...e.clipboardData.files].find(f => f.type.startsWith('image/'))
+							if (f) { e.preventDefault(); p.putCover(f) } else toast.error('No image on the clipboard')
+						}}
 						onDragOver={e => { e.preventDefault(); setDrag(true) }}
 						onDragLeave={() => setDrag(false)}
 						onDrop={e => {
@@ -178,6 +197,7 @@ export function Inspector(p: Props) {
 						{menu && (
 							<div role="menu" className="absolute left-0 top-8 z-20 w-56 rounded-lg border bg-white p-1 text-sm shadow-md">
 								<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { setMenu(false); fileRef.current?.click() }}><Upload className="size-4" />Upload image</button>
+								<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { setMenu(false); pasteCover() }}><ClipboardPaste className="size-4" />Paste image</button>
 								<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://covers.musichoarders.xyz/?${new URLSearchParams({ artist: a.artist || '', album: title(a) })}`} target="_blank" rel="noopener">
 									{/* eslint-disable-next-line @next/next/no-img-element */}
 									<img src="/static/musichoarders.svg" alt="" className="size-4 rounded-sm bg-slate-800 p-px" />Search musichoarders

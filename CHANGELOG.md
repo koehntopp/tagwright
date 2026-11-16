@@ -6,6 +6,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Added
 
+- The cover menu has **Paste image**: it takes an image from the clipboard and replaces the cover like a drop does. Over plain http on the LAN it asks you to press Cmd/Ctrl+V while the cover is focused [0056].
+
 - The Tag Editor's Tracks tab shows the same read-only columns as the track list: time, sample rate and bit depth, and the lyrics badge, next to the channels [0014].
 
 - The Discogs and MusicBrainz dialogs show the release's subtitles as dividers between the tracks, the same as the Tag Editor: Discogs headings (also inside a disc) and MusicBrainz disc titles. Each divider has a "Release" / "Keep mine" choice, the old subtitles of the files, a pen to type your own and "+ divider here"; "Import song titles" moved to the top right of the dialog [0081].
