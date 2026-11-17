@@ -41,6 +41,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Fixed
 
+- The Discogs and MusicBrainz track assignment dialogs no longer grow wider than the window when a file name is long: the release track and match columns stay inside the dialog.
+
 - In the Discogs and MusicBrainz track assignment, the channel badge no longer touches the disc number field and the match pill no longer touches the scroll bar.
 
 - With "Import song titles" off, the Discogs and MusicBrainz assignments now fill an empty disc number, track number or title from the release (a raw download has no disc number, so the album could not be named). Numbers and titles the files already have are still left alone [0078].
