@@ -40,7 +40,7 @@ One run does these steps in this order (ADR 0036):
 5. **Lyrics** from [lrclib.net](https://lrclib.net), synced (LRC) when available
 6. **Filenames** in the layout's file name pattern
 
-The inspector shows each step as done or partial, and which tracks lack it.
+The inspector shows each step as done or partial, and which tracks lack it. Notes in the inspector all look alike: a red **Missing** or **Mismatch** with a stop symbol, warnings and hints with a warning sign, and a button where something can be done (*Run fixes*, *MusicBrainz*). Under the notes a grey box shows the current folder, the new folder with the album title and version, and **In your library**: the other versions of the same Discogs master that are already in the library (ADR 0082, 0083). The track list shows each track's time, channels, sample rate and bit depth, dynamic range and lyrics (`LRC`, `TXT`, `INS`, `---`).
 
 ![Inspector: pipeline steps, track list with channel and DR badges](docs/screenshots/inspector.png)
 
@@ -48,17 +48,17 @@ Tags Tagwright writes are never read back as input, tags owned by Discogs are re
 
 ## Editing
 
-**Tag editor** has five tabs: Album, Tracks, Discogs, MusicBrainz and Other (every tag not shown elsewhere). Tracks lets you change disc, track number, title, artist and disc subtitle, reorder by drag and drop, and see whether a track is Stereo, Mono, 5.1 or 7.1.
+**Tag editor** has five tabs: Album, Tracks, Discogs, MusicBrainz and Other (every tag not shown elsewhere). Tracks lets you change disc, track number, title and artist, reorder by drag and drop, and see each track's time, sample rate and bit depth, channels and lyrics. Disc subtitles are bands between the tracks: a band per disc on a multi-disc album, and a band wherever the subtitle changes inside a disc, with a pen to type one, "+ divider here" to add one and an x to remove one (ADR 0081).
 
 ![Tag editor, Tracks tab](docs/screenshots/tag-editor-tracks.png)
 
-**Discogs** search assigns an album's files to the tracks of a release, which matters when the download holds only a subset of the release. The Discogs-owned tags (album name, version, catalog number, year, ...) are written at once. **MusicBrainz** search picks the matching release, assigns the files to its tracks the same way, stores its IDs and links, and warns when its year differs from the Discogs release. Both dialogs have an "Import song titles" checkbox (remembered; on for Discogs, off for MusicBrainz): off imports only the album data, on also writes the release's titles, track and disc numbers and disc subtitles, so titles you prefer, for example without kanji, stay in the files.
+**Discogs** search assigns an album's files to the tracks of a release, which matters when the download holds only a subset of the release. The Discogs-owned tags (album name, version, catalog number, year, ...) are written at once. **MusicBrainz** search picks the matching release, assigns the files to its tracks the same way, stores its IDs and links, and shows a red **Mismatch** when its year differs from the Discogs release, which stops *Move to library* until the release is fixed (ADR 0083). Both dialogs show the release's subtitles as dividers with a "Release" / "Keep mine" choice. Both dialogs have an "Import song titles" checkbox (remembered; on for Discogs, off for MusicBrainz): off imports only the album data, on also writes the release's titles, track and disc numbers and disc subtitles, so titles you prefer, for example without kanji, stay in the files. With it off, an empty disc number, track number or title is still filled from the release.
 
 **Lyrics** are edited per track, optionally after searching lrclib.net under another title or artist.
 
 ![Lyrics editor](docs/screenshots/lyrics-editor.png)
 
-**Cover**: the pixel size is shown and a small cover is flagged. Drop an image on the cover or use the upload button; it is scaled down to the maximum cover size (Settings, 1500 px by default) and embedded; a cover below the minimum size (1400 px by default) keeps the album from moving. Links open cover searches on external sites.
+**Cover**: the pixel size is shown and a small cover is flagged. The cover button at the left of the action row shows the size and opens a menu: upload an image, **paste** one from the clipboard, search for covers on two external sites, or remove the cover. You can also drop an image on the cover; it is scaled down to the maximum cover size (Settings, 1500 px by default) and embedded; a cover below the minimum size (1400 px by default) keeps the album from moving.
 
 ## Moving to the library
 

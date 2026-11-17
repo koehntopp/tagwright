@@ -4,6 +4,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+## 0.4.0 (2026-11-18)
+
 ### Added
 
 - An **"In your library"** box under the folder lines lists the other versions of the album's Discogs master that are already in the library, one line each with the album title and version. It needs the album to have a Discogs release; the first start after the update re-reads the library summaries once in the background [0082].
