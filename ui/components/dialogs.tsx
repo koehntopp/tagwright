@@ -23,8 +23,8 @@ export function Shell({ open, onClose, title, wide = 'sm:max-w-[40rem]', err, sa
 	if (err === 'a job is running' && !running) err = ''
 	return (
 		<Dialog open={open} onOpenChange={o => !o && onClose()}>
-			<DialogContent className={`${wide} gap-0 rounded-2xl`}>
-				<DialogHeader className="flex-row items-center gap-3">
+			<DialogContent className={`${wide} grid-cols-[minmax(0,1fr)] gap-0 rounded-2xl`}>
+				<DialogHeader className="min-w-0 flex-row items-center gap-3">
 					<DialogTitle className="text-lg">{title}</DialogTitle>
 					{header}
 				</DialogHeader>

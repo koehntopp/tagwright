@@ -41,6 +41,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Fixed
 
+- Dialogs no longer grow wider than the window when they hold long text, such as the file path above the lyrics editor: the content now stays inside the dialog.
+
 - The Discogs and MusicBrainz track assignment dialogs no longer grow wider than the window when a file name is long: the release track and match columns stay inside the dialog.
 
 - In the Discogs and MusicBrainz track assignment, the channel badge no longer touches the disc number field and the match pill no longer touches the scroll bar.
