@@ -4,6 +4,10 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+### Fixed
+
+- The full-bleed layout applies only to the list table; card view keeps its original padding around the cards [0087].
+
 ### Added
 
 - A **view switch** in the top bar, next to Rescan: two buttons, **cards** and **list**, with the active one pressed. The list is a compact, full-width **data table** with a sticky title row, high-contrast alternating rows and columns for album artist, release name, media, edition, catalog number, dynamic range, release year (**Release**) and master year (**Master**). DR values of 12 and above are green, lower ones amber. Click any column heading to sort by it (again for descending), drag the edge of a heading to resize a column, and click a row to open the same inspector as a card. Column widths and the chosen view are remembered in the browser; no covers are shown in the list [0087].
