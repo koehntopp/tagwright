@@ -89,10 +89,10 @@ export function AlbumList({ albums, selected, onSelect, sort, onSort }: Props) {
 	return (
 		<table className="w-full table-fixed border-collapse text-left text-[13px] text-slate-900" style={{ minWidth: COLUMNS.reduce((n, c) => n + widths[c.key], 0) }}>
 			<colgroup>{COLUMNS.map(c => <col key={c.key} style={{ width: widths[c.key] }} />)}</colgroup>
-			<thead className="sticky top-0 z-10">
+			<thead>
 				<tr className="border-b border-slate-400 bg-slate-300 text-xs text-slate-900">
 					{COLUMNS.map((c, ci) => (
-						<th key={c.key} scope="col" aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'} className={`relative bg-slate-300 px-3 py-1 font-medium ${ci ? 'border-l border-slate-400' : ''}`}>
+						<th key={c.key} scope="col" aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'} className={`sticky top-0 z-10 bg-slate-300 px-3 py-1 font-medium ${ci ? 'border-l border-slate-400' : ''}`}>
 							<button type="button" onClick={() => clickHeader(c.key)} className="flex w-full items-center gap-1 truncate text-left hover:text-black" title={`Sort by ${c.hint}`}>
 								{c.label}{sort?.key === c.key && <span aria-hidden="true" className="text-slate-600">{sort.dir === 1 ? '▲' : '▼'}</span>}
 							</button>

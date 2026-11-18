@@ -11,7 +11,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 ### Fixed
 
 - The full-bleed layout applies only to the list table; card view keeps its original padding around the cards [0087].
-- When the list scrolls, its title row sticks directly below the top bar; rows no longer scroll above it [0087].
+- When the list scrolls, its title row sticks directly below the top bar; rows no longer scroll above it. The stickiness moved to the header cells so it works in Safari too [0087].
 
 ### Added
 
