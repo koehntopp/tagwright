@@ -280,7 +280,7 @@ export default function Page() {
 				</div>
 			</header>
 			<div className="flex min-h-0 flex-1">
-			<main className="min-w-0 flex-1 overflow-y-auto p-8">
+			<main className="min-w-0 flex-1 overflow-auto pt-6">
 				{shown.length ? (
 					view === 'cards' ? (
 					<div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] items-start gap-5">

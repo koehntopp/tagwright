@@ -32,7 +32,7 @@ Tagwright is a single-user, self-hosted web app that lets one person work throug
 | UC-15 | Switch the board between the staging folder and the library folder to fix details of albums that are already in the library. | [0038](0038-staging-and-library-views.md) |
 | UC-16 | Let other programs read the library's albums as CSV from Tagwright instead of a hand-made export. | [0077](0077-library-as-csv-for-other-programs.md) |
 | UC-17 | See which other versions of an album (the same Discogs master) are already in the library. | [0082](0082-in-your-library-box.md) |
-| UC-18 | Switch the board between the card grid and a compact, sortable table of album artist, release name, media, edition, release year and master year, with the same selection, filters and inspector in both views. | [0086](0086-data-table-list-view.md) |
+| UC-18 | Switch the board between the card grid and a compact, sortable table of album artist, release name, media, edition, catalog number, dynamic range, release year and master year, with the same selection, filters and inspector in both views. | [0087](0087-table-contrast.md) |
 
 ### Audio formats
 

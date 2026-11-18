@@ -3,32 +3,36 @@
 import { useEffect, useRef, useState } from 'react'
 import { Album, STATUS, title } from '@/lib/api'
 
-// A real data table: no covers, alternating rows, resizable and sortable columns (ADR 0086).
-type SortKey = 'artist' | 'name' | 'media' | 'edition' | 'release_year' | 'master_year'
+// A full-bleed data table with a sticky header, alternating rows and sortable, resizable columns (ADR 0087).
+type SortKey = 'artist' | 'name' | 'media' | 'edition' | 'catalog' | 'dr' | 'release_year' | 'master_year'
 export type TableSort = { key: SortKey; dir: 1 | -1 }
-const COLUMNS: { key: SortKey; label: string; width: number }[] = [
-	{ key: 'artist', label: 'Album artist', width: 220 },
-	{ key: 'name', label: 'Release name', width: 300 },
-	{ key: 'media', label: 'Media', width: 90 },
-	{ key: 'edition', label: 'Edition', width: 180 },
-	{ key: 'release_year', label: 'Release year', width: 120 },
-	{ key: 'master_year', label: 'Master year', width: 120 },
+const COLUMNS: { key: SortKey; label: string; hint: string; width: number }[] = [
+	{ key: 'artist', label: 'Album artist', hint: 'Album artist', width: 220 },
+	{ key: 'name', label: 'Release name', hint: 'Release name', width: 280 },
+	{ key: 'media', label: 'Media', hint: 'Media', width: 80 },
+	{ key: 'edition', label: 'Edition', hint: 'Edition', width: 160 },
+	{ key: 'catalog', label: 'Catalog #', hint: 'Catalog number', width: 120 },
+	{ key: 'dr', label: 'DR', hint: 'Dynamic range', width: 70 },
+	{ key: 'release_year', label: 'Release', hint: 'Release year', width: 90 },
+	{ key: 'master_year', label: 'Master', hint: 'Master year', width: 90 },
 ]
 const FIELD: Record<SortKey, (a: Album) => string> = {
 	artist: a => a.artist,
 	name: title,
 	media: a => a.media,
 	edition: a => a.edition_name,
+	catalog: a => a.catalog,
+	dr: a => a.dr,
 	release_year: a => a.release_year,
 	master_year: a => a.master_year,
 }
-const NUMERIC: SortKey[] = ['release_year', 'master_year']
+const NUMERIC: SortKey[] = ['dr', 'release_year', 'master_year']
 const MIN_WIDTH = 64
 const STORE = 'tagwright-table-widths'
 const DOT = { needs: 'bg-rose-600', ready: 'bg-sky-600', fixed: 'bg-emerald-600' }
 const defaults = () => Object.fromEntries(COLUMNS.map(c => [c.key, c.width])) as Record<SortKey, number>
 
-/** Empty values sort last in both directions; years compare numerically. */
+/** Empty values sort last in both directions; DR and years compare numerically. */
 export function tableCompare(sort: TableSort, a: Album, b: Album): number {
 	const av = FIELD[sort.key](a), bv = FIELD[sort.key](b)
 	if (!av && bv) return 1
@@ -37,6 +41,8 @@ export function tableCompare(sort: TableSort, a: Album, b: Album): number {
 	const r = NUMERIC.includes(sort.key) ? Number(av) - Number(bv) : av.localeCompare(bv)
 	return sort.dir * r
 }
+
+const drText = (v: string) => (v ? String(Number(v)).padStart(2, '0') : '')
 
 type Props = {
 	albums: Album[]
@@ -81,38 +87,40 @@ export function AlbumList({ albums, selected, onSelect, sort, onSort }: Props) {
 	const clickHeader = (key: SortKey) => onSort({ key, dir: sort?.key === key && sort.dir === 1 ? -1 : 1 })
 
 	return (
-		<div className="overflow-auto rounded-2xl border border-slate-200">
-			<table className="w-full table-fixed border-collapse text-left text-[13px]" style={{ minWidth: COLUMNS.reduce((n, c) => n + widths[c.key], 0) }}>
-				<colgroup>{COLUMNS.map(c => <col key={c.key} style={{ width: widths[c.key] }} />)}</colgroup>
-				<thead>
-					<tr className="bg-slate-100 text-xs text-slate-600">
-						{COLUMNS.map(c => (
-							<th key={c.key} scope="col" aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'} className="relative border-b border-slate-200 px-3 py-2 font-medium">
-								<button type="button" onClick={() => clickHeader(c.key)} className="flex w-full items-center gap-1 truncate text-left hover:text-slate-900" title={`Sort by ${c.label}`}>
-									{c.label}{sort?.key === c.key && <span aria-hidden="true" className="text-slate-500">{sort.dir === 1 ? '▲' : '▼'}</span>}
-								</button>
-								<span role="separator" aria-orientation="vertical" aria-label={`Resize ${c.label}`} title={`Drag to resize ${c.label}`}
-									onPointerDown={e => startResize(e, c.key)} onPointerMove={moveResize} onPointerUp={endResize} onPointerCancel={endResize}
-									className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize hover:bg-slate-300" />
-							</th>
-						))}
-					</tr>
-				</thead>
-				<tbody>
-					{albums.map((a, i) => (
-						<tr key={a.path} tabIndex={0} aria-selected={a.path === selected}
-							onClick={() => onSelect(a.path)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(a.path) } }}
-							className={`cursor-pointer ${a.path === selected ? 'bg-slate-200' : i % 2 ? 'bg-slate-50' : 'bg-white'} hover:bg-slate-100`}>
-							<td className="truncate px-3 py-2" title={a.artist}><span title={STATUS[a.status]} className={`mr-2 inline-block size-2 rounded-full ${DOT[a.status]}`} />{a.artist || 'No artist'}</td>
-							<td className="truncate px-3 py-2 font-medium" title={title(a)}>{title(a)}</td>
-							<td className="truncate px-3 py-2 text-slate-600" title={a.media}>{a.media}</td>
-							<td className="truncate px-3 py-2 text-slate-600" title={a.edition_name}>{a.edition_name}</td>
-							<td className="truncate px-3 py-2 tabular-nums text-slate-600">{a.release_year}</td>
-							<td className="truncate px-3 py-2 tabular-nums text-slate-600">{a.master_year}</td>
-						</tr>
+		<table className="w-full table-fixed border-collapse text-left text-[13px] text-slate-900" style={{ minWidth: COLUMNS.reduce((n, c) => n + widths[c.key], 0) }}>
+			<colgroup>{COLUMNS.map(c => <col key={c.key} style={{ width: widths[c.key] }} />)}</colgroup>
+			<thead className="sticky top-0 z-10">
+				<tr className="border-b border-slate-400 bg-slate-300 text-xs text-slate-900">
+					{COLUMNS.map((c, ci) => (
+						<th key={c.key} scope="col" aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'} className={`relative bg-slate-300 px-3 py-2 font-medium ${ci ? 'border-l border-slate-400' : ''}`}>
+							<button type="button" onClick={() => clickHeader(c.key)} className="flex w-full items-center gap-1 truncate text-left hover:text-black" title={`Sort by ${c.hint}`}>
+								{c.label}{sort?.key === c.key && <span aria-hidden="true" className="text-slate-600">{sort.dir === 1 ? '▲' : '▼'}</span>}
+							</button>
+							<span role="separator" aria-orientation="vertical" aria-label={`Resize ${c.hint}`} title={`Drag to resize ${c.hint}`}
+								onPointerDown={e => startResize(e, c.key)} onPointerMove={moveResize} onPointerUp={endResize} onPointerCancel={endResize}
+								className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize hover:bg-slate-400" />
+						</th>
 					))}
-				</tbody>
-			</table>
-		</div>
+				</tr>
+			</thead>
+			<tbody>
+				{albums.map((a, i) => (
+					<tr key={a.path} tabIndex={0} aria-selected={a.path === selected}
+						onClick={() => onSelect(a.path)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(a.path) } }}
+						className={`cursor-pointer border-b border-slate-300 hover:bg-slate-300/70 ${a.path === selected ? 'bg-slate-300' : i % 2 ? 'bg-slate-50' : 'bg-slate-200'}`}>
+						<td className="truncate px-3 py-2" title={a.artist}><span title={STATUS[a.status]} className={`mr-2 inline-block size-2 rounded-full ring-1 ring-white ${DOT[a.status]}`} />{a.artist || 'No artist'}</td>
+						<td className="truncate border-l border-slate-300 px-3 py-2 font-medium" title={title(a)}>{title(a)}</td>
+						<td className="truncate border-l border-slate-300 px-3 py-2" title={a.media}>{a.media}</td>
+						<td className="truncate border-l border-slate-300 px-3 py-2" title={a.edition_name}>{a.edition_name}</td>
+						<td className="truncate border-l border-slate-300 px-3 py-2" title={a.catalog}>{a.catalog}</td>
+						<td className="border-l border-slate-300 px-3 py-2 text-right font-semibold tabular-nums" title={a.dr}>
+							{drText(a.dr) && <span className={Number(a.dr) >= 12 ? 'text-emerald-700' : 'text-amber-700'}>{drText(a.dr)}</span>}
+						</td>
+						<td className="border-l border-slate-300 px-3 py-2 tabular-nums" title="Release year">{a.release_year}</td>
+						<td className="border-l border-slate-300 px-3 py-2 tabular-nums" title="Master year">{a.master_year}</td>
+					</tr>
+				))}
+			</tbody>
+		</table>
 	)
 }

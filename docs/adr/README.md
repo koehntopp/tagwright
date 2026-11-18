@@ -27,7 +27,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0028](0028-replaygain-skip-needs-album-gain.md) | rsgain skips an album only when it already has album gain | Accepted |
 | [0029](0029-nextjs-frontend-static-export.md) | Frontend in Next.js with shadcn/ui, built to a committed static export | Accepted |
 | [0030](0030-ui-layout-and-design-system-v2.md) | UI layout and design system v2 (shadcn/ui; its sidebar replaced by 0031) | Accepted |
-| [0031](0031-top-bar-again.md) | Top bar again, no sidebar, no Artists list | Accepted |
+| [0031](0031-top-bar-again.md) | Top bar again, no sidebar, no Artists list | Accepted (board padding superseded by 0087) |
 | [0032](0032-parallel-tag-writes-reopen-before-save.md) | Parallel pipeline scripts reopen a file before saving (discogs repository change) | Accepted |
 | [0033](0033-pipeline-tag-steps-run-in-sequence.md) | Dynamic range, ReplayGain and fingerprints run in sequence (discogs repository change) | Accepted |
 | [0034](0034-python-formatting-and-linting-with-ruff.md) | Python formatting and linting with ruff | Accepted |
@@ -71,7 +71,8 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0082](0082-in-your-library-box.md) | "In your library" box: other versions of the album's Discogs master (`/api/library/versions`) | Accepted |
 | [0083](0083-inspector-note-boxes-and-year-mismatch.md) | One style for the inspector's note boxes (types, symbols, buttons); a year mismatch Discogs/MusicBrainz stops the move | Accepted |
 | [0084](0084-locally-built-image-deployment.md) | Deploy a locally built amd64 image on the server (supersedes 0063) | Accepted |
-| [0086](0086-data-table-list-view.md) | A data table for the list view: no covers, alternating rows, resizable and sortable columns | Accepted |
+| [0086](0086-data-table-list-view.md) | A data table for the list view: no covers, alternating rows, resizable and sortable columns | Accepted (row shades and layout superseded by 0087) |
+| [0087](0087-table-contrast.md) | Higher-contrast, full-bleed table with a DR column and sticky header | Accepted |
 
 ## History: superseded ADRs
 
@@ -134,7 +135,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | dynamic-range tag names | 0005, 0027 |
 | ReplayGain skip | 0028 |
 | top bar navigation entries, view switch | 0031, 0026, 0086 |
-| layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar), 0086 (list table) |
+| layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar), 0086 (list table), 0087 (table contrast) |
 | how to test | 0018 |
 | commits, pushing, tags (no branches), release notes, commit descriptions, making a release, README and screenshots | 0020, 0069, 0070, 0071 |
 | Docker image build, publishing and the server's stack | 0084, 0003 |
