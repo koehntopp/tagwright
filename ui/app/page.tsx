@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlbumList } from '@/components/album-list'
+import { AlbumList, type TableSort, tableCompare } from '@/components/album-list'
 import { AlbumEdit, CleanupDialog, CoverDelete, JobRunning, LyricsEdit, SettingsDialog, Shell, TagEditor } from '@/components/dialogs'
 import { CopyBtn, CoverImg, IdBadge, Inspector } from '@/components/inspector'
 import { LibraryDialog, LibraryIndicator, useLibrary } from '@/components/library'
@@ -42,6 +42,7 @@ export default function Page() {
 	const [loading, setLoading] = useState(true)
 	const [area, setArea] = useState<'staging' | 'library'>('staging')
 	const [view, setView] = useState<'cards' | 'list'>('cards')
+	const [tableSort, setTableSort] = useState<TableSort | null>(null)
 	const areaRef = useRef<'staging' | 'library'>('staging'), libPath = useRef(''), offerDelete = useRef(false)
 	const [filter, setFilter] = useState('all')
 	const [q, setQ] = useState('')
@@ -77,8 +78,7 @@ export default function Page() {
 		setArea(next); setSelected(null); setAlbums([]); setQ('')
 		try { await load() } catch (e: any) { toast.error(e.message) }
 	}
-	const toggleView = () => {
-		const next = view === 'cards' ? 'list' : 'cards'
+	const chooseView = (next: 'cards' | 'list') => {
 		setView(next)
 		localStorage.setItem('tagwright-view', next)
 	}
@@ -153,8 +153,9 @@ export default function Page() {
 	const count = (s: string) => albums.filter(x => s === 'all' || x.status === s).length
 	const shown = useMemo(() => {
 		const s = q.trim().toLowerCase()
-		return albums.filter(x => (filter === 'all' || x.status === filter) && (!s || [x.name, x.album, x.artist, x.discogs, x.mbid].some(v => (v || '').toLowerCase().includes(s)))).sort(SORTS[sort])
-	}, [albums, filter, q, sort])
+		const rows = albums.filter(x => (filter === 'all' || x.status === filter) && (!s || [x.name, x.album, x.artist, x.discogs, x.mbid].some(v => (v || '').toLowerCase().includes(s))))
+		return view === 'list' && tableSort ? rows.sort((a, b) => tableCompare(tableSort, a, b)) : rows.sort(SORTS[sort])
+	}, [albums, filter, q, sort, view, tableSort])
 
 	const cycleSort = () => { const n = SORT_KEYS[(SORT_KEYS.indexOf(sort) + 1) % SORT_KEYS.length]; setSort(n); toast(`Sorted by ${SORT_NAMES[n]}`) }
 	const run = async (step?: string) => {
@@ -236,15 +237,16 @@ export default function Page() {
 				</div>
 				<nav className="flex shrink-0 items-center gap-1">
 					{FILTERS.map(f => (
-						<button key={f.id} onClick={() => (filter === f.id ? cycleSort() : setFilter(f.id))} title={filter === f.id ? `Sorted by ${SORT_NAMES[sort]}; click again to change` : undefined} className={`flex h-9 items-center gap-2 rounded-full px-4 text-[15px] font-medium ${filter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>
+						<button key={f.id} onClick={() => { if (filter === f.id) cycleSort(); else setFilter(f.id); setTableSort(null) }} title={filter === f.id ? `Sorted by ${SORT_NAMES[sort]}; click again to change` : undefined} className={`flex h-9 items-center gap-2 rounded-full px-4 text-[15px] font-medium ${filter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>
 						{f.label}<span className="font-normal text-slate-400">{count(f.id)}</span>
 					</button>
 				))}
 				</nav>
 				<button onClick={async () => { await load('', true); toast.success('Rescanned') }} title="Rescan folder" aria-label="Rescan folder" className="grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-white/60"><RefreshCw className="size-4" /></button>
-				<button onClick={toggleView} title={view === 'cards' ? 'Switch to list view' : 'Switch to card view'} aria-label={view === 'cards' ? 'Switch to list view' : 'Switch to card view'} className="grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-white/60">
-					{view === 'cards' ? <LayoutGrid className="size-4" /> : <List className="size-4" />}
-				</button>
+				<div className="flex shrink-0 items-center gap-0.5 rounded-full p-0.5" role="group" aria-label="Board view">
+					<button onClick={() => chooseView('cards')} aria-pressed={view === 'cards'} title="Card view" aria-label="Card view" className={`grid size-8 place-items-center rounded-full ${view === 'cards' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}><LayoutGrid className="size-4" /></button>
+					<button onClick={() => chooseView('list')} aria-pressed={view === 'list'} title="List view" aria-label="List view" className={`grid size-8 place-items-center rounded-full ${view === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}><List className="size-4" /></button>
+				</div>
 				<button role="switch" aria-checked={area === 'library'} aria-label="Folder: staging or library" onClick={() => switchArea(area === 'library' ? 'staging' : 'library')} title={area === 'library' ? 'Showing the library; click for the staging folder' : 'Showing the staging folder; click for the library'} className="ml-auto flex h-9 w-48 shrink-0 items-center justify-between gap-2 rounded-full border border-slate-300 bg-white px-4 text-[15px] font-medium">
 					<span className={area === 'staging' ? 'text-slate-900' : 'text-slate-400'}>Staging</span>
 					<span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${area === 'library' ? 'bg-slate-700' : 'bg-slate-300'}`}>
@@ -323,7 +325,7 @@ export default function Page() {
 						})}
 					</div>
 				) : (
-					<AlbumList albums={shown} selected={selected} onSelect={setSelected} />
+					<AlbumList albums={shown} selected={selected} onSelect={setSelected} sort={tableSort} onSort={setTableSort} />
 				)
 			) : loading ? (
 					<div aria-busy="true">

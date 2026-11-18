@@ -1,6 +1,6 @@
 # ADR 0085: A list view on the board
 
-- **Status**: Accepted
+- **Status**: Superseded by [0086](0086-data-table-list-view.md)
 - **Date**: 2026-11-18
 - **Supersedes**: the **Top bar, left zone** bullet of [0031](0031-top-bar-again.md) (one round view-switch button is added) and the card-grid-only board of [0030](0030-ui-layout-and-design-system-v2.md) (a second, tabular layout)
 

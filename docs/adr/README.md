@@ -71,7 +71,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0082](0082-in-your-library-box.md) | "In your library" box: other versions of the album's Discogs master (`/api/library/versions`) | Accepted |
 | [0083](0083-inspector-note-boxes-and-year-mismatch.md) | One style for the inspector's note boxes (types, symbols, buttons); a year mismatch Discogs/MusicBrainz stops the move | Accepted |
 | [0084](0084-locally-built-image-deployment.md) | Deploy a locally built amd64 image on the server (supersedes 0063) | Accepted |
-| [0085](0085-list-view.md) | Switch the board between card view and a compact list view | Accepted |
+| [0086](0086-data-table-list-view.md) | A data table for the list view: no covers, alternating rows, resizable and sortable columns | Accepted |
 
 ## History: superseded ADRs
 
@@ -80,6 +80,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | ADR | Title | Status |
 |-----|-------|--------|
 | [0004](0004-pipeline-engine-reuses-discogs-scripts.md) | The pipeline engine is the unchanged discogs scripts | Superseded by 0036 |
+| [0085](0085-list-view.md) | Switch the board between card view and a compact list view | Superseded by 0086 |
 | [0063](0063-publish-the-image-on-ghcr.md) | The image is published on GitHub's container registry (amd64 and arm64) | Superseded by 0084 |
 | [0006](0006-status-model-and-pipeline-steps.md) | Status comes from FLAC tags; six pipeline steps | Superseded by 0054 |
 | [0012](0012-language-and-performance.md) | Stay in Python; speed up compute inside the discogs scripts | Superseded by 0036 |
@@ -132,8 +133,8 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | parallel tag writes by pipeline scripts (lost tags), step order and concurrency in `nzbfix` | 0032, 0033 |
 | dynamic-range tag names | 0005, 0027 |
 | ReplayGain skip | 0028 |
-| top bar navigation entries, view switch | 0031, 0026, 0085 |
-| layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar), 0085 (list view) |
+| top bar navigation entries, view switch | 0031, 0026, 0086 |
+| layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar), 0086 (list table) |
 | how to test | 0018 |
 | commits, pushing, tags (no branches), release notes, commit descriptions, making a release, README and screenshots | 0020, 0069, 0070, 0071 |
 | Docker image build, publishing and the server's stack | 0084, 0003 |
