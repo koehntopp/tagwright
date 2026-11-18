@@ -51,7 +51,6 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0060](0060-parts-of-a-work-are-release-tracks.md) | The parts of a work or medley are release tracks too | Accepted |
 | [0061](0061-renovate-for-dependency-updates.md) | Renovate for dependency updates | Accepted |
 | [0062](0062-license-gpl-3-or-later.md) | Licence: GPL-3.0-or-later (mutagen and Unidecode are GPL) | Accepted |
-| [0063](0063-publish-the-image-on-ghcr.md) | The image is published on GitHub's container registry (amd64 and arm64) | Accepted |
 | [0064](0064-logging-and-syslog.md) | Logging to standard output, and to syslog when SYSLOG_HOST is set | Accepted |
 | [0065](0065-quiet-polling-lines.md) | Successful polls of /api/library and /api/job stay out of the access log | Accepted |
 | [0066](0066-more-application-events-and-log-level.md) | Renames, tag edits and lyrics edits are logged; LOG_LEVEL | Accepted |
@@ -71,6 +70,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0081](0081-subtitle-dividers-in-track-lists.md) | Disc subtitles are dividers in the track lists (Tag Editor first, then the import dialogs) | Accepted |
 | [0082](0082-in-your-library-box.md) | "In your library" box: other versions of the album's Discogs master (`/api/library/versions`) | Accepted |
 | [0083](0083-inspector-note-boxes-and-year-mismatch.md) | One style for the inspector's note boxes (types, symbols, buttons); a year mismatch Discogs/MusicBrainz stops the move | Accepted |
+| [0084](0084-locally-built-image-deployment.md) | Deploy a locally built amd64 image on the server (supersedes 0063) | Accepted |
 
 ## History: superseded ADRs
 
@@ -79,6 +79,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | ADR | Title | Status |
 |-----|-------|--------|
 | [0004](0004-pipeline-engine-reuses-discogs-scripts.md) | The pipeline engine is the unchanged discogs scripts | Superseded by 0036 |
+| [0063](0063-publish-the-image-on-ghcr.md) | The image is published on GitHub's container registry (amd64 and arm64) | Superseded by 0084 |
 | [0006](0006-status-model-and-pipeline-steps.md) | Status comes from FLAC tags; six pipeline steps | Superseded by 0054 |
 | [0012](0012-language-and-performance.md) | Stay in Python; speed up compute inside the discogs scripts | Superseded by 0036 |
 | [0013](0013-discogs-track-assignment.md) | Discogs release search and track assignment | Superseded by 0053 |
@@ -134,3 +135,4 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar) |
 | how to test | 0018 |
 | commits, pushing, tags (no branches), release notes, commit descriptions, making a release, README and screenshots | 0020, 0069, 0070, 0071 |
+| Docker image build, publishing and the server's stack | 0084, 0003 |
