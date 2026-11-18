@@ -1,6 +1,6 @@
 # ADR 0087: Higher-contrast, full-bleed table with DR
 
-- **Status**: Accepted
+- **Status**: Accepted (the sticky-header position is superseded by [0088](0088-header-stays-at-inset.md))
 - **Date**: 2026-11-18
 - **Supersedes**: the row-shade part of the **List view** bullet of [0086](0086-data-table-list-view.md) (white / slate-50 rows, light dividers, padded board), the board padding of [0031](0031-top-bar-again.md), and the single "DR green" meaning of [0030](0030-ui-layout-and-design-system-v2.md) for this column
 

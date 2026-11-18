@@ -72,7 +72,8 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0083](0083-inspector-note-boxes-and-year-mismatch.md) | One style for the inspector's note boxes (types, symbols, buttons); a year mismatch Discogs/MusicBrainz stops the move | Accepted |
 | [0084](0084-locally-built-image-deployment.md) | Deploy a locally built amd64 image on the server (supersedes 0063) | Accepted |
 | [0086](0086-data-table-list-view.md) | A data table for the list view: no covers, alternating rows, resizable and sortable columns | Accepted (row shades and layout superseded by 0087) |
-| [0087](0087-table-contrast.md) | Higher-contrast, full-bleed table with a DR column and sticky header | Accepted |
+| [0087](0087-table-contrast.md) | Higher-contrast, full-bleed table with a DR column and sticky header | Accepted (sticky position superseded by 0088) |
+| [0088](0088-header-stays-at-inset.md) | The table title row stays at its 24 px inset while scrolling | Accepted |
 
 ## History: superseded ADRs
 
@@ -135,7 +136,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | dynamic-range tag names | 0005, 0027 |
 | ReplayGain skip | 0028 |
 | top bar navigation entries, view switch | 0031, 0026, 0086 |
-| layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar), 0086 (list table), 0087 (table contrast) |
+| layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar), 0086 (list table), 0087 (table contrast), 0088 (sticky title row) |
 | how to test | 0018 |
 | commits, pushing, tags (no branches), release notes, commit descriptions, making a release, README and screenshots | 0020, 0069, 0070, 0071 |
 | Docker image build, publishing and the server's stack | 0084, 0003 |

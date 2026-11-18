@@ -326,7 +326,7 @@ export default function Page() {
 					</div>
 				) : (
 					<>
-						<div className="h-6" />{/* the table starts level with the inspector; the sticky header then sticks to the bar (ADR 0087) */}
+						<div className="sticky top-0 z-[5] h-6 bg-[#f1f4f9]" />{/* opaque strip above the sticky title row (ADR 0088) */}
 						<AlbumList albums={shown} selected={selected} onSelect={setSelected} sort={tableSort} onSort={setTableSort} />
 					</>
 				)
