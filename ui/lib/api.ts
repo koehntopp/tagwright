@@ -24,6 +24,9 @@ export type Album = {
 	new_title: string
 	folder?: string
 	year: string
+	release_year: string
+	master_year: string
+	edition_name: string
 	catalog: string
 	country: string
 	media: string

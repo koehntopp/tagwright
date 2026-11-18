@@ -4,6 +4,10 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+### Added
+
+- A **view switch** in the top bar, next to Rescan, toggles the board between cards and a compact **list view**. Each album is one row with a mini album icon, album artist, release name, media, edition, release year and master year; clicking a row opens the same inspector as clicking a card. The choice is remembered in the browser [0085].
+
 ## 0.4.0 (2026-11-18)
 
 ### Added

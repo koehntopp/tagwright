@@ -14,6 +14,42 @@ from library.summaries import SummaryStore
 from .conftest import MakeFlac
 
 
+def test_the_list_view_fields_come_from_the_release_and_master_tags(
+	client: TestClient, make_flac: MakeFlac
+) -> None:
+	for folder, tags in (
+		(
+			'Explicit',
+			{
+				'ALBUM_RELEASE_YEAR': '2019',
+				'ALBUM_MASTER_YEAR': '1979',
+				'ALBUM_EDITION': 'Deluxe',
+				'ALBUM_FORMAT': 'LP',
+			},
+		),
+		('Fallback', {'DATE': '2001', 'ORIGINAL YEAR': '1980'}),
+	):
+		make_flac(
+			tagwright.ROOT / folder / '01.flac',
+			TITLE='One',
+			TRACKNUMBER='1',
+			DISCNUMBER='1',
+			**tags,
+		)
+	rows = {a['name']: a for a in client.get('/api/albums').json()['albums']}
+	assert (
+		rows['Explicit']['release_year'],
+		rows['Explicit']['master_year'],
+		rows['Explicit']['edition_name'],
+		rows['Explicit']['media'],
+	) == ('2019', '1979', 'Deluxe', 'LP')
+	assert (
+		rows['Fallback']['release_year'],
+		rows['Fallback']['master_year'],
+		rows['Fallback']['edition_name'],
+	) == ('2001', '1980', '')
+
+
 def test_the_store_keeps_and_forgets_summaries(tmp_path: Path) -> None:
 	store = SummaryStore(tmp_path / 's.db')
 	assert store.get('a') is None

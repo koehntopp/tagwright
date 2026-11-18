@@ -71,6 +71,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0082](0082-in-your-library-box.md) | "In your library" box: other versions of the album's Discogs master (`/api/library/versions`) | Accepted |
 | [0083](0083-inspector-note-boxes-and-year-mismatch.md) | One style for the inspector's note boxes (types, symbols, buttons); a year mismatch Discogs/MusicBrainz stops the move | Accepted |
 | [0084](0084-locally-built-image-deployment.md) | Deploy a locally built amd64 image on the server (supersedes 0063) | Accepted |
+| [0085](0085-list-view.md) | Switch the board between card view and a compact list view | Accepted |
 
 ## History: superseded ADRs
 
@@ -131,8 +132,8 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | parallel tag writes by pipeline scripts (lost tags), step order and concurrency in `nzbfix` | 0032, 0033 |
 | dynamic-range tag names | 0005, 0027 |
 | ReplayGain skip | 0028 |
-| top bar navigation entries | 0031, 0026 |
-| layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar) |
+| top bar navigation entries, view switch | 0031, 0026, 0085 |
+| layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar), 0085 (list view) |
 | how to test | 0018 |
 | commits, pushing, tags (no branches), release notes, commit descriptions, making a release, README and screenshots | 0020, 0069, 0070, 0071 |
 | Docker image build, publishing and the server's stack | 0084, 0003 |

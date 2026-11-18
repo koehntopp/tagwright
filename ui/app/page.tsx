@@ -1,12 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { RefreshCw, Search, Settings, Square } from 'lucide-react'
+import { LayoutGrid, List, RefreshCw, Search, Settings, Square } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AlbumList } from '@/components/album-list'
 import { AlbumEdit, CleanupDialog, CoverDelete, JobRunning, LyricsEdit, SettingsDialog, Shell, TagEditor } from '@/components/dialogs'
 import { CopyBtn, CoverImg, IdBadge, Inspector } from '@/components/inspector'
 import { LibraryDialog, LibraryIndicator, useLibrary } from '@/components/library'
@@ -40,6 +41,7 @@ export default function Page() {
 	const [albums, setAlbums] = useState<Album[]>([])
 	const [loading, setLoading] = useState(true)
 	const [area, setArea] = useState<'staging' | 'library'>('staging')
+	const [view, setView] = useState<'cards' | 'list'>('cards')
 	const areaRef = useRef<'staging' | 'library'>('staging'), libPath = useRef(''), offerDelete = useRef(false)
 	const [filter, setFilter] = useState('all')
 	const [q, setQ] = useState('')
@@ -74,6 +76,11 @@ export default function Page() {
 		localStorage.setItem('tagwright-area', next)
 		setArea(next); setSelected(null); setAlbums([]); setQ('')
 		try { await load() } catch (e: any) { toast.error(e.message) }
+	}
+	const toggleView = () => {
+		const next = view === 'cards' ? 'list' : 'cards'
+		setView(next)
+		localStorage.setItem('tagwright-view', next)
 	}
 	// The watcher moved or removed files (a corrected artist name puts an album in another folder): the board must not
 	// keep the old card. It reloads, without the skeleton, when the library reports new activity (ADR 0067).
@@ -129,6 +136,7 @@ export default function Page() {
 			try { const r = await api('/api/settings'); libPath.current = r.output; offerDelete.current = !!r.delete_after_move } catch {}
 			const saved = localStorage.getItem('tagwright-area')
 			if (saved === 'library') { areaRef.current = 'library'; setArea('library') }
+			if (localStorage.getItem('tagwright-view') === 'list') setView('list')
 			await load()
 			const j = await api('/api/job?since=0')
 			since.current = j.next
@@ -234,6 +242,9 @@ export default function Page() {
 				))}
 				</nav>
 				<button onClick={async () => { await load('', true); toast.success('Rescanned') }} title="Rescan folder" aria-label="Rescan folder" className="grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-white/60"><RefreshCw className="size-4" /></button>
+				<button onClick={toggleView} title={view === 'cards' ? 'Switch to list view' : 'Switch to card view'} aria-label={view === 'cards' ? 'Switch to list view' : 'Switch to card view'} className="grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-white/60">
+					{view === 'cards' ? <LayoutGrid className="size-4" /> : <List className="size-4" />}
+				</button>
 				<button role="switch" aria-checked={area === 'library'} aria-label="Folder: staging or library" onClick={() => switchArea(area === 'library' ? 'staging' : 'library')} title={area === 'library' ? 'Showing the library; click for the staging folder' : 'Showing the staging folder; click for the library'} className="ml-auto flex h-9 w-48 shrink-0 items-center justify-between gap-2 rounded-full border border-slate-300 bg-white px-4 text-[15px] font-medium">
 					<span className={area === 'staging' ? 'text-slate-900' : 'text-slate-400'}>Staging</span>
 					<span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${area === 'library' ? 'bg-slate-700' : 'bg-slate-300'}`}>
@@ -269,6 +280,7 @@ export default function Page() {
 			<div className="flex min-h-0 flex-1">
 			<main className="min-w-0 flex-1 overflow-y-auto p-8">
 				{shown.length ? (
+					view === 'cards' ? (
 					<div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] items-start gap-5">
 						{shown.map(x => {
 							const ly = x.lyrics ?? { synced: 0, plain: 0, instrumental: 0, missing: 0 }
@@ -310,7 +322,10 @@ export default function Page() {
 							)
 						})}
 					</div>
-				) : loading ? (
+				) : (
+					<AlbumList albums={shown} selected={selected} onSelect={setSelected} />
+				)
+			) : loading ? (
 					<div aria-busy="true">
 						<p className="mb-5 flex items-center gap-2 text-slate-500"><RefreshCw className="size-4 animate-spin" />Scanning albums…</p>
 						<div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] items-start gap-5">

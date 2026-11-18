@@ -365,6 +365,9 @@ def summarize(album: Path) -> dict:
 		'artist_override': tag(t0, 'ALBUM_ARTIST_OVERRIDE'),
 		'title_override': tag(t0, 'ALBUM_TITLE_OVERRIDE'),
 		'year': tag(t0, 'DATE', 'YEAR')[:4],
+		'release_year': tag(t0, 'ALBUM_RELEASE_YEAR', 'RELEASEDATE', 'DATE', 'YEAR')[:4],
+		'master_year': tag(t0, 'ALBUM_MASTER_YEAR', 'ORIGINAL YEAR', 'ORIGINALDATE')[:4],
+		'edition_name': tag(t0, 'ALBUM_EDITION'),
 		'catalog': tag(t0, *CATALOG_KEYS[:1]),
 		'country': tag(
 			t0, 'DISCOGS_ALBUM_RELEASECOUNTRY', 'COUNTRY', 'MUSICBRAINZ_ALBUM_RELEASECOUNTRY'
@@ -564,7 +567,7 @@ cache: dict[str, tuple[str, dict]] = {}
 
 
 SUMMARY_VERSION = (
-	4  # bump it when summarize() returns something else: stored summaries are then read again
+	5  # bump it when summarize() returns something else: stored summaries are then read again
 )
 summaries = SummaryStore(DATA / 'summaries.db')
 
