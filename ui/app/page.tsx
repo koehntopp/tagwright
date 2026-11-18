@@ -280,7 +280,7 @@ export default function Page() {
 				</div>
 			</header>
 			<div className="flex min-h-0 flex-1">
-			<main className={`min-w-0 flex-1 overflow-auto ${view === 'cards' ? 'p-8' : 'pt-6'}`}>
+			<main className={`min-w-0 flex-1 overflow-auto ${view === 'cards' ? 'p-8' : ''}`}>
 				{shown.length ? (
 					view === 'cards' ? (
 					<div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] items-start gap-5">
@@ -325,7 +325,10 @@ export default function Page() {
 						})}
 					</div>
 				) : (
-					<AlbumList albums={shown} selected={selected} onSelect={setSelected} sort={tableSort} onSort={setTableSort} />
+					<>
+						<div className="h-6" />{/* the table starts level with the inspector; the sticky header then sticks to the bar (ADR 0087) */}
+						<AlbumList albums={shown} selected={selected} onSelect={setSelected} sort={tableSort} onSort={setTableSort} />
+					</>
 				)
 			) : loading ? (
 					<div aria-busy="true">

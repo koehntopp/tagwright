@@ -4,9 +4,14 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+### Changed
+
+- List view rows are shorter, so more albums fit on screen without scrolling [0087].
+
 ### Fixed
 
 - The full-bleed layout applies only to the list table; card view keeps its original padding around the cards [0087].
+- When the list scrolls, its title row sticks directly below the top bar; rows no longer scroll above it [0087].
 
 ### Added
 

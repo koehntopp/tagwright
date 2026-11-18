@@ -92,7 +92,7 @@ export function AlbumList({ albums, selected, onSelect, sort, onSort }: Props) {
 			<thead className="sticky top-0 z-10">
 				<tr className="border-b border-slate-400 bg-slate-300 text-xs text-slate-900">
 					{COLUMNS.map((c, ci) => (
-						<th key={c.key} scope="col" aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'} className={`relative bg-slate-300 px-3 py-2 font-medium ${ci ? 'border-l border-slate-400' : ''}`}>
+						<th key={c.key} scope="col" aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'} className={`relative bg-slate-300 px-3 py-1 font-medium ${ci ? 'border-l border-slate-400' : ''}`}>
 							<button type="button" onClick={() => clickHeader(c.key)} className="flex w-full items-center gap-1 truncate text-left hover:text-black" title={`Sort by ${c.hint}`}>
 								{c.label}{sort?.key === c.key && <span aria-hidden="true" className="text-slate-600">{sort.dir === 1 ? '▲' : '▼'}</span>}
 							</button>
@@ -108,16 +108,16 @@ export function AlbumList({ albums, selected, onSelect, sort, onSort }: Props) {
 					<tr key={a.path} tabIndex={0} aria-selected={a.path === selected}
 						onClick={() => onSelect(a.path)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(a.path) } }}
 						className={`cursor-pointer border-b border-slate-300 hover:bg-slate-300/70 ${a.path === selected ? 'bg-slate-300' : i % 2 ? 'bg-slate-50' : 'bg-slate-200'}`}>
-						<td className="truncate px-3 py-2" title={a.artist}><span title={STATUS[a.status]} className={`mr-2 inline-block size-2 rounded-full ring-1 ring-white ${DOT[a.status]}`} />{a.artist || 'No artist'}</td>
-						<td className="truncate border-l border-slate-300 px-3 py-2 font-medium" title={title(a)}>{title(a)}</td>
-						<td className="truncate border-l border-slate-300 px-3 py-2" title={a.media}>{a.media}</td>
-						<td className="truncate border-l border-slate-300 px-3 py-2" title={a.edition_name}>{a.edition_name}</td>
-						<td className="truncate border-l border-slate-300 px-3 py-2" title={a.catalog}>{a.catalog}</td>
-						<td className="border-l border-slate-300 px-3 py-2 text-right font-semibold tabular-nums" title={a.dr}>
+						<td className="truncate px-3 py-1" title={a.artist}><span title={STATUS[a.status]} className={`mr-2 inline-block size-2 rounded-full ring-1 ring-white ${DOT[a.status]}`} />{a.artist || 'No artist'}</td>
+						<td className="truncate border-l border-slate-300 px-3 py-1 font-medium" title={title(a)}>{title(a)}</td>
+						<td className="truncate border-l border-slate-300 px-3 py-1" title={a.media}>{a.media}</td>
+						<td className="truncate border-l border-slate-300 px-3 py-1" title={a.edition_name}>{a.edition_name}</td>
+						<td className="truncate border-l border-slate-300 px-3 py-1" title={a.catalog}>{a.catalog}</td>
+						<td className="border-l border-slate-300 px-3 py-1 text-right font-semibold tabular-nums" title={a.dr}>
 							{drText(a.dr) && <span className={Number(a.dr) >= 12 ? 'text-emerald-700' : 'text-amber-700'}>{drText(a.dr)}</span>}
 						</td>
-						<td className="border-l border-slate-300 px-3 py-2 tabular-nums" title="Release year">{a.release_year}</td>
-						<td className="border-l border-slate-300 px-3 py-2 tabular-nums" title="Master year">{a.master_year}</td>
+						<td className="border-l border-slate-300 px-3 py-1 tabular-nums" title="Release year">{a.release_year}</td>
+						<td className="border-l border-slate-300 px-3 py-1 tabular-nums" title="Master year">{a.master_year}</td>
 					</tr>
 				))}
 			</tbody>
