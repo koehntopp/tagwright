@@ -1846,6 +1846,16 @@ def tracks_propose(body: dict) -> dict:
 			if s >= (0.45 if part_pass else 0.35):
 				assign[fn], conf[fn] = i, round(s, 2)
 				used.add(i)
+
+	# The dividers name the release's disc, so list the files in that order too (ADR 0089).
+	def release_order(f: dict) -> tuple[bool, int, int, int, str]:
+		i = assign[f['file']]
+		if i is None:
+			return (True, 0, 0, 0, f['file'])
+		t = rel['tracks'][i]
+		return (False, t['disc'], t['track'], i, f['file'])
+
+	files = sorted(files, key=release_order)
 	return {
 		'release': rel,
 		'import_titles': import_titles(source),

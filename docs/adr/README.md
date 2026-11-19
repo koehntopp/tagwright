@@ -74,6 +74,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0086](0086-data-table-list-view.md) | A data table for the list view: no covers, alternating rows, resizable and sortable columns | Accepted (row shades and layout superseded by 0087) |
 | [0087](0087-table-contrast.md) | Higher-contrast, full-bleed table with a DR column and sticky header | Accepted (sticky position superseded by 0088) |
 | [0088](0088-header-stays-at-inset.md) | The table title row stays at its 24 px inset while scrolling | Accepted |
+| [0089](0089-assignment-track-order.md) | Assignment dialogs list files in the release track's disc order | Accepted |
 
 ## History: superseded ADRs
 
@@ -125,7 +126,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | settings dialog, API keys, config overlay | 0009, 0044 (no lrclib key), 0045 (folders read-only) |
 | file names, `rename_files`, `clean()` | 0010 |
 | Move to ingest | 0011 |
-| Discogs search, track assignment, filled tags, re-assignment | 0053 |
+| Discogs search, track assignment, filled tags, re-assignment | 0053, 0089 |
 | MusicBrainz search, MusicBrainz tags | 0023, 0078 |
 | tag editor, override pencils, which tags are editable | 0014 |
 | play button, track edit dialog, lyrics editing | 0015, 0021 (artist field, lrclib search) |

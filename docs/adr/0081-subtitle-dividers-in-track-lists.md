@@ -1,6 +1,6 @@
 # ADR 0081: Disc subtitles are dividers in the track lists
 
-- **Status**: Accepted
+- **Status**: Accepted (the order of the rows in the import dialogs is set by [0089](0089-assignment-track-order.md))
 - **Date**: 2026-11-15
 - **Supersedes in part**: [0014](0014-internal-tag-editor.md) (the Tracks tab's per-row "Disc subtitle" column and the "Disc subtitle" entry of the bulk edit), and the disc-scoped disc subtitle of [0078](0078-musicbrainz-track-assignment-and-import-song-titles.md)
 

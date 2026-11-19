@@ -295,3 +295,21 @@ def test_files_split_by_part_match_the_parts_and_a_whole_track_wins_over_a_part(
 	}
 	whole = next(t for t in r['release']['tracks'] if not t['part_of'] and 'Usher' in t['title'])
 	assert whole['duration'] == 7 * 60 + 2 + 2 * 60 + 39  # no duration of its own: the parts add up
+
+
+def test_propose_lists_files_in_the_release_disc_order(
+	client: TestClient, make_flac: MakeFlac, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	rel = {
+		'tracks': [
+			{'i': 0, 'disc': 1, 'track': 1, 'title': 'One', 'duration': 0, 'part_of': ''},
+			{'i': 1, 'disc': 2, 'track': 1, 'title': 'Two', 'duration': 0, 'part_of': ''},
+			{'i': 2, 'disc': 1, 'track': 2, 'title': 'Three', 'duration': 0, 'part_of': ''},
+		]
+	}
+	monkeypatch.setattr(tagwright, 'release_tracks', lambda rid: rel)
+	folder = tagwright.ROOT / 'Discs'
+	for n, title in enumerate(('One', 'Two', 'Three'), 1):
+		make_flac(folder / f'{n:02d}.flac', TITLE=title, TRACKNUMBER=str(n), DISCNUMBER='1')
+	r = client.post('/api/tracks/propose', json={'path': str(folder), 'release_id': '6'}).json()
+	assert [(f['title'], f['rel']) for f in r['files']] == [('One', 0), ('Three', 2), ('Two', 1)]
