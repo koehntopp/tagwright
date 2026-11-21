@@ -9,7 +9,8 @@ A one-off correction for libraries whose FLAC/MP3 files carry the cover as an un
 treats such a picture as the front cover; this writes the type so the four cover fields of ADR 0090 see it too.
 
 Dry-run by default. Pass --write to save. Only files with exactly one picture are touched; files with several
-pictures, and pictures already typed 3, are left alone. Never run --write on a test or scratch library that
+pictures, and pictures already typed 3, are left alone. Per-file output is limited to files with more than one
+picture (plus errors); the summary counts the other reasons. Never run --write on a test or scratch library that
 matters, and verify on a copy first (ADR 0018).
 """
 
@@ -42,22 +43,23 @@ def audio_files(target: Path) -> list[Path]:
 	return sorted(found)
 
 
-def retype(path: Path, write: bool) -> str:
-	"""Retype the one picture of a file to 3. Returns 'changed', 'would change' or a skip reason."""
+def retype(path: Path, write: bool) -> tuple[str, str]:
+	"""Retype the one picture of a file to 3. Returns (reason, detail) for the summary and the multi-image line."""
 	audio = open_audio(path)
 	pictures = audio.pictures
-	if len(pictures) != 1:
-		return f'skip: {len(pictures)} pictures'
+	if len(pictures) > 1:
+		return 'multi', f'{len(pictures)} pictures'
+	if not pictures:
+		return 'empty', ''
 	pic = pictures[0]
 	if pic.type == 3:
-		return 'skip: already front'
+		return 'front', ''
 	if write:
 		audio.clear_pictures()
 		pic.type = 3
 		audio.add_picture(pic)
 		audio.save()
-		return 'changed'
-	return f'would change: type {pic.type} -> 3'
+	return 'changed', f'type {pic.type} -> 3'
 
 
 def main() -> None:
@@ -67,7 +69,7 @@ def main() -> None:
 	args = parser.parse_args()
 	logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-	counts = {'changed': 0, 'skipped': 0, 'errors': 0}
+	counts = {'changed': 0, 'front': 0, 'multi': 0, 'empty': 0, 'errors': 0}
 	for target in args.paths:
 		if not target.exists():
 			log.error('%s: no such path', target)
@@ -75,21 +77,21 @@ def main() -> None:
 			continue
 		for path in audio_files(target):
 			try:
-				result = retype(path, args.write)
+				reason, detail = retype(path, args.write)
 			except (MutagenError, OSError, ValueError) as e:
 				log.error('%s: %s', path, e)
 				counts['errors'] += 1
 				continue
-			if result.startswith('skip'):
-				counts['skipped'] += 1
-			else:
-				counts['changed'] += 1
-			log.info('%s: %s', path, result)
+			counts[reason] += 1
+			if reason == 'multi':
+				log.info('%s: %s', path, detail)
 	log.info(
-		'%s: %d file(s), %d skipped, %d error(s)',
+		'%s: %d changed, %d already front, %d with multiple pictures, %d with no picture, %d error(s)',
 		'wrote' if args.write else 'dry run',
 		counts['changed'],
-		counts['skipped'],
+		counts['front'],
+		counts['multi'],
+		counts['empty'],
 		counts['errors'],
 	)
 
