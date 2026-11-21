@@ -104,7 +104,7 @@ function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, pu
 					{kind === 'front' && toggleMenu && <button type="button" onClick={toggleMenu} aria-label="Cover options" aria-expanded={menuOpen} className="shrink-0 rounded p-0.5 text-slate-500 hover:bg-white"><Ellipsis className="size-3.5" /></button>}
 				</span>
 			</div>
-			<div className="relative mt-1 h-24 overflow-hidden rounded-lg bg-white/70">
+			<div className="relative mt-1 aspect-square w-full overflow-hidden rounded-lg bg-white/70">
 				{current ? (
 					// eslint-disable-next-line @next/next/no-img-element
 					<img src={current.url} alt={label} title={`${current.w}×${current.h}, ${fmtBytes(current.bytes)} — double-click to view full size`} onDoubleClick={() => onEnlarge?.(current.url)} className="absolute inset-0 size-full cursor-zoom-in object-cover" />

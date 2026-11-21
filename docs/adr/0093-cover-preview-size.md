@@ -11,7 +11,7 @@ With the four cover fields of [0090](0090-artwork-types-and-cover-fields.md) the
 ## Decision
 
 - Each cover field that holds an image shows its **W×H** in the field header, on the right of the type name, with the byte size in the image's hover text. This replaces the size line under the single cover of [0016](0016-cover-art.md).
-- The preview image **fills its whole box** (`object-cover`), so a large cover occupies the field instead of floating in white space. The full image is still available through the double-click view of [0092](0092-cover-controls-and-full-size-view.md).
+- The preview image occupies a full-width **square box** and **fills it** (`object-cover`), so a large cover occupies the field instead of floating in white space. The full image is still available through the double-click view of [0092](0092-cover-controls-and-full-size-view.md).
 - The minimum-size warning of [0016](0016-cover-art.md), the album-level writes of [0090](0090-artwork-types-and-cover-fields.md) and the crop-free full-size view are unchanged.
 
 ## Consequences
