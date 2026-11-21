@@ -50,7 +50,7 @@ type CoverKind = 'front' | 'back' | 'leaflet' | 'media'
 const COVER_TYPE: Record<CoverKind, number> = { front: 3, back: 4, leaflet: 5, media: 6 }
 
 /** One of the four artwork fields of the inspector (ADR 0090). Front is single; the others are small carousels. */
-function CoverField({ kind, label, items, fallback, warn, busy, put, remove, askRemove, inputRef, rootRef, onPaste, search, paste, menuOpen, toggleMenu }: {
+function CoverField({ kind, label, items, fallback, warn, busy, put, remove, askRemove, inputRef, rootRef, onPaste, search, paste, menuOpen, toggleMenu, onEnlarge }: {
 	kind: CoverKind
 	label: string
 	items: CoverItem[]
@@ -65,6 +65,7 @@ function CoverField({ kind, label, items, fallback, warn, busy, put, remove, ask
 	onPaste?: (e: React.ClipboardEvent) => void
 	search?: React.ReactNode
 	paste?: () => void
+	onEnlarge?: (url: string) => void
 	menuOpen?: boolean
 	toggleMenu?: () => void
 }) {
@@ -89,7 +90,7 @@ function CoverField({ kind, label, items, fallback, warn, busy, put, remove, ask
 			onDrop={e => {
 				e.preventDefault(); setDrag(false)
 				const f = [...e.dataTransfer.files][0]
-				mode.current = multiple && current ? 'add' : 'replace'
+				mode.current = current ? 'replace' : 'add'
 				sendFile(f)
 			}}
 			title={warn}
@@ -102,10 +103,10 @@ function CoverField({ kind, label, items, fallback, warn, busy, put, remove, ask
 			<div className="relative mt-1 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-white/70">
 				{current ? (
 					// eslint-disable-next-line @next/next/no-img-element
-					<img src={current.url} alt={label} className="max-h-24 w-full object-contain" />
+					<img src={current.url} alt={label} title="Double-click to view full size" onDoubleClick={() => onEnlarge?.(current.url)} className="max-h-24 w-full cursor-zoom-in object-contain" />
 				) : fallback ? (
 					// eslint-disable-next-line @next/next/no-img-element
-					<img src={fallback} alt={label} className="max-h-24 w-full object-contain opacity-70" />
+					<img src={fallback} alt={label} title="Double-click to view full size" onDoubleClick={() => onEnlarge?.(fallback)} className="max-h-24 w-full cursor-zoom-in object-contain opacity-70" />
 				) : <span className="px-1 text-center text-[11px] leading-tight text-slate-400">Drop image or click Upload</span>}
 				{busy && <div className="absolute inset-0 grid place-items-center bg-white/70"><Loader2 className="size-5 animate-spin text-slate-700" /></div>}
 			</div>
@@ -114,14 +115,14 @@ function CoverField({ kind, label, items, fallback, warn, busy, put, remove, ask
 					<button type="button" title="Previous image" aria-label="Previous image" disabled={items.length < 2} onClick={() => step(-1)} className="rounded px-1 text-slate-600 hover:bg-white disabled:opacity-30">‹</button>
 					<button type="button" title="Next image" aria-label="Next image" disabled={items.length < 2} onClick={() => step(1)} className="rounded px-1 text-slate-600 hover:bg-white disabled:opacity-30">›</button>
 				</>}
-				<button type="button" onClick={() => pick(current ? 'replace' : 'add')} className="rounded px-1.5 text-[11px] text-slate-700 hover:bg-white">{current || fallback ? 'Replace' : 'Upload'}</button>
-				{(current || fallback) && <button type="button" onClick={() => current ? remove(at) : askRemove()} className="rounded px-1.5 text-[11px] text-rose-600 hover:bg-rose-50">Delete</button>}
-				{multiple && <button type="button" onClick={() => pick('add')} className="rounded px-1.5 text-[11px] text-slate-700 hover:bg-white">+ Add</button>}
+				{!current && !fallback && <button type="button" onClick={() => pick('add')} className="shrink-0 whitespace-nowrap rounded px-1.5 text-[11px] text-slate-700 hover:bg-white">Upload</button>}
+				{(current || fallback) && <button type="button" onClick={() => current ? remove(at) : askRemove()} className="shrink-0 whitespace-nowrap rounded px-1.5 text-[11px] text-rose-600 hover:bg-rose-50">Delete</button>}
+				{multiple && <button type="button" title="Add an image" onClick={() => pick('add')} className="shrink-0 whitespace-nowrap rounded px-1.5 text-[11px] text-slate-700 hover:bg-white">+</button>}
 			</div>
 			<input ref={input} type="file" accept="image/*" className="hidden" onChange={e => { sendFile(e.target.files?.[0]); e.target.value = '' }} />
 			{menuOpen && search && (
 				<div role="menu" className="absolute right-1 top-8 z-20 w-56 rounded-lg border bg-white p-1 text-sm shadow-md">
-					<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { toggleMenu?.(); input.current?.click() }}><Upload className="size-4" />Upload image</button>
+					<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { toggleMenu?.(); pick('replace') }}><Upload className="size-4" />Upload image</button>
 					<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { toggleMenu?.(); paste?.() }}><ClipboardPaste className="size-4" />Paste image</button>
 					{search}
 					<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-rose-600 hover:bg-rose-50" onClick={() => { toggleMenu?.(); askRemove() }}><Trash2 className="size-4" />Remove cover</button>
@@ -233,6 +234,13 @@ export function Inspector(p: Props) {
 	const [tracksOpen, setTracksOpen] = useState(true)
 	const [logOpen, setLogOpen] = useState(false)
 	const [menu, setMenu] = useState(false)  // the front cover's menu
+	const [big, setBig] = useState<string | null>(null)  // full-size cover modal (ADR 0092)
+	useEffect(() => {
+		if (!big) return
+		const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setBig(null) }
+		document.addEventListener('keydown', esc)
+		return () => document.removeEventListener('keydown', esc)
+	}, [big])
 	const [covers, setCovers] = useState<Covers>({ front: [], back: [], leaflet: [], media: [] })
 	useEffect(() => {
 		let live = true
@@ -322,7 +330,7 @@ export function Inspector(p: Props) {
 						const f = [...e.clipboardData.files].find(f => f.type.startsWith('image/'))
 						if (f) { e.preventDefault(); p.putCover(f, COVER_TYPE.front) } else toast.error('No image on the clipboard')
 					}}
-					menuOpen={menu} toggleMenu={() => setMenu(m => !m)} paste={() => void pasteCover(coverRef)}
+					menuOpen={menu} toggleMenu={() => setMenu(m => !m)} paste={() => void pasteCover(coverRef)} onEnlarge={url => setBig(url)}
 					search={<>
 						<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://covers.musichoarders.xyz/?${new URLSearchParams({ artist: a.artist || '', album: title(a) })}`} target="_blank" rel="noopener">
 							{/* eslint-disable-next-line @next/next/no-img-element */}
@@ -334,11 +342,11 @@ export function Inspector(p: Props) {
 						</a>
 					</>} />
 				<CoverField kind="back" label="Back Cover" items={covers.back} busy={!!p.coverBusy}
-					put={(f, i) => p.putCover(f, COVER_TYPE.back, i)} remove={i => p.delArtwork(COVER_TYPE.back, i)} askRemove={() => {}} />
+					put={(f, i) => p.putCover(f, COVER_TYPE.back, i)} remove={i => p.delArtwork(COVER_TYPE.back, i)} askRemove={() => {}} onEnlarge={url => setBig(url)} />
 				<CoverField kind="leaflet" label="Leaflet" items={covers.leaflet} busy={!!p.coverBusy}
-					put={(f, i) => p.putCover(f, COVER_TYPE.leaflet, i)} remove={i => p.delArtwork(COVER_TYPE.leaflet, i)} askRemove={() => {}} />
+					put={(f, i) => p.putCover(f, COVER_TYPE.leaflet, i)} remove={i => p.delArtwork(COVER_TYPE.leaflet, i)} askRemove={() => {}} onEnlarge={url => setBig(url)} />
 				<CoverField kind="media" label="Media" items={covers.media} busy={!!p.coverBusy}
-					put={(f, i) => p.putCover(f, COVER_TYPE.media, i)} remove={i => p.delArtwork(COVER_TYPE.media, i)} askRemove={() => {}} />
+					put={(f, i) => p.putCover(f, COVER_TYPE.media, i)} remove={i => p.delArtwork(COVER_TYPE.media, i)} askRemove={() => {}} onEnlarge={url => setBig(url)} />
 			</div>
 			<div className="flex gap-2">
 				<Button className="flex-1 bg-slate-800 text-white hover:bg-slate-700" onClick={() => p.openEditor('album')}>Tag Editor</Button>
@@ -467,6 +475,13 @@ export function Inspector(p: Props) {
 					</div>
 				</CollapsibleContent>
 			</Collapsible>
+
+			{big && (
+				<div role="dialog" aria-modal="true" aria-label="Full-size cover" title="Click or press Escape to close" onClick={() => setBig(null)} className="fixed inset-0 z-50 grid cursor-zoom-out place-items-center bg-slate-900/80 p-8">
+					{/* eslint-disable-next-line @next/next/no-img-element */}
+					<img src={big} alt="Full-size cover" className="max-h-full max-w-full object-contain shadow-2xl" />
+				</div>
+			)}
 		</div>
 	)
 }

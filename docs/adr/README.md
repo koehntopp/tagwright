@@ -77,6 +77,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0089](0089-assignment-track-order.md) | Assignment dialogs list files in the release track's disc order | Accepted |
 | [0090](0090-artwork-types-and-cover-fields.md) | Embedded artwork by type, with four cover fields in the inspector | Accepted |
 | [0091](0091-artwork-sidecars-on-move.md) | Recreate cover files from embedded art when an album moves | Accepted |
+| [0092](0092-cover-controls-and-full-size-view.md) | Compact cover field controls and a double-click full-size view | Accepted |
 
 ## History: superseded ADRs
 
