@@ -143,6 +143,7 @@ Tagwright has no authentication. Run it on a trusted network or behind a reverse
 uv run --group test pytest            # tests use synthetic albums in a temp directory
 uv run ruff check . && uv run ruff format --check .
 cd ui && npm run build                # frontend; commit the resulting static/ui/
+./scripts/retype-covers.py <paths>     # one-off: retype single untyped embedded covers to Front Cover (3); --write saves
 ```
 
 Layout: `app.py` (web layer), `pipeline/` (the steps), `library/` (watcher, planner, layout template), `ui/` (Next.js, shadcn/ui), `docs/adr/` (the specification).
