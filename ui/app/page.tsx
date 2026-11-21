@@ -55,7 +55,7 @@ export default function Page() {
 	const [log, setLog] = useState<LogLine[]>([])
 	const [dlg, setDlg] = useState<{ kind: string; tab?: string; file?: string; path?: string } | null>(null)
 	const [tagTab, setTagTab] = useState<string | null>(null)
-	const [cerr, setCerr] = useState(''), [moving, setMoving] = useState(false), [coverBusy, setCoverBusy] = useState<string | null>(null)
+	const [cerr, setCerr] = useState(''), [moving, setMoving] = useState(false), [coverBusy, setCoverBusy] = useState<string | null>(null), [coverTick, setCoverTick] = useState(0)
 	const [kreload, setKreload] = useState(0)
 	const [playing, setPlaying] = useState<string | null>(null)
 	const since = useRef(0), ticks = useRef(0), poll = useRef<ReturnType<typeof setTimeout>>(undefined), searchRef = useRef<HTMLInputElement>(null)
@@ -179,24 +179,30 @@ export default function Page() {
 		catch (e: any) { setCerr(e.message) }
 		finally { setMoving(false) }
 	}
-	// Scaling and embedding a cover takes seconds: the cover shows a spinner and the Tags and cover step spins meanwhile
-	const putCover = async (f: File) => {
+	// Scaling and embedding artwork takes seconds: the fields show a spinner and the Tags and cover step spins meanwhile
+	const coverQuery = (type?: number, index?: number) => {
+		const q = new URLSearchParams({ path: a!.path })
+		if (type !== undefined) q.set('type', String(type))
+		if (index !== undefined) q.set('index', String(index))
+		return q.toString()
+	}
+	const putCover = async (f: File, type?: number, index?: number) => {
 		if (!a || coverBusy) return
 		const path = a.path
 		setCoverBusy(path); setWorking({ path, steps: ['Tags and cover'] })
 		try {
-			const r = await fetch('/api/cover?path=' + encodeURIComponent(path), { method: 'PUT', body: f })
+			const r = await fetch('/api/cover?' + coverQuery(type, index), { method: 'PUT', body: f })
 			if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText)
-			addLog(['cover replaced from ' + f.name]); toast.success('Cover updated'); await refreshOne(path)
+			addLog(['cover artwork from ' + f.name]); toast.success('Cover updated'); await refreshOne(path); setCoverTick(n => n + 1)
 		} catch (e: any) { toast.error(e.message) }
 		finally { setCoverBusy(null); setWorking(w => (w?.path === path ? null : w)) }
 	}
-	const delCover = async () => {
+	const delCover = async (type?: number, index?: number) => {
 		if (!a) return
 		try {
-			const r = await fetch('/api/cover?path=' + encodeURIComponent(a.path), { method: 'DELETE' })
+			const r = await fetch('/api/cover?' + coverQuery(type, index), { method: 'DELETE' })
 			if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText)
-			setDlg(null); addLog(['cover removed']); toast.success('Cover removed'); await refreshOne(a.path)
+			setDlg(null); addLog(['cover artwork removed']); toast.success('Cover removed'); await refreshOne(a.path); setCoverTick(n => n + 1)
 		} catch (e: any) { setCerr(e.message) }
 	}
 	const stopPlayback = useCallback(() => {
@@ -352,7 +358,7 @@ export default function Page() {
 				{a ? (
 					<Inspector key={a.path} a={a} job={job} working={working?.path === a.path ? working.steps : undefined} log={log} inLibrary={area === 'library'} refresh={() => refreshOne(a.path)} run={run} move={() => { setCerr(''); setDlg({ kind: 'move' }) }}
 						openEditor={tab => setTagTab(tab)} openAlbum={() => setDlg({ kind: 'album' })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })}
-						openLyrics={file => setDlg({ kind: 'lyrics', file, path: a.path })} playing={playing} play={play} delCover={() => { setCerr(''); setDlg({ kind: 'cover' }) }} putCover={putCover} coverBusy={coverBusy === a.path} />
+						openLyrics={file => setDlg({ kind: 'lyrics', file, path: a.path })} playing={playing} play={play} delCover={() => { setCerr(''); setDlg({ kind: 'cover' }) }} delArtwork={delCover} putCover={putCover} coverBusy={coverBusy === a.path} coverTick={coverTick} />
 				) : <div className="p-6 text-slate-500">Select an album.</div>}
 			</aside>
 			</div>
@@ -373,6 +379,10 @@ export default function Page() {
 							<ul className="max-h-48 space-y-0.5 overflow-y-auto font-mono">
 								{mv.files.map(f => <li key={f.from} className={`break-all ${f.exists ? 'text-rose-600' : ''}`}>{f.name}{f.exists ? '  (already exists)' : ''}</li>)}
 							</ul>
+							{mv.artwork.length > 0 && <>
+								<span className="text-slate-500">Cover files</span>
+								<ul className="space-y-0.5 font-mono">{mv.artwork.map(n => <li key={n} className="break-all">{n}</li>)}</ul>
+							</>}
 						</div>
 						<p className="text-xs text-slate-500">{mv.stays}</p>
 						{mv.problems.length > 0 && <ul className="space-y-0.5 text-xs text-rose-600">{mv.problems.map(x => <li key={x} className="break-all">{x}</li>)}</ul>}

@@ -67,7 +67,9 @@ export const fmtBytes = (n: number) => (n >= 1048576 ? (n / 1048576).toFixed(1) 
 export const coverUrl = (a: Album) => `/api/cover?path=${encodeURIComponent(a.path)}&v=${a.mtime}`
 export const STATUS = { needs: 'Needs input', ready: 'Incomplete', fixed: 'Fixed' }
 
-export type MovePreview = { library: string; album_dir: string; files: { from: string; name: string; exists: boolean }[]; problems: string[]; can_move: boolean; stays: string }
+export type MovePreview = { library: string; album_dir: string; files: { from: string; name: string; exists: boolean }[]; artwork: string[]; problems: string[]; can_move: boolean; stays: string }
+export type CoverItem = { url: string; w: number; h: number; bytes: number }
+export type Covers = { front: CoverItem[]; back: CoverItem[]; leaflet: CoverItem[]; media: CoverItem[] }
 export type Chip = { tag?: string; text?: string; fmt?: string; pad?: number; fallback?: string }
 export type Tpl = { folders: Chip[][]; disc_folder: Chip[] | null; filename: Chip[] }
 export type LibraryStatus = {

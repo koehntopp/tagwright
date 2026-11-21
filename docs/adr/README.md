@@ -75,6 +75,8 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0087](0087-table-contrast.md) | Higher-contrast, full-bleed table with a DR column and sticky header | Accepted (sticky position superseded by 0088) |
 | [0088](0088-header-stays-at-inset.md) | The table title row stays at its 24 px inset while scrolling | Accepted |
 | [0089](0089-assignment-track-order.md) | Assignment dialogs list files in the release track's disc order | Accepted |
+| [0090](0090-artwork-types-and-cover-fields.md) | Embedded artwork by type, with four cover fields in the inspector | Accepted |
+| [0091](0091-artwork-sidecars-on-move.md) | Recreate cover files from embedded art when an album moves | Accepted |
 
 ## History: superseded ADRs
 
@@ -125,13 +127,15 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | jobs, queue, log, endpoints that write | 0008 |
 | settings dialog, API keys, config overlay | 0009, 0044 (no lrclib key), 0045 (folders read-only) |
 | file names, `rename_files`, `clean()` | 0010 |
-| Move to ingest | 0011 |
+| Move to ingest | 0011, 0091 |
 | Discogs search, track assignment, filled tags, re-assignment | 0053, 0089 |
 | MusicBrainz search, MusicBrainz tags | 0023, 0078 |
 | tag editor, override pencils, which tags are editable | 0014 |
 | play button, track edit dialog, lyrics editing | 0015, 0021 (artist field, lrclib search) |
-| cover display, size warning, cover upload | 0016 |
-| cover delete | 0024 |
+| cover display, size warning, cover upload | 0016, 0090 |
+| cover delete | 0024, 0090 |
+| artwork types, cover fields, embedded vs folder images | 0090 |
+| cover files created on a move | 0091, 0011, 0037 |
 | fingerprint length | 0025 |
 | parallel tag writes by pipeline scripts (lost tags), step order and concurrency in `nzbfix` | 0032, 0033 |
 | dynamic-range tag names | 0005, 0027 |

@@ -1,13 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ChartColumn, Check, ChevronDown, Copy, Ellipsis, Fingerprint, FileText, Loader2, Mic, ClipboardPaste, Pause, Pencil, Play, RefreshCw, Search, Tags, Trash2, OctagonX, TriangleAlert, Upload, Volume2 } from 'lucide-react'
+import { ChartColumn, Check, ChevronDown, Copy, Ellipsis, Fingerprint, FileText, Loader2, Mic, ClipboardPaste, Pause, Pencil, Play, RefreshCw, Tags, Trash2, OctagonX, TriangleAlert, Upload, Volume2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { flagOf } from '@/lib/flags'
-import { Album, Job, LogLine, TrackFile, api, channelLabel, coverUrl, fmtBytes, mmss, title } from '@/lib/api'
+import { Album, CoverItem, Covers, Job, LogLine, TrackFile, api, channelLabel, coverUrl, mmss, title } from '@/lib/api'
 
 // navigator.clipboard exists only in secure contexts (https or localhost); over plain http on the LAN the
 // textarea and execCommand route is the one that works.
@@ -46,6 +45,91 @@ export const LY = {
 export const Pill = ({ className = '', ...p }: React.ComponentProps<'span'>) => (
 	<span {...p} className={`inline-flex h-5 items-center justify-center rounded-full px-2 text-[11px] font-medium ${className}`} />
 )
+
+type CoverKind = 'front' | 'back' | 'leaflet' | 'media'
+const COVER_TYPE: Record<CoverKind, number> = { front: 3, back: 4, leaflet: 5, media: 6 }
+
+/** One of the four artwork fields of the inspector (ADR 0090). Front is single; the others are small carousels. */
+function CoverField({ kind, label, items, fallback, warn, busy, put, remove, askRemove, inputRef, rootRef, onPaste, search, paste, menuOpen, toggleMenu }: {
+	kind: CoverKind
+	label: string
+	items: CoverItem[]
+	fallback?: string
+	warn?: string
+	busy: boolean
+	put: (file: File, index?: number) => void
+	remove: (index: number) => void
+	askRemove: () => void
+	inputRef?: React.RefObject<HTMLInputElement | null>
+	rootRef?: React.RefObject<HTMLDivElement | null>
+	onPaste?: (e: React.ClipboardEvent) => void
+	search?: React.ReactNode
+	paste?: () => void
+	menuOpen?: boolean
+	toggleMenu?: () => void
+}) {
+	const multiple = kind !== 'front'
+	const [sel, setSel] = useState(0)
+	const mode = useRef<'add' | 'replace'>('add')
+	const ownInput = useRef<HTMLInputElement>(null)
+	const input = inputRef ?? ownInput
+	const [drag, setDrag] = useState(false)
+	const at = items.length ? Math.min(sel, items.length - 1) : 0
+	const current = items[at] ?? null
+	const pick = (m: 'add' | 'replace') => { mode.current = m; input.current?.click() }
+	const sendFile = (f?: File) => {
+		if (!f) return
+		if (!f.type.startsWith('image/')) { toast.error('That is not an image'); return }
+		put(f, mode.current === 'replace' && current ? at : undefined)
+	}
+	const step = (d: number) => setSel((at + d + items.length) % items.length)
+	return (
+		<div ref={rootRef} tabIndex={-1} data-cover-menu={kind === 'front' ? '' : undefined} onPaste={onPaste}
+			onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)}
+			onDrop={e => {
+				e.preventDefault(); setDrag(false)
+				const f = [...e.dataTransfer.files][0]
+				mode.current = multiple && current ? 'add' : 'replace'
+				sendFile(f)
+			}}
+			title={warn}
+			className={`relative flex min-h-[9rem] flex-col rounded-xl border p-2 outline-none ${warn ? 'border-amber-400 bg-amber-50' : drag ? 'ring-4 ring-slate-800' : 'border-slate-200 bg-slate-50'}`}>
+			<div className="flex items-center justify-between gap-1">
+				<span className="truncate text-xs font-medium text-slate-700">{label}{warn && <TriangleAlert className="ml-1 inline size-3 text-amber-700" />}</span>
+				{multiple && items.length > 0 && <span className="shrink-0 text-[11px] tabular-nums text-slate-500">{at + 1}/{items.length}</span>}
+				{kind === 'front' && toggleMenu && <button type="button" onClick={toggleMenu} aria-label="Cover options" aria-expanded={menuOpen} className="shrink-0 rounded p-0.5 text-slate-500 hover:bg-white"><Ellipsis className="size-3.5" /></button>}
+			</div>
+			<div className="relative mt-1 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-white/70">
+				{current ? (
+					// eslint-disable-next-line @next/next/no-img-element
+					<img src={current.url} alt={label} className="max-h-24 w-full object-contain" />
+				) : fallback ? (
+					// eslint-disable-next-line @next/next/no-img-element
+					<img src={fallback} alt={label} className="max-h-24 w-full object-contain opacity-70" />
+				) : <span className="px-1 text-center text-[11px] leading-tight text-slate-400">Drop image or click Upload</span>}
+				{busy && <div className="absolute inset-0 grid place-items-center bg-white/70"><Loader2 className="size-5 animate-spin text-slate-700" /></div>}
+			</div>
+			<div className="mt-1 flex items-center gap-0.5">
+				{multiple && <>
+					<button type="button" title="Previous image" aria-label="Previous image" disabled={items.length < 2} onClick={() => step(-1)} className="rounded px-1 text-slate-600 hover:bg-white disabled:opacity-30">‹</button>
+					<button type="button" title="Next image" aria-label="Next image" disabled={items.length < 2} onClick={() => step(1)} className="rounded px-1 text-slate-600 hover:bg-white disabled:opacity-30">›</button>
+				</>}
+				<button type="button" onClick={() => pick(current ? 'replace' : 'add')} className="rounded px-1.5 text-[11px] text-slate-700 hover:bg-white">{current || fallback ? 'Replace' : 'Upload'}</button>
+				{(current || fallback) && <button type="button" onClick={() => current ? remove(at) : askRemove()} className="rounded px-1.5 text-[11px] text-rose-600 hover:bg-rose-50">Delete</button>}
+				{multiple && <button type="button" onClick={() => pick('add')} className="rounded px-1.5 text-[11px] text-slate-700 hover:bg-white">+ Add</button>}
+			</div>
+			<input ref={input} type="file" accept="image/*" className="hidden" onChange={e => { sendFile(e.target.files?.[0]); e.target.value = '' }} />
+			{menuOpen && search && (
+				<div role="menu" className="absolute right-1 top-8 z-20 w-56 rounded-lg border bg-white p-1 text-sm shadow-md">
+					<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { toggleMenu?.(); input.current?.click() }}><Upload className="size-4" />Upload image</button>
+					<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { toggleMenu?.(); paste?.() }}><ClipboardPaste className="size-4" />Paste image</button>
+					{search}
+					<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-rose-600 hover:bg-rose-50" onClick={() => { toggleMenu?.(); askRemove() }}><Trash2 className="size-4" />Remove cover</button>
+				</div>
+			)}
+		</div>
+	)
+}
 
 /** Channel layout of a track: Mono and Stereo neutral, multichannel violet (ADR 0040). `hint`: taken from a title. */
 export function ChannelBadge({ n, hint }: { n?: number; hint?: boolean }) {
@@ -110,9 +194,11 @@ type Props = {
 	openLyrics: (file: string) => void
 	playing: string | null
 	play: (f: TrackFile) => void
-	delCover: () => void
-	putCover: (f: File) => void
+	delCover: () => void  // front cover, with confirmation
+	delArtwork: (type: number, index: number) => void
+	putCover: (f: File, type?: number, index?: number) => void
 	coverBusy?: boolean  // a cover is being processed (scaled and embedded)
+	coverTick: number
 }
 
 const STEP_ICON: Record<string, typeof Check> = { 'Dynamic range': ChartColumn, ReplayGain: Volume2, Fingerprints: Fingerprint, 'Tags and cover': Tags, Lyrics: Mic, Filenames: FileText }
@@ -146,8 +232,14 @@ export function Inspector(p: Props) {
 	const [stepSel, setStep] = useState<number | null>(null)
 	const [tracksOpen, setTracksOpen] = useState(true)
 	const [logOpen, setLogOpen] = useState(false)
-	const [drag, setDrag] = useState(false)
-	const [menu, setMenu] = useState(false)  // the cover actions menu
+	const [menu, setMenu] = useState(false)  // the front cover's menu
+	const [covers, setCovers] = useState<Covers>({ front: [], back: [], leaflet: [], media: [] })
+	useEffect(() => {
+		let live = true
+		const empty: Covers = { front: [], back: [], leaflet: [], media: [] }
+		api<Covers>('/api/covers?path=' + encodeURIComponent(a.path)).then(r => live && setCovers(r), () => live && setCovers(empty))
+		return () => { live = false }
+	}, [a.path, a.mtime, p.coverTick])
 	useEffect(() => {
 		if (!menu) return
 		const close = (e: Event) => { if (!(e.target as Element).closest?.('[data-cover-menu]')) setMenu(false) }
@@ -159,9 +251,9 @@ export function Inspector(p: Props) {
 	const coverRef = useRef<HTMLDivElement>(null)
 	// "Paste image" (ADR 0016): read the clipboard where the browser allows it (https, localhost); over plain http on
 	// the LAN there is no clipboard API, so the cover takes focus and the paste key (Cmd/Ctrl+V) delivers the image
-	const pasteCover = async () => {
+	const pasteCover = async (ref?: React.RefObject<HTMLDivElement | null>) => {
 		const fail = () => toast.error('No image on the clipboard')
-		if (!navigator.clipboard?.read) { coverRef.current?.focus(); toast.info('Press Cmd/Ctrl+V to paste the image'); return }
+		if (!navigator.clipboard?.read) { (ref ?? coverRef).current?.focus(); toast.info('Press Cmd/Ctrl+V to paste the image'); return }
 		try {
 			for (const item of await navigator.clipboard.read()) {
 				const type = item.types.find(t => t.startsWith('image/'))
@@ -192,36 +284,10 @@ export function Inspector(p: Props) {
 	const running = job.state === 'running' && job.path === a.path
 	const spinning = (name: string) => (running && name === job.step) || !!p.working?.includes(name)
 
-	const cov = a.cover
 	const coverSmall = a.issues.some(i => i.action === 'cover')  // below the minimum size, or no cover (ADR 0016)
 	return (
 		<div className="space-y-5 p-6">
-			<div className="flex gap-4">
-				<div className="w-36 shrink-0">
-					<div
-						ref={coverRef} tabIndex={-1}
-						className={`rounded-xl transition-shadow focus:ring-4 focus:ring-slate-300 ${drag ? 'ring-4 ring-slate-800' : coverSmall ? 'outline-dashed outline-2 outline-offset-2 outline-amber-400' : ''}`}
-						title="Drop an image here to replace the cover"
-						onPaste={e => {
-							const f = [...e.clipboardData.files].find(f => f.type.startsWith('image/'))
-							if (f) { e.preventDefault(); p.putCover(f) } else toast.error('No image on the clipboard')
-						}}
-						onDragOver={e => { e.preventDefault(); setDrag(true) }}
-						onDragLeave={() => setDrag(false)}
-						onDrop={e => {
-							e.preventDefault(); setDrag(false)
-							const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/'))
-							f ? p.putCover(f) : toast.error('Drop an image file')
-						}}
-					>
-						<div className="relative">
-							<CoverImg a={a} className="size-36 rounded-xl shadow" />
-							{p.coverBusy && <div className="absolute inset-0 grid place-items-center rounded-xl bg-white/70" role="status" aria-label="Processing the cover"><Loader2 className="size-8 animate-spin text-slate-700" /></div>}
-						</div>
-					</div>
-					<input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && p.putCover(e.target.files[0])} />
-				</div>
-				<div className="min-w-0">
+			<div className="min-w-0 space-y-1">
 					<div className="flex items-center gap-1 text-xs text-slate-500">
 						<span className="truncate" title={a.artist_is_albumartist ? '' : 'from ARTIST tag'}>{a.artist || 'No artist'}</span>
 						<button onClick={p.openAlbum} title="Edit album artist and title"><Pencil className="size-3" /></button>
@@ -245,32 +311,36 @@ export function Inspector(p: Props) {
 						<button onClick={p.openMb} title="Choose the MusicBrainz release" className="mr-1"><Pencil className="size-3" /></button>
 						{a.dr && <Pill className="bg-emerald-100 text-emerald-800" title="Album dynamic range">DR{a.dr}</Pill>}
 					</div>
-				</div>
 			</div>
-
+			<div className="grid grid-cols-4 gap-2">
+				<CoverField kind="front" label="Front Cover" items={covers.front}
+					fallback={!covers.front.length && a.cover && !a.cover.embedded ? coverUrl(a) : undefined}
+					warn={coverSmall ? a.issues.find(i => i.action === 'cover')?.text : undefined} busy={!!p.coverBusy}
+					put={(f, i) => p.putCover(f, COVER_TYPE.front, i)} remove={p.delCover} askRemove={p.delCover}
+					inputRef={fileRef} rootRef={coverRef}
+					onPaste={e => {
+						const f = [...e.clipboardData.files].find(f => f.type.startsWith('image/'))
+						if (f) { e.preventDefault(); p.putCover(f, COVER_TYPE.front) } else toast.error('No image on the clipboard')
+					}}
+					menuOpen={menu} toggleMenu={() => setMenu(m => !m)} paste={() => void pasteCover(coverRef)}
+					search={<>
+						<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://covers.musichoarders.xyz/?${new URLSearchParams({ artist: a.artist || '', album: title(a) })}`} target="_blank" rel="noopener">
+							{/* eslint-disable-next-line @next/next/no-img-element */}
+							<img src="/static/musichoarders.svg" alt="" className="size-4 rounded-sm bg-slate-800 p-px" />Search musichoarders
+						</a>
+						<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://albumartexchange.com/covers?${new URLSearchParams({ q: [a.artist, title(a)].filter(Boolean).join(' '), fltr: 'ALL', sort: 'SCORE', status: '', size: 'any' })}`} target="_blank" rel="noopener">
+							{/* eslint-disable-next-line @next/next/no-img-element */}
+							<img src="/static/albumartexchange.ico" alt="" className="size-4 rounded-sm" />Search albumartexchange
+						</a>
+					</>} />
+				<CoverField kind="back" label="Back Cover" items={covers.back} busy={!!p.coverBusy}
+					put={(f, i) => p.putCover(f, COVER_TYPE.back, i)} remove={i => p.delArtwork(COVER_TYPE.back, i)} askRemove={() => {}} />
+				<CoverField kind="leaflet" label="Leaflet" items={covers.leaflet} busy={!!p.coverBusy}
+					put={(f, i) => p.putCover(f, COVER_TYPE.leaflet, i)} remove={i => p.delArtwork(COVER_TYPE.leaflet, i)} askRemove={() => {}} />
+				<CoverField kind="media" label="Media" items={covers.media} busy={!!p.coverBusy}
+					put={(f, i) => p.putCover(f, COVER_TYPE.media, i)} remove={i => p.delArtwork(COVER_TYPE.media, i)} askRemove={() => {}} />
+			</div>
 			<div className="flex gap-2">
-				<div className="relative w-36 shrink-0" data-cover-menu>
-					<Button variant="outline" aria-label="Cover actions" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(m => !m)}
-						title={coverSmall ? a.issues.find(i => i.action === 'cover')?.text : cov ? `${cov.embedded ? 'Embedded cover' : 'Folder image, not embedded'}, ${fmtBytes(cov.bytes)}` : 'Cover actions'}
-						className={`w-full tabular-nums ${coverSmall ? 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100' : ''}`}>
-						{coverSmall && <TriangleAlert className="size-3.5 text-amber-700" />}{p.coverBusy ? 'Processing…' : cov ? `${cov.w}×${cov.h}` : 'no cover'}<Ellipsis className="size-4" />
-					</Button>
-						{menu && (
-							<div role="menu" className="absolute left-0 top-10 z-20 w-56 rounded-lg border bg-white p-1 text-sm shadow-md">
-								<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { setMenu(false); fileRef.current?.click() }}><Upload className="size-4" />Upload image</button>
-								<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { setMenu(false); pasteCover() }}><ClipboardPaste className="size-4" />Paste image</button>
-								<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://covers.musichoarders.xyz/?${new URLSearchParams({ artist: a.artist || '', album: title(a) })}`} target="_blank" rel="noopener">
-									{/* eslint-disable-next-line @next/next/no-img-element */}
-									<img src="/static/musichoarders.svg" alt="" className="size-4 rounded-sm bg-slate-800 p-px" />Search musichoarders
-								</a>
-								<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://albumartexchange.com/covers?${new URLSearchParams({ q: [a.artist, title(a)].filter(Boolean).join(' '), fltr: 'ALL', sort: 'SCORE', status: '', size: 'any' })}`} target="_blank" rel="noopener">
-									{/* eslint-disable-next-line @next/next/no-img-element */}
-									<img src="/static/albumartexchange.ico" alt="" className="size-4 rounded-sm" />Search albumartexchange
-								</a>
-								{cov && <button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-rose-600 hover:bg-rose-50" onClick={() => { setMenu(false); p.delCover() }}><Trash2 className="size-4" />Remove cover</button>}
-							</div>
-						)}
-				</div>
 				<Button className="flex-1 bg-slate-800 text-white hover:bg-slate-700" onClick={() => p.openEditor('album')}>Tag Editor</Button>
 				<Button className={`flex-1 ${running ? 'border-rose-600 bg-rose-600 text-white disabled:opacity-100' : ''}`} variant="outline" disabled={a.status === 'needs' || job.state === 'running'} onClick={() => p.run()}>{running ? 'Running…' : 'Run fixes'}</Button>
 				<Button className="flex-1" variant="outline" disabled={p.inLibrary || a.status !== 'fixed' || a.issues.some(i => i.level === 'ingest') || mbMismatch.length > 0 || job.state === 'running'} title={p.inLibrary ? 'This album is already in the library' : mbMismatch.length ? `${mbMismatch[0]} Fix the release before moving.` : undefined} onClick={p.move}>Move to library</Button>

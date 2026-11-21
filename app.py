@@ -43,10 +43,10 @@ from library.template import default as default_template
 from library.template import validate as validate_template
 from library.watcher import Library
 from library.watcher import Settings as LibrarySettings
-from pipeline import covers, layout, logconfig, lrclib
+from pipeline import artwork, layout, logconfig, lrclib
 from pipeline import discogs as discogs_api
 from pipeline import musicbrainz as mb_api
-from pipeline.audio import Audio, Cover, is_audio, new_cover, open_audio
+from pipeline.audio import Audio, Cover, is_audio, open_audio
 from pipeline.config import Config
 from pipeline.fixtags import DISCOGS_TAG_PREFIXES, artist_names, fix_album
 from pipeline.http import ApiError
@@ -760,30 +760,12 @@ def album(path: str) -> dict:
 	return get_summary(p)
 
 
-def make_picture(data: bytes) -> Cover:
-	"""Front-cover Picture from image bytes: JPEG and PNG are kept, anything else becomes JPEG, and an image larger
-	than the maximum cover size (a setting, 1500 px) is scaled down (400 if unreadable)."""
+def make_picture(data: bytes, type_: int = 3) -> Cover:
+	"""A Picture of `type_` from image bytes, scaled to the maximum cover size at once (ADR 0042, 0090)."""
 	try:
-		with Image.open(io.BytesIO(data)) as im:
-			fmt, w, h, mode = im.format, im.width, im.height, im.mode
-			if fmt not in ('JPEG', 'PNG'):  # FLAC players expect JPEG or PNG
-				buf = io.BytesIO()
-				im.convert('RGB').save(buf, 'JPEG', quality=95)
-				data, fmt, mode = buf.getvalue(), 'JPEG', 'RGB'
-	except (OSError, UnidentifiedImageError) as e:
-		raise HTTPException(400, 'not a readable image') from e
-	pic = new_cover()
-	pic.type, pic.mime, pic.desc, pic.width, pic.height, pic.data = (
-		3,
-		f'image/{fmt.lower()}',
-		'',
-		w,
-		h,
-		data,
-	)
-	pic.depth = {'1': 1, 'L': 8, 'P': 8, 'RGB': 24, 'RGBA': 32}.get(mode, 24)
-	# a large image is scaled at once, to the limit the pipeline uses (ADR 0016), so it never sits in the files oversized
-	return covers.resized(pic, MAX_COVER, Path('cover'))
+		return artwork.picture(data, type_, MAX_COVER)
+	except ValueError as e:
+		raise HTTPException(400, str(e)) from e
 
 
 def embed_cover(album: Path, pic: Cover, only_missing: bool = False) -> None:
@@ -800,23 +782,57 @@ def embed_cover(album: Path, pic: Cover, only_missing: bool = False) -> None:
 		a.save()
 
 
+@app.get('/api/covers')
+def cover_list(path: str) -> dict:
+	"""The distinct embedded pictures of the album, grouped by artwork type (ADR 0090)."""
+	album = safe(path)
+	out: dict[str, list[dict]] = {}
+	for type_ in artwork.TYPES:
+		items = []
+		for i, pic in enumerate(artwork.read(album)[type_]):
+			q = urlencode({'path': str(album), 'type': type_, 'index': i})
+			items.append({'url': f'/api/cover?{q}', **artwork.info(pic)})
+		out[artwork.KEYS[type_]] = items
+	return out
+
+
 @app.put('/api/cover')
-async def set_cover(path: str, request: Request) -> dict:
-	"""Replace the embedded front cover of every file with the uploaded image (raw request body)."""
+async def set_cover(
+	path: str, request: Request, type: int | None = None, index: int | None = None
+) -> dict:
+	"""Add or replace an embedded picture. Without `type` this replaces the front cover, as before (ADR 0090)."""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	album = safe(path)
-	embed_cover(album, make_picture(await request.body()))
-	log.info('cover replaced: %s', album.name)
+	data = await request.body()
+	if type is None or type == artwork.FRONT:
+		embed_cover(album, make_picture(data, artwork.FRONT))
+		log.info('front cover replaced: %s', album.name)
+	else:
+		pics = artwork.read(album).get(type, [])
+		pic = make_picture(data, type)
+		if index is not None and 0 <= index < len(pics):
+			pics[index] = pic
+		else:
+			pics.append(pic)
+		artwork.write(album, type, pics)
+		log.info('%s artwork changed: %s', artwork.LABELS.get(type, type), album.name)
 	return fresh_summary(album)
 
 
 @app.delete('/api/cover')
-def delete_cover(path: str) -> dict:
-	"""Remove the front and untyped covers from every file (other picture types stay) and the folder images (ADR 0024)."""
+def delete_cover(path: str, type: int | None = None, index: int | None = None) -> dict:
+	"""Remove one picture of a type, or the front cover and folder images as before (ADR 0024, 0090)."""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	album = safe(path)
+	if type is not None and type != artwork.FRONT:
+		pics = artwork.read(album).get(type, [])
+		if index is not None and 0 <= index < len(pics):
+			pics.pop(index)
+			artwork.write(album, type, pics)
+			log.info('%s artwork removed: %s', artwork.LABELS.get(type, type), album.name)
+		return fresh_summary(album)
 	for f in flacs(album):
 		a = open_audio(f)
 		keep = [p for p in a.pictures if p.type not in (0, 3)]
@@ -827,13 +843,20 @@ def delete_cover(path: str) -> dict:
 			a.save()
 	for name in COVER_FILES:
 		(album / name).unlink(missing_ok=True)
-	log.info('cover removed: %s', album.name)
+	log.info('front cover removed: %s', album.name)
 	return fresh_summary(album)
 
 
 @app.get('/api/cover')
-def cover(path: str) -> Response:
+def cover(path: str, type: int | None = None, index: int = 0) -> Response:
+	"""Serve one embedded picture by type and index; without them, the old front/first/folder fallback."""
 	album = safe(path)
+	if type is not None:
+		pics = artwork.read(album).get(type, [])
+		if 0 <= index < len(pics):
+			pic = pics[index]
+			return Response(pic.data, media_type=pic.mime or 'image/jpeg')
+		return Response(status_code=204)
 	for f in flacs(album)[:1]:
 		pics = open_audio(f).pictures
 		pic = next((p for p in pics if p.type == 3), pics[0] if pics else None)
@@ -1290,13 +1313,14 @@ def move_plan(path: Path) -> tuple[dict, list[lib_planner.Move]]:
 		'library': str(INGEST),
 		'album_dir': album_dir,
 		'files': files,
+		'artwork': artwork.plan(path, INGEST / album_dir) if album_dir else [],
 		'problems': problems,
 		'can_move': bool(plan.moves) and not problems,
 		'stays': (
-			'Only the audio files move. When they have moved you are asked whether to delete what is left '
+			'Only the audio files move; cover files are recreated from the embedded artwork. When they have moved you are asked whether to delete what is left '
 			'of the album folder (images, logs) in the staging folder.'
 			if settings.get('delete_after_move')
-			else 'Only the audio files move. Other files in the album folder (images, logs) stay in the staging folder.'
+			else 'Only the audio files move; cover files are recreated from the embedded artwork. Other files in the album folder (images, logs) stay in the staging folder.'
 		),
 	}
 	return info, plan.moves
@@ -1394,12 +1418,20 @@ def move(body: dict) -> dict:
 	if not info['can_move']:
 		raise HTTPException(409, info['problems'][0] if info['problems'] else 'nothing to move')
 	with library.exclusive:
+		groups = artwork.read(path)  # before the files move away
 		for m in moves:
 			dst = INGEST / m.dst
 			dst.parent.mkdir(parents=True, exist_ok=True)
 			shutil.move(str(m.src), dst)
+		written = artwork.export_groups(groups, INGEST / info['album_dir'])
 	library.poke()
-	log.info('moved to the library: %s (%d files) -> %s', path.name, len(moves), info['album_dir'])
+	log.info(
+		'moved to the library: %s (%d files, %d artwork) -> %s',
+		path.name,
+		len(moves),
+		len(written),
+		info['album_dir'],
+	)
 	return {'moved_to': str(INGEST / info['album_dir'])}
 
 

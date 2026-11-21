@@ -1,6 +1,6 @@
 # ADR 0056: Cover controls in one menu, with the size warning on the cover
 
-- **Status**: Accepted
+- **Status**: Accepted (the cover button and menu are superseded by [0090](0090-artwork-types-and-cover-fields.md)'s four cover fields)
 - **Date**: 2026-11-12
 - **Supersedes in part**: [0016](0016-cover-art.md) (the icon row under the cover: upload, the two search links and delete) and the red delete icon of [0024](0024-delete-cover-removes-folder-image.md)
 

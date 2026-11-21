@@ -58,7 +58,7 @@ Tags Tagwright writes are never read back as input, tags owned by Discogs are re
 
 ![Lyrics editor](docs/screenshots/lyrics-editor.png)
 
-**Cover**: the pixel size is shown and a small cover is flagged. The cover button at the left of the action row shows the size and opens a menu: upload an image, **paste** one from the clipboard, search for covers on two external sites, or remove the cover. You can also drop an image on the cover; it is scaled down to the maximum cover size (Settings, 1500 px by default) and embedded; a cover below the minimum size (1400 px by default) keeps the album from moving.
+**Cover**: the album details use the full inspector width, and four equal cover fields sit below them: **Front Cover** (one image), **Back Cover**, **Leaflet** and **Media** (several images each, cycled with the arrows). Each field accepts a dropped or uploaded image; the front field also has **paste**, two cover search sites and **remove**. Images are scaled down to the maximum cover size (Settings, 1500 px by default) and embedded in every audio file. A front cover below the minimum size (1400 px by default) keeps the album from moving. When an album moves to the library, `folder.jpg` and numbered files under `Artwork/` are recreated from the embedded images (ADR 0090, 0091).
 
 ## Moving to the library
 

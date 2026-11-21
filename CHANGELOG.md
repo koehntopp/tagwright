@@ -16,6 +16,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Added
 
+- Embedded artwork is now editable by type in the inspector: the album details use the full width, with four equal cover fields below them — **Front Cover** (one image), **Back Cover**, **Leaflet** and **Media** (several images each, with arrows to cycle). Upload, drop, paste, search, Replace, Delete and Add work per field. Moving an album to the library recreates `folder.jpg` and numbered files under `Artwork/` from the embedded images, so a music server that cannot read embedded art still gets covers [0090, 0091].
+
 - A **view switch** in the top bar, next to Rescan: two buttons, **cards** and **list**, with the active one pressed. The list is a compact, full-width **data table** with a sticky title row, high-contrast alternating rows and columns for album artist, release name, media, edition, catalog number, dynamic range, release year (**Release**) and master year (**Master**). DR values of 12 and above are green, lower ones amber. Click any column heading to sort by it (again for descending), drag the edge of a heading to resize a column, and click a row to open the same inspector as a card. Column widths and the chosen view are remembered in the browser; no covers are shown in the list [0087].
 
 ## 0.4.0 (2026-11-18)

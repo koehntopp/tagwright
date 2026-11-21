@@ -18,6 +18,8 @@ from pathlib import Path, PurePosixPath
 
 from library.planner import Move, Problem, nfd
 from library.scanner import is_music
+from pipeline import artwork
+from pipeline.layout import album_root
 
 log = logging.getLogger(__name__)
 
@@ -138,6 +140,13 @@ class Executor:
 		for old_dir in sorted(sources, key=lambda d: -d.count('/')):
 			self.prune(old_dir)
 		albums = sorted({str(PurePosixPath(new).parent) for _, new in self.result.done})
+		# Embedded art is the source of truth: recreate cover files beside moved tracks (ADR 0091).
+		for album in albums:
+			folder = album_root(Path(album))
+			try:
+				artwork.export(self.root / folder, self.root / folder)
+			except OSError as e:
+				log.warning('Could not write artwork files for %s: %s', folder, e)
 		self.result.actions = [
 			f'moved {sum(1 for _, n in self.result.done if str(PurePosixPath(n).parent) == a)} file(s) to {a}'
 			for a in albums
