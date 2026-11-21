@@ -78,6 +78,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0090](0090-artwork-types-and-cover-fields.md) | Embedded artwork by type, with four cover fields in the inspector | Accepted |
 | [0091](0091-artwork-sidecars-on-move.md) | Recreate cover files from embedded art when an album moves | Accepted |
 | [0092](0092-cover-controls-and-full-size-view.md) | Compact cover field controls and a double-click full-size view | Accepted |
+| [0093](0093-cover-preview-size.md) | Cover previews fill their field and show W×H in the header | Accepted |
 
 ## History: superseded ADRs
 

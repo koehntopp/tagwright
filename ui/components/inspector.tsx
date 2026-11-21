@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { flagOf } from '@/lib/flags'
-import { Album, CoverItem, Covers, Job, LogLine, TrackFile, api, channelLabel, coverUrl, mmss, title } from '@/lib/api'
+import { Album, CoverItem, Covers, Job, LogLine, TrackFile, api, channelLabel, coverUrl, fmtBytes, mmss, title } from '@/lib/api'
 
 // navigator.clipboard exists only in secure contexts (https or localhost); over plain http on the LAN the
 // textarea and execCommand route is the one that works.
@@ -50,11 +50,12 @@ type CoverKind = 'front' | 'back' | 'leaflet' | 'media'
 const COVER_TYPE: Record<CoverKind, number> = { front: 3, back: 4, leaflet: 5, media: 6 }
 
 /** One of the four artwork fields of the inspector (ADR 0090). Front is single; the others are small carousels. */
-function CoverField({ kind, label, items, fallback, warn, busy, put, remove, askRemove, inputRef, rootRef, onPaste, search, paste, menuOpen, toggleMenu, onEnlarge }: {
+function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, put, remove, askRemove, inputRef, rootRef, onPaste, search, paste, menuOpen, toggleMenu, onEnlarge }: {
 	kind: CoverKind
 	label: string
 	items: CoverItem[]
 	fallback?: string
+	fallbackSize?: string
 	warn?: string
 	busy: boolean
 	put: (file: File, index?: number) => void
@@ -97,17 +98,20 @@ function CoverField({ kind, label, items, fallback, warn, busy, put, remove, ask
 			className={`relative flex min-h-[9rem] flex-col rounded-xl border p-2 outline-none ${warn ? 'border-amber-400 bg-amber-50' : drag ? 'ring-4 ring-slate-800' : 'border-slate-200 bg-slate-50'}`}>
 			<div className="flex items-center justify-between gap-1">
 				<span className="truncate text-xs font-medium text-slate-700">{label}{warn && <TriangleAlert className="ml-1 inline size-3 text-amber-700" />}</span>
-				{multiple && items.length > 0 && <span className="shrink-0 text-[11px] tabular-nums text-slate-500">{at + 1}/{items.length}</span>}
-				{kind === 'front' && toggleMenu && <button type="button" onClick={toggleMenu} aria-label="Cover options" aria-expanded={menuOpen} className="shrink-0 rounded p-0.5 text-slate-500 hover:bg-white"><Ellipsis className="size-3.5" /></button>}
+				<span className="flex shrink-0 items-center gap-1">
+					{(current || fallback) && <span className="text-[10px] tabular-nums text-slate-500" title={current ? `${current.w}×${current.h}, ${fmtBytes(current.bytes)}` : undefined}>{current ? `${current.w}×${current.h}` : fallbackSize}</span>}
+					{multiple && items.length > 0 && <span className="text-[11px] tabular-nums text-slate-500">{at + 1}/{items.length}</span>}
+					{kind === 'front' && toggleMenu && <button type="button" onClick={toggleMenu} aria-label="Cover options" aria-expanded={menuOpen} className="shrink-0 rounded p-0.5 text-slate-500 hover:bg-white"><Ellipsis className="size-3.5" /></button>}
+				</span>
 			</div>
-			<div className="relative mt-1 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-white/70">
+			<div className="relative mt-1 h-24 overflow-hidden rounded-lg bg-white/70">
 				{current ? (
 					// eslint-disable-next-line @next/next/no-img-element
-					<img src={current.url} alt={label} title="Double-click to view full size" onDoubleClick={() => onEnlarge?.(current.url)} className="max-h-24 w-full cursor-zoom-in object-contain" />
+					<img src={current.url} alt={label} title={`${current.w}×${current.h}, ${fmtBytes(current.bytes)} — double-click to view full size`} onDoubleClick={() => onEnlarge?.(current.url)} className="absolute inset-0 size-full cursor-zoom-in object-cover" />
 				) : fallback ? (
 					// eslint-disable-next-line @next/next/no-img-element
-					<img src={fallback} alt={label} title="Double-click to view full size" onDoubleClick={() => onEnlarge?.(fallback)} className="max-h-24 w-full cursor-zoom-in object-contain opacity-70" />
-				) : <span className="px-1 text-center text-[11px] leading-tight text-slate-400">Drop image or click Upload</span>}
+					<img src={fallback} alt={label} title="Double-click to view full size" onDoubleClick={() => onEnlarge?.(fallback)} className="absolute inset-0 size-full cursor-zoom-in object-cover opacity-70" />
+				) : <span className="absolute inset-0 grid place-items-center px-1 text-center text-[11px] leading-tight text-slate-400">Drop image or click Upload</span>}
 				{busy && <div className="absolute inset-0 grid place-items-center bg-white/70"><Loader2 className="size-5 animate-spin text-slate-700" /></div>}
 			</div>
 			<div className="mt-1 flex items-center gap-0.5">
@@ -323,6 +327,7 @@ export function Inspector(p: Props) {
 			<div className="grid grid-cols-4 gap-2">
 				<CoverField kind="front" label="Front Cover" items={covers.front}
 					fallback={!covers.front.length && a.cover && !a.cover.embedded ? coverUrl(a) : undefined}
+					fallbackSize={a.cover ? `${a.cover.w}×${a.cover.h}` : undefined}
 					warn={coverSmall ? a.issues.find(i => i.action === 'cover')?.text : undefined} busy={!!p.coverBusy}
 					put={(f, i) => p.putCover(f, COVER_TYPE.front, i)} remove={p.delCover} askRemove={p.delCover}
 					inputRef={fileRef} rootRef={coverRef}

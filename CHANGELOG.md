@@ -10,6 +10,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Fixed
 
+- Cover images now fill their field instead of being letterboxed, and each field shows the image's pixel size in its header (with the file size on hover) [0093].
 - The track list in the Discogs and MusicBrainz assignment dialogs now follows the release track's disc and track order, so a multi-disc release shows one subtitle divider per disc instead of repeating discs [0089].
 - The full-bleed layout applies only to the list table; card view keeps its original padding around the cards [0087].
 - The list's title row stays at its aligned position while scrolling instead of shifting; rows pass behind an opaque strip above it [0088].
