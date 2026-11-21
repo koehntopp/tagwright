@@ -101,7 +101,6 @@ function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, pu
 				<span className="flex shrink-0 items-center gap-1">
 					{(current || fallback) && <span className="text-[10px] tabular-nums text-slate-500" title={current ? `${current.w}×${current.h}, ${fmtBytes(current.bytes)}` : undefined}>{current ? `${current.w}×${current.h}` : fallbackSize}</span>}
 					{multiple && items.length > 0 && <span className="text-[11px] tabular-nums text-slate-500">{at + 1}/{items.length}</span>}
-					{kind === 'front' && toggleMenu && <button type="button" onClick={toggleMenu} aria-label="Cover options" aria-expanded={menuOpen} className="shrink-0 rounded p-0.5 text-slate-500 hover:bg-white"><Ellipsis className="size-3.5" /></button>}
 				</span>
 			</div>
 			<div className="relative mt-1 aspect-square w-full overflow-hidden rounded-lg bg-white/70">
@@ -122,10 +121,11 @@ function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, pu
 				{!current && !fallback && <button type="button" onClick={() => pick('add')} className="shrink-0 whitespace-nowrap rounded px-1.5 text-[11px] text-slate-700 hover:bg-white">Upload</button>}
 				{(current || fallback) && <button type="button" onClick={() => current ? remove(at) : askRemove()} className="shrink-0 whitespace-nowrap rounded px-1.5 text-[11px] text-rose-600 hover:bg-rose-50">Delete</button>}
 				{multiple && <button type="button" title="Add an image" onClick={() => pick('add')} className="shrink-0 whitespace-nowrap rounded px-1.5 text-[11px] text-slate-700 hover:bg-white">+</button>}
+				{kind === 'front' && toggleMenu && <button type="button" onClick={toggleMenu} aria-label="Cover options" aria-expanded={menuOpen} className="ml-auto shrink-0 rounded p-0.5 text-slate-500 hover:bg-white"><Ellipsis className="size-3.5" /></button>}
 			</div>
 			<input ref={input} type="file" accept="image/*" className="hidden" onChange={e => { sendFile(e.target.files?.[0]); e.target.value = '' }} />
 			{menuOpen && search && (
-				<div role="menu" className="absolute right-1 top-8 z-20 w-56 rounded-lg border bg-white p-1 text-sm shadow-md">
+				<div role="menu" className="absolute bottom-8 right-1 z-20 w-56 rounded-lg border bg-white p-1 text-sm shadow-md">
 					<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { toggleMenu?.(); pick('replace') }}><Upload className="size-4" />Upload image</button>
 					<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { toggleMenu?.(); paste?.() }}><ClipboardPaste className="size-4" />Paste image</button>
 					{search}
