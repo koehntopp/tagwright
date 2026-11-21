@@ -10,7 +10,8 @@ treats such a picture as the front cover; this writes the type so the four cover
 
 Dry-run by default. Pass --write to save. Only files with exactly one picture are touched; files with several
 pictures, and pictures already typed 3, are left alone. Per-file output is limited to files with more than one
-picture (plus errors); the summary counts the other reasons. Never run --write on a test or scratch library that
+picture (plus errors); the summary counts the other reasons. --multi-albums prints only the album folders that
+hold such files, one path per line, and changes nothing. Never run --write on a test or scratch library that
 matters, and verify on a copy first (ADR 0018).
 """
 
@@ -26,6 +27,7 @@ from mutagen import MutagenError
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pipeline.audio import is_audio, open_audio  # noqa: E402  # after the path above
+from pipeline.layout import album_root  # noqa: E402  # after the path above
 
 log = logging.getLogger('retype-covers')
 
@@ -66,10 +68,18 @@ def main() -> None:
 	parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 	parser.add_argument('paths', nargs='+', type=Path, help='audio files or folders to scan')
 	parser.add_argument('--write', action='store_true', help='save the change (default: dry run)')
+	parser.add_argument(
+		'--multi-albums',
+		action='store_true',
+		help='list only album folders with a file holding several pictures; changes nothing',
+	)
 	args = parser.parse_args()
+	if args.multi_albums and args.write:
+		parser.error('--multi-albums cannot be combined with --write')
 	logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 	counts = {'changed': 0, 'front': 0, 'multi': 0, 'empty': 0, 'errors': 0}
+	albums: set[Path] = set()
 	for target in args.paths:
 		if not target.exists():
 			log.error('%s: no such path', target)
@@ -82,9 +92,18 @@ def main() -> None:
 				log.error('%s: %s', path, e)
 				counts['errors'] += 1
 				continue
+			if args.multi_albums:
+				if reason == 'multi':
+					albums.add(album_root(path.parent))
+				continue
 			counts[reason] += 1
 			if reason == 'multi':
 				log.info('%s: %s', path, detail)
+	if args.multi_albums:
+		for folder in sorted(albums):
+			log.info('%s', folder)
+		log.info('%d album(s) with multiple embedded pictures', len(albums))
+		return
 	log.info(
 		'%s: %d changed, %d already front, %d with multiple pictures, %d with no picture, %d error(s)',
 		'wrote' if args.write else 'dry run',
