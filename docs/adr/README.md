@@ -66,7 +66,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0077](0077-library-as-csv-for-other-programs.md) | The library as CSV for other programs (`/api/library/albums.csv`) | Accepted |
 | [0078](0078-musicbrainz-track-assignment-and-import-song-titles.md) | MusicBrainz track assignment and the "Import song titles" checkbox in both dialogs | Accepted |
 | [0079](0079-discogs-assignment-sets-the-album-artist.md) | ALBUMARTIST is a Discogs tag (assignment and Run fixes); the override is the exception | Accepted |
-| [0080](0080-discogs-leads-album-level-tags.md) | Discogs leads CATALOGNUMBER, ALBUM_FORMAT and the credits (overrides keep manual values); ARTIST goes with the title | Accepted |
+| [0080](0080-discogs-leads-album-level-tags.md) | Discogs leads CATALOGNUMBER, ALBUM_FORMAT and the credits (overrides keep manual values); ARTIST goes with the title | Accepted (format override superseded by 0097) |
 | [0081](0081-subtitle-dividers-in-track-lists.md) | Disc subtitles are dividers in the track lists (Tag Editor first, then the import dialogs) | Accepted |
 | [0082](0082-in-your-library-box.md) | "In your library" box: other versions of the album's Discogs master (`/api/library/versions`) | Accepted |
 | [0083](0083-inspector-note-boxes-and-year-mismatch.md) | One style for the inspector's note boxes (types, symbols, buttons); a year mismatch Discogs/MusicBrainz stops the move | Accepted |
@@ -82,6 +82,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0094](0094-clear-buttons-and-no-shortcut-hint.md) | Every text field can be cleared with an x; no ⌘K hint in the search | Accepted |
 | [0095](0095-view-toggle-pill-beside-the-folder-switch.md) | The view toggle is a pill; Rescan and the toggle sit between the folder switch and the search | Accepted |
 | [0096](0096-paste-into-every-cover-field.md) | Paste an image into every cover field (front replaces, the others append) | Accepted |
+| [0097](0097-album-format-is-a-plain-field.md) | Album Format is a plain field showing ALBUM_FORMAT, without an override tag | Accepted |
 
 ## History: superseded ADRs
 
@@ -135,7 +136,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | Move to ingest | 0011, 0091 |
 | Discogs search, track assignment, filled tags, re-assignment | 0053, 0089 |
 | MusicBrainz search, MusicBrainz tags | 0023, 0078 |
-| tag editor, override pencils, which tags are editable | 0014 |
+| tag editor, override pencils, which tags are editable | 0014, 0097 (Album Format) |
 | play button, track edit dialog, lyrics editing | 0015, 0021 (artist field, lrclib search) |
 | cover display, size warning, cover upload | 0016, 0090 |
 | cover delete | 0024, 0090 |

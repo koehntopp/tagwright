@@ -227,7 +227,7 @@ def test_editing_format_or_catalog_rewrites_version_at_once(
 	monkeypatch.setattr(tagwright, 'fix_album', fake)
 	r = client.post(
 		'/api/tags',
-		json={'path': str(album), 'fields': {'ALBUM_FORMAT_OVERRIDE': 'SACD'}, 'tracks': []},
+		json={'path': str(album), 'fields': {'ALBUM_FORMAT': 'SACD'}, 'tracks': []},
 	)
 	assert seen == [album]
 	assert (
@@ -237,7 +237,7 @@ def test_editing_format_or_catalog_rewrites_version_at_once(
 	seen.clear()
 	client.post(
 		'/api/tags',
-		json={'path': str(album), 'fields': {'ALBUM_FORMAT_OVERRIDE': 'SACD'}, 'tracks': []},
+		json={'path': str(album), 'fields': {'ALBUM_FORMAT': 'SACD'}, 'tracks': []},
 	)
 	assert seen == []  # nothing changed
 
@@ -313,3 +313,26 @@ def test_propose_lists_files_in_the_release_disc_order(
 		make_flac(folder / f'{n:02d}.flac', TITLE=title, TRACKNUMBER=str(n), DISCNUMBER='1')
 	r = client.post('/api/tracks/propose', json={'path': str(folder), 'release_id': '6'}).json()
 	assert [(f['title'], f['rel']) for f in r['files']] == [('One', 0), ('Three', 2), ('Two', 1)]
+
+
+def test_album_format_is_a_plain_field_that_shows_the_current_value(
+	client: TestClient, album: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	"""ADR 0097: the Album tab shows ALBUM_FORMAT itself; typing over it writes ALBUM_FORMAT, no override tag."""
+	monkeypatch.setattr(tagwright, 'fix_album', lambda path, cfg: fixtags.FixResult(2, 'X', 'V'))
+	first, second = sorted(album.glob('*.flac'))
+	for f in (first, second):
+		a = FLAC(f)
+		a['ALBUM_FORMAT'] = ['CD']
+		a['ALBUM_FORMAT_OVERRIDE'] = ['CD']  # legacy
+		a.save()
+	assert (
+		client.get('/api/tags', params={'path': str(album)}).json()['fields']['ALBUM_FORMAT']
+		== 'CD'
+	)
+	client.post(
+		'/api/tags', json={'path': str(album), 'fields': {'ALBUM_FORMAT': 'SACD'}, 'tracks': []}
+	)
+	for f in (first, second):
+		assert FLAC(f)['ALBUM_FORMAT'] == ['SACD']
+		assert 'ALBUM_FORMAT_OVERRIDE' not in FLAC(f)

@@ -219,7 +219,7 @@ def test_a_tag_save_logs_the_fields_and_the_lyrics_edit_logs_the_file(
 			'/api/tags',
 			json={
 				'path': str(album),
-				'fields': {'ALBUM_FORMAT_OVERRIDE': 'SACD'},
+				'fields': {'ALBUM_FORMAT': 'SACD'},
 				'tracks': [
 					{
 						'file': '01_01_One.flac',
@@ -237,9 +237,6 @@ def test_a_tag_save_logs_the_fields_and_the_lyrics_edit_logs_the_file(
 			json={'path': str(album), 'file': '01_02_Two.flac', 'lyrics': '[00:01.00]la'},
 		)
 	text = caplog.text
-	assert (
-		"tags saved: Test Artist-Test Album: ALBUM_FORMAT_OVERRIDE='SACD'; 1 track(s) edited"
-		in text
-	)
+	assert "tags saved: Test Artist-Test Album: ALBUM_FORMAT='SACD'; 1 track(s) edited" in text
 	assert "01_01_One.flac: title='Uno'" in text
 	assert 'lyrics edited (12 chars): Test Artist-Test Album / 01_02_Two.flac' in text

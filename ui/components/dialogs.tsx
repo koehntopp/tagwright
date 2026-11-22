@@ -214,7 +214,7 @@ export function TagEditor({ a, tab, reload, onClose, done, begin, openLyrics, op
 		if (edited.some(x => !['title', 'disc', 'track'].every(k => String(x[k]).trim()))) return setErr('Title, disc and track must not be empty.')
 		// The dialog closes at once; the step circles of the inspector spin until the server answers (a format, catalog # or
 		// edition edit rewrites the Discogs tags, ADR 0049, and every save renames the files)
-		const end = begin(a.path, ['ALBUM_FORMAT_OVERRIDE', 'CATALOGNUMBER_OVERRIDE', 'ALBUM_EDITION'].some(k => k in changed) ? ['Tags and cover', 'Filenames'] : ['Filenames'])
+		const end = begin(a.path, ['ALBUM_FORMAT', 'CATALOGNUMBER_OVERRIDE', 'ALBUM_EDITION'].some(k => k in changed) ? ['Tags and cover', 'Filenames'] : ['Filenames'])
 		onClose()
 		try { await post('/api/tags', { path: a.path, fields: changed, tracks: edited }); toast.success('Tags saved'); done(a.path) }
 		catch (e: any) { toast.error(e.message) }
@@ -242,9 +242,8 @@ export function TagEditor({ a, tab, reload, onClose, done, begin, openLyrics, op
 								<Input value={fields.ALBUM_TITLE_OVERRIDE ?? ''} onChange={e => setFields({ ...fields, ALBUM_TITLE_OVERRIDE: e.target.value })} />
 								{d.discogs_id && discogsTitle && <Small>ALBUM TITLE: {discogsTitle}</Small>}
 							</Field>
-							<Field label="Album Format Override" help="For example CD, SACD, Vinyl. Saved as ALBUM_FORMAT_OVERRIDE and kept when a Discogs release is assigned. Empty restores the Discogs format.">
-								<Input value={fields.ALBUM_FORMAT_OVERRIDE ?? ''} onChange={e => setFields({ ...fields, ALBUM_FORMAT_OVERRIDE: e.target.value })} />
-								{d.album_format && <Small>ALBUM FORMAT: {d.album_format}</Small>}
+							<Field label="Album Format" help="For example CD, SACD, Vinyl. Filled from Discogs when a release is assigned; type over it to change it. Empty means CD.">
+								<Input value={fields.ALBUM_FORMAT ?? ''} onChange={e => setFields({ ...fields, ALBUM_FORMAT: e.target.value })} />
 							</Field>
 							<Field label="Album Edition" help="For example Remastered or Gold Disc. Part of the version string."><Input value={fields.ALBUM_EDITION ?? ''} onChange={e => setFields({ ...fields, ALBUM_EDITION: e.target.value })} /></Field>
 						</div>

@@ -6,6 +6,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
+- The Tag Editor's Album tab shows the album's current format in the Album Format field (it was empty unless an override was set). Type over it to change the format; no override tag is written, and an empty field means CD. Assigning a Discogs release still sets the release's format [0097].
 - The card/list buttons sit in a pill, and together with Rescan they moved between the Staging / Library switch and the search [0095].
 - Every text field now shows an x while it has text and you point at it or type in it; clicking it empties the field (number and read-only fields and the lyrics editor excepted). The search field no longer shows the ⌘K hint; ⌘K still jumps to it [0094].
 

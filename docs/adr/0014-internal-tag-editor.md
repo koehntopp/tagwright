@@ -1,6 +1,6 @@
 # ADR 0014: Internal tag editor; what is editable and what is Discogs-owned
 
-- **Status**: Accepted (five tabs, Discogs and MusicBrainz apart, and an Other tab: [0057](0057-tag-editor-tabs-and-other-tags.md))
+- **Status**: Accepted (five tabs, Discogs and MusicBrainz apart, and an Other tab: [0057](0057-tag-editor-tabs-and-other-tags.md); the Album Format field: [0097](0097-album-format-is-a-plain-field.md))
 - **Date**: 2026-11-08
 - **Supersedes**: the earlier external-editor link (a `yate://` URL built from a client-side path mapping), removed
 

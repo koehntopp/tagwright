@@ -2557,7 +2557,7 @@ def lrclib_search(title: str, artist: str = '') -> list[dict]:
 ALBUM_FIELDS = {
 	'ALBUM_ARTIST_OVERRIDE': ('ALBUMARTIST',),
 	'ALBUM_TITLE_OVERRIDE': ('ALBUM',),
-	'ALBUM_FORMAT_OVERRIDE': ('ALBUM_FORMAT',),
+	'ALBUM_FORMAT': ('ALBUM_FORMAT_OVERRIDE',),  # a plain field (ADR 0097); the override is legacy
 	'ALBUM_EDITION': (),
 	'CATALOGNUMBER_OVERRIDE': CATALOG_KEYS,
 	'MUSICBRAINZ_ALBUMID': ('MUSICBRAINZ ALBUM ID',),
@@ -2565,7 +2565,6 @@ ALBUM_FIELDS = {
 OVERRIDES = {
 	'ALBUM_ARTIST_OVERRIDE': 'ALBUMARTIST',
 	'ALBUM_TITLE_OVERRIDE': 'ALBUM',
-	'ALBUM_FORMAT_OVERRIDE': 'ALBUM_FORMAT',
 	'CATALOGNUMBER_OVERRIDE': 'CATALOGNUMBER',
 }
 # Tags the Discogs tags step writes (pipeline/fixtags.py; tests/test_tag_contract.py keeps both in line); shown read-only.
@@ -2741,7 +2740,7 @@ def write_album_fields(album: Path, fields: dict) -> bool:
 		k in fields
 		and str(fields[k]).strip()
 		!= (tag(first, k) if k in OVERRIDES else tag(first, k, *ALBUM_FIELDS[k]))
-		for k in ('ALBUM_EDITION', 'ALBUM_FORMAT_OVERRIDE', 'CATALOGNUMBER_OVERRIDE')
+		for k in ('ALBUM_EDITION', 'ALBUM_FORMAT', 'CATALOGNUMBER_OVERRIDE')
 	)
 	for f in files:
 		a = open_audio(f)
@@ -2753,6 +2752,10 @@ def write_album_fields(album: Path, fields: dict) -> bool:
 			value = str(value).strip()
 			if value:
 				a[key] = [value]
+				if key == 'ALBUM_FORMAT' and 'ALBUM_FORMAT_OVERRIDE' in a.tags:
+					del a.tags[
+						'ALBUM_FORMAT_OVERRIDE'
+					]  # the typed value replaces a legacy override (ADR 0097)
 				if key in OVERRIDES:
 					a[OVERRIDES[key]] = [value]
 					if key == 'CATALOGNUMBER_OVERRIDE':
