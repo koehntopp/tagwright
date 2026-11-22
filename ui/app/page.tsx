@@ -261,9 +261,8 @@ export default function Page() {
 					<span className={area === 'library' ? 'text-slate-900' : 'text-slate-400'}>Library</span>
 				</button>
 				<div className="relative w-72 min-w-20 shrink">
-					<Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
-					<Input ref={searchRef} type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search" title="Search albums, artists, IDs (⌘K)" className="h-9 rounded-full border-slate-300 bg-white pl-9 pr-12" />
-					<kbd className="absolute right-3 top-2 hidden rounded bg-slate-100 px-1.5 text-xs text-slate-500 min-[1600px]:block">⌘K</kbd>
+					<Search className="pointer-events-none absolute left-3 top-2.5 z-10 size-4 text-slate-400" />
+					<Input ref={searchRef} type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search" title="Search albums, artists, IDs (⌘K)" className="h-9 rounded-full border-slate-300 bg-white pl-9 pr-8" />
 				</div>
 				{playing && (
 					<button onClick={stopPlayback} title="Stop playback" aria-label="Stop playback" className="mr-1 flex h-9 shrink-0 items-center gap-2 rounded-full border border-yellow-400 bg-yellow-100 px-3 text-[15px] text-slate-800 hover:bg-yellow-200">

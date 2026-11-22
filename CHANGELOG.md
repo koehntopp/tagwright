@@ -6,6 +6,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
+- Every text field now shows an x while it has text and you point at it or type in it; clicking it empties the field (number and read-only fields and the lyrics editor excepted). The search field no longer shows the ⌘K hint; ⌘K still jumps to it [0094].
+
 - List view rows are shorter, so more albums fit on screen without scrolling [0087].
 
 ### Fixed

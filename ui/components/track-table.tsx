@@ -119,7 +119,7 @@ export function TrackTable({ rows, setRows, openLyrics }: { rows: Row[]; setRows
 							<td className="cursor-grab pr-1 text-slate-400" draggable onDragStart={e => { setDrag(r.file); e.dataTransfer.effectAllowed = 'move' }} onDragEnd={() => { setDrag(null); setOver(null) }} title="Drag to reorder"><GripVertical className="size-4" /></td>
 							<td className="pr-2"><input type="checkbox" className="accent-slate-800" checked={sel.has(r.file)} onChange={() => {}} onClick={e => click(e, i)} /></td>
 							{COLS.map(([k, , w]) => (
-								<td key={k} className="pb-1 pr-2"><Input className={`h-7 text-xs ${w}`} value={r[k] ?? ''} onChange={e => edit(r.file, k, e.target.value)} /></td>
+								<td key={k} className="pb-1 pr-2"><Input className={`h-7 text-xs ${w}`} clearable={k !== 'disc' && k !== 'track'} value={r[k] ?? ''} onChange={e => edit(r.file, k, e.target.value)} /></td>
 							))}
 							<td className="pr-2 text-right text-xs tabular-nums text-slate-500">{mmss(r.length ?? 0)}</td>
 							<td className="pr-2">{r.format && <Pill title={r.format.includes('/') ? 'Sample rate in kHz / bit depth' : 'Sample rate in kHz'} className="w-[4.5rem] border border-slate-200 bg-white tabular-nums text-slate-700">{r.format}</Pill>}</td>
