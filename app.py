@@ -783,76 +783,103 @@ def embed_cover(album: Path, pic: Cover, only_missing: bool = False) -> None:
 
 
 @app.get('/api/covers')
-def cover_list(path: str) -> dict:
-	"""The distinct embedded pictures of the album, grouped by artwork type (ADR 0090)."""
+def cover_list(path: str, disc: int | None = None) -> dict:
+	"""The distinct embedded pictures of the album or of one disc, grouped by artwork type, and the album's disc
+	numbers (ADR 0090, 0098)."""
 	album = safe(path)
-	out: dict[str, list[dict]] = {}
+	groups = artwork.read(album, disc)
+	out: dict[str, list] = {'discs': artwork.discs(album)}
 	for type_ in artwork.TYPES:
 		items = []
-		for i, pic in enumerate(artwork.read(album)[type_]):
-			q = urlencode({'path': str(album), 'type': type_, 'index': i})
+		for i, pic in enumerate(groups[type_]):
+			q = urlencode(
+				{'path': str(album), 'type': type_, 'index': i, **({'disc': disc} if disc else {})}
+			)
 			items.append({'url': f'/api/cover?{q}', **artwork.info(pic)})
 		out[artwork.KEYS[type_]] = items
 	return out
 
 
+def rebuild_library_art(album: Path) -> None:
+	"""After an artwork edit on a library album, make its cover files match the embedded art (ADR 0098)."""
+	if album.is_relative_to(INGEST):
+		artwork.rebuild(album)
+
+
 @app.put('/api/cover')
 async def set_cover(
-	path: str, request: Request, type: int | None = None, index: int | None = None
+	path: str,
+	request: Request,
+	type: int | None = None,
+	index: int | None = None,
+	disc: int | None = None,
 ) -> dict:
-	"""Add or replace an embedded picture. Without `type` this replaces the front cover, as before (ADR 0090)."""
+	"""Add or replace an embedded picture, in every file or in one disc's files (ADR 0098). Without `type` this
+	replaces the front cover, as before (ADR 0090)."""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	album = safe(path)
 	data = await request.body()
-	if type is None or type == artwork.FRONT:
+	if (type is None or type == artwork.FRONT) and disc is None:
 		embed_cover(album, make_picture(data, artwork.FRONT))
 		log.info('front cover replaced: %s', album.name)
 	else:
-		pics = artwork.read(album).get(type, [])
+		type = type or artwork.FRONT
+		pics = [] if type == artwork.FRONT else artwork.read(album, disc).get(type, [])
 		pic = make_picture(data, type)
 		if index is not None and 0 <= index < len(pics):
 			pics[index] = pic
 		else:
 			pics.append(pic)
-		artwork.write(album, type, pics)
-		log.info('%s artwork changed: %s', artwork.LABELS.get(type, type), album.name)
+		artwork.write(album, type, pics, disc)
+		where = f' (disc {disc})' if disc is not None else ''
+		log.info('%s artwork changed%s: %s', artwork.LABELS.get(type, type), where, album.name)
+	rebuild_library_art(album)
 	return fresh_summary(album)
 
 
 @app.delete('/api/cover')
-def delete_cover(path: str, type: int | None = None, index: int | None = None) -> dict:
-	"""Remove one picture of a type, or the front cover and folder images as before (ADR 0024, 0090)."""
+def delete_cover(
+	path: str, type: int | None = None, index: int | None = None, disc: int | None = None
+) -> dict:
+	"""Remove one picture of a type, or the front cover (and, for all discs, the folder images) as before (ADR 0024,
+	0090); with `disc`, only in that disc's files (ADR 0098)."""
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	album = safe(path)
+	where = f' (disc {disc})' if disc is not None else ''
 	if type is not None and type != artwork.FRONT:
-		pics = artwork.read(album).get(type, [])
+		pics = artwork.read(album, disc).get(type, [])
 		if index is not None and 0 <= index < len(pics):
 			pics.pop(index)
-			artwork.write(album, type, pics)
-			log.info('%s artwork removed: %s', artwork.LABELS.get(type, type), album.name)
-		return fresh_summary(album)
-	for f in flacs(album):
-		a = open_audio(f)
-		keep = [p for p in a.pictures if p.type not in (0, 3)]
-		if len(keep) != len(a.pictures):
-			a.clear_pictures()
-			for p in keep:
-				a.add_picture(p)
-			a.save()
-	for name in COVER_FILES:
-		(album / name).unlink(missing_ok=True)
-	log.info('front cover removed: %s', album.name)
+			artwork.write(album, type, pics, disc)
+			log.info('%s artwork removed%s: %s', artwork.LABELS.get(type, type), where, album.name)
+	elif disc is not None:
+		artwork.write(album, artwork.FRONT, [], disc)
+		log.info('front cover removed%s: %s', where, album.name)
+	else:
+		for f in flacs(album):
+			a = open_audio(f)
+			keep = [p for p in a.pictures if p.type not in (0, 3)]
+			if len(keep) != len(a.pictures):
+				a.clear_pictures()
+				for p in keep:
+					a.add_picture(p)
+				a.save()
+		for name in COVER_FILES:
+			(album / name).unlink(missing_ok=True)
+		log.info('front cover removed: %s', album.name)
+	rebuild_library_art(album)
 	return fresh_summary(album)
 
 
 @app.get('/api/cover')
-def cover(path: str, type: int | None = None, index: int = 0) -> Response:
-	"""Serve one embedded picture by type and index; without them, the old front/first/folder fallback."""
+def cover(path: str, type: int | None = None, index: int = 0, disc: int | None = None) -> Response:
+	"""Serve one embedded picture by type and index (of one disc, ADR 0098); without them, the old
+	front/first/folder fallback."""
 	album = safe(path)
 	if type is not None:
-		pics = artwork.read(album).get(type, [])
+		pics = artwork.read(album, disc).get(type, [])
 		if 0 <= index < len(pics):
 			pic = pics[index]
 			return Response(pic.data, media_type=pic.mime or 'image/jpeg')
@@ -1313,7 +1340,11 @@ def move_plan(path: Path) -> tuple[dict, list[lib_planner.Move]]:
 		'library': str(INGEST),
 		'album_dir': album_dir,
 		'files': files,
-		'artwork': artwork.plan(path, INGEST / album_dir) if album_dir else [],
+		'artwork': artwork.plan(
+			INGEST / album_dir, [(Path(m.src), INGEST / m.dst) for m in plan.moves]
+		)
+		if album_dir
+		else [],
 		'problems': problems,
 		'can_move': bool(plan.moves) and not problems,
 		'stays': (
@@ -1418,12 +1449,11 @@ def move(body: dict) -> dict:
 	if not info['can_move']:
 		raise HTTPException(409, info['problems'][0] if info['problems'] else 'nothing to move')
 	with library.exclusive:
-		groups = artwork.read(path)  # before the files move away
 		for m in moves:
 			dst = INGEST / m.dst
 			dst.parent.mkdir(parents=True, exist_ok=True)
 			shutil.move(str(m.src), dst)
-		written = artwork.export_groups(groups, INGEST / info['album_dir'])
+		written = artwork.export(INGEST / info['album_dir'])  # per folder (ADR 0098)
 	library.poke()
 	log.info(
 		'moved to the library: %s (%d files, %d artwork) -> %s',

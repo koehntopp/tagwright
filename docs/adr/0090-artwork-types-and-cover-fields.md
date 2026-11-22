@@ -1,6 +1,6 @@
 # ADR 0090: Artwork types and four cover fields
 
-- **Status**: Accepted (the field controls are superseded by [0092](0092-cover-controls-and-full-size-view.md))
+- **Status**: Accepted (the field controls are superseded by [0092](0092-cover-controls-and-full-size-view.md); album-level writes in part by [0098](0098-artwork-per-disc.md))
 - **Date**: 2026-11-21
 - **Supersedes in part**: [0056](0056-cover-controls-in-one-menu.md) (the cover menu under the action row), and the one-image cover model of [0016](0016-cover-art.md) and [0042](0042-covers-are-scaled-on-upload.md)
 

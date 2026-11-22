@@ -135,3 +135,52 @@ def test_move_recreates_embedded_artwork_in_the_library(
 	where = Path(r.json()['moved_to'])
 	assert (where / 'folder.jpg').read_bytes() == front
 	assert (where / 'Artwork' / '01 back.jpg').read_bytes() == back
+
+
+def test_a_disc_edit_touches_only_that_discs_files(client: TestClient, album: Path) -> None:
+	"""ADR 0098: with `disc`, covers are read and written for that disc's files only."""
+	one, two = tagwright.flacs(album)
+	for f, d in ((one, '1'), (two, '2/2')):
+		audio = FLAC(f)
+		audio['DISCNUMBER'] = [d]
+		audio.save()
+	label = image('blue')
+	r = client.put(
+		'/api/cover', params={'path': str(album), 'type': artwork.MEDIA, 'disc': 2}, content=label
+	)
+	assert r.status_code == 200, r.text
+	assert [p.type for p in FLAC(one).pictures] == []
+	assert [p.type for p in FLAC(two).pictures] == [artwork.MEDIA]
+	covers = client.get('/api/covers', params={'path': str(album), 'disc': 1}).json()
+	assert covers['discs'] == [1, 2] and covers['media'] == []
+	assert len(client.get('/api/covers', params={'path': str(album)}).json()['media']) == 1
+	r = client.put(
+		'/api/cover', params={'path': str(album), 'type': artwork.FRONT, 'disc': 1}, content=label
+	)
+	assert [p.type for p in FLAC(one).pictures] == [artwork.FRONT]
+	assert [p.type for p in FLAC(two).pictures] == [artwork.MEDIA]
+
+
+def test_an_edit_on_a_library_album_rebuilds_its_cover_files_per_disc_folder(
+	client: TestClient, make_flac: MakeFlac
+) -> None:
+	"""ADR 0098: disc folders get their own set, the album folder only folder.jpg; stale files go."""
+	album = tagwright.INGEST / 'A' / 'Al'
+	make_flac(album / 'Disc 1' / '01.flac', TITLE='One', TRACKNUMBER='1', DISCNUMBER='1')
+	make_flac(album / 'Disc 2' / '01.flac', TITLE='Two', TRACKNUMBER='1', DISCNUMBER='2')
+	(album / 'Artwork').mkdir()
+	(album / 'Artwork' / '01 back.jpg').write_bytes(b'old')
+	front, label = image('red'), image('blue')
+	client.put('/api/cover', params={'path': str(album)}, content=front)
+	client.put(
+		'/api/cover', params={'path': str(album), 'type': artwork.MEDIA, 'disc': 2}, content=label
+	)
+	assert (album / 'folder.jpg').exists() and (album / 'Disc 1' / 'folder.jpg').exists()
+	assert (album / 'Disc 2' / 'Artwork' / '01 disc.jpg').exists()
+	assert not (album / 'Artwork').exists()
+	assert not (album / 'Disc 1' / 'Artwork').exists()
+	client.delete(
+		'/api/cover', params={'path': str(album), 'type': artwork.MEDIA, 'index': 0, 'disc': 2}
+	)
+	assert not (album / 'Disc 2' / 'Artwork').exists()
+	assert (album / 'Disc 2' / 'folder.jpg').exists()

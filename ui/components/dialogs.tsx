@@ -48,10 +48,10 @@ const Field = ({ label, help, children }: { label: string; help?: string; childr
 	</div>
 )
 
-export function CoverDelete({ open, onClose, onOk, err }: { open: boolean; onClose: () => void; onOk: () => void; err: string }) {
+export function CoverDelete({ open, onClose, onOk, err, disc }: { open: boolean; onClose: () => void; onOk: () => void; err: string; disc?: number }) {
 	return (
 		<Shell open={open} onClose={onClose} title="Remove cover?" wide="sm:max-w-[24rem]" err={err} save={onOk} saveLabel="Remove cover">
-			<p className="text-sm">The embedded cover is removed from every file of this album, and a cover.jpg or folder image in the album folder is deleted.</p>
+			<p className="text-sm">{disc !== undefined ? `The embedded cover is removed from the files of disc ${disc}; the other discs keep theirs.` : 'The embedded cover is removed from every file of this album, and a cover.jpg or folder image in the album folder is deleted.'}</p>
 		</Shell>
 	)
 }

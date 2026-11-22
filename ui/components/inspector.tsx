@@ -208,6 +208,8 @@ type Props = {
 	putCover: (f: File, type?: number, index?: number) => void
 	coverBusy?: boolean  // a cover is being processed (scaled and embedded)
 	coverTick: number
+	coverDisc?: number  // the disc the cover fields show and edit; undefined: all discs (ADR 0098)
+	setCoverDisc: (disc?: number) => void
 }
 
 const STEP_ICON: Record<string, typeof Check> = { 'Dynamic range': ChartColumn, ReplayGain: Volume2, Fingerprints: Fingerprint, 'Tags and cover': Tags, Lyrics: Mic, Filenames: FileText }
@@ -253,9 +255,10 @@ export function Inspector(p: Props) {
 	useEffect(() => {
 		let live = true
 		const empty: Covers = { front: [], back: [], leaflet: [], media: [] }
-		api<Covers>('/api/covers?path=' + encodeURIComponent(a.path)).then(r => live && setCovers(r), () => live && setCovers(empty))
+		const disc = p.coverDisc !== undefined ? '&disc=' + p.coverDisc : ''
+		api<Covers>('/api/covers?path=' + encodeURIComponent(a.path) + disc).then(r => live && setCovers(r), () => live && setCovers(empty))
 		return () => { live = false }
-	}, [a.path, a.mtime, p.coverTick])
+	}, [a.path, a.mtime, p.coverTick, p.coverDisc])
 	useEffect(() => {
 		if (!menu) return
 		const close = (e: Event) => { if (!(e.target as Element).closest?.('[data-cover-menu]')) setMenu(false) }
@@ -328,9 +331,23 @@ export function Inspector(p: Props) {
 						{a.dr && <Pill className="bg-emerald-100 text-emerald-800" title="Album dynamic range">DR{a.dr}</Pill>}
 					</div>
 			</div>
+			{(covers.discs?.length ?? 0) > 1 && (
+				// which disc's artwork the fields edit (ADR 0098); only multi-disc albums show it
+				<div className="-mb-3 flex items-center gap-2 text-xs text-slate-500">
+					<span>Artwork for</span>
+					<div role="group" aria-label="Artwork for" className="inline-flex h-7 items-center overflow-hidden rounded-full border border-slate-300 bg-white p-0.5">
+						{[undefined, ...(covers.discs ?? [])].map(d => (
+							<button key={d ?? 'all'} type="button" aria-pressed={p.coverDisc === d} onClick={() => p.setCoverDisc(d)}
+								className={`h-full whitespace-nowrap rounded-full px-2.5 ${p.coverDisc === d ? 'bg-slate-200 text-slate-900' : 'text-slate-500 hover:text-slate-800'}`}>
+								{d === undefined ? 'All discs' : `Disc ${d}`}
+							</button>
+						))}
+					</div>
+				</div>
+			)}
 			<div className="grid grid-cols-4 gap-2">
 				<CoverField kind="front" label="Front Cover" items={covers.front}
-					fallback={!covers.front.length && a.cover && !a.cover.embedded ? coverUrl(a) : undefined}
+					fallback={p.coverDisc === undefined && !covers.front.length && a.cover && !a.cover.embedded ? coverUrl(a) : undefined}
 					fallbackSize={a.cover ? `${a.cover.w}×${a.cover.h}` : undefined}
 					warn={coverSmall ? a.issues.find(i => i.action === 'cover')?.text : undefined} busy={!!p.coverBusy}
 					put={(f, i) => p.putCover(f, COVER_TYPE.front, i)} remove={p.delCover} askRemove={p.delCover}

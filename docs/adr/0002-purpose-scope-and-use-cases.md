@@ -35,6 +35,7 @@ Tagwright is a single-user, self-hosted web app that lets one person work throug
 | UC-18 | Switch the board between the card grid and a compact, sortable table of album artist, release name, media, edition, catalog number, dynamic range, release year and master year, with the same selection, filters and inspector in both views. | [0087](0087-table-contrast.md) |
 | UC-19 | See and edit embedded artwork by type in the inspector: one front cover and any number of back, leaflet and media images. | [0090](0090-artwork-types-and-cover-fields.md) |
 | UC-20 | Recreate cover files on disk from embedded artwork when tracks move into the library. | [0091](0091-artwork-sidecars-on-move.md) |
+| UC-21 | Edit the artwork of one disc of a multi-disc album, and keep the cover files on disk in line with the embedded art. | [0098](0098-artwork-per-disc.md) |
 
 ### Audio formats
 

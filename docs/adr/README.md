@@ -75,14 +75,15 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0087](0087-table-contrast.md) | Higher-contrast, full-bleed table with a DR column and sticky header | Accepted (sticky position superseded by 0088) |
 | [0088](0088-header-stays-at-inset.md) | The table title row stays at its 24 px inset while scrolling | Accepted |
 | [0089](0089-assignment-track-order.md) | Assignment dialogs list files in the release track's disc order | Accepted |
-| [0090](0090-artwork-types-and-cover-fields.md) | Embedded artwork by type, with four cover fields in the inspector | Accepted |
-| [0091](0091-artwork-sidecars-on-move.md) | Recreate cover files from embedded art when an album moves | Accepted |
+| [0090](0090-artwork-types-and-cover-fields.md) | Embedded artwork by type, with four cover fields in the inspector | Accepted (album-level writes superseded in part by 0098) |
+| [0091](0091-artwork-sidecars-on-move.md) | Recreate cover files from embedded art when an album moves | Accepted (per-folder sets and rebuild: 0098) |
 | [0092](0092-cover-controls-and-full-size-view.md) | Compact cover field controls and a double-click full-size view | Accepted |
 | [0093](0093-cover-preview-size.md) | Cover previews fill their field and show W×H in the header | Accepted |
 | [0094](0094-clear-buttons-and-no-shortcut-hint.md) | Every text field can be cleared with an x; no ⌘K hint in the search | Accepted |
 | [0095](0095-view-toggle-pill-beside-the-folder-switch.md) | The view toggle is a pill; Rescan and the toggle sit between the folder switch and the search | Accepted |
 | [0096](0096-paste-into-every-cover-field.md) | Paste an image into every cover field (front replaces, the others append) | Accepted |
 | [0097](0097-album-format-is-a-plain-field.md) | Album Format is a plain field showing ALBUM_FORMAT, without an override tag | Accepted |
+| [0098](0098-artwork-per-disc.md) | Artwork per disc; cover files per disc folder and rebuilt when library art changes | Accepted |
 
 ## History: superseded ADRs
 
@@ -140,7 +141,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | play button, track edit dialog, lyrics editing | 0015, 0021 (artist field, lrclib search) |
 | cover display, size warning, cover upload | 0016, 0090 |
 | cover delete | 0024, 0090 |
-| artwork types, cover fields, embedded vs folder images | 0090, 0092, 0096 (paste) |
+| artwork types, cover fields, embedded vs folder images | 0090, 0092, 0096 (paste), 0098 (per disc, cover files) |
 | cover files created on a move | 0091, 0011, 0037 |
 | fingerprint length | 0025 |
 | parallel tag writes by pipeline scripts (lost tags), step order and concurrency in `nzbfix` | 0032, 0033 |

@@ -6,6 +6,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
+- Multi-disc albums show an "Artwork for" switch above the cover fields: pick a disc to see and change only that disc's front cover, back cover, leaflet and media images; "All discs" works as before [0098].
+- Changing artwork on a library album now rewrites its cover files on disk (folder.jpg and Artwork/) to match, and removes files for images you deleted. Albums with disc folders get a set per disc folder, and folder.jpg in the album folder [0098].
 - The Tag Editor's Album tab shows the album's current format in the Album Format field (it was empty unless an override was set). Type over it to change the format; no override tag is written, and an empty field means CD. Assigning a Discogs release still sets the release's format [0097].
 - The card/list buttons sit in a pill, and together with Rescan they moved between the Staging / Library switch and the search [0095].
 - Every text field now shows an x while it has text and you point at it or type in it; clicking it empties the field (number and read-only fields and the lyrics editor excepted). The search field no longer shows the ⌘K hint; ⌘K still jumps to it [0094].

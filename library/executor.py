@@ -144,7 +144,7 @@ class Executor:
 		for album in albums:
 			folder = album_root(Path(album))
 			try:
-				artwork.export(self.root / folder, self.root / folder)
+				artwork.export(self.root / folder)
 			except OSError as e:
 				log.warning('Could not write artwork files for %s: %s', folder, e)
 		self.result.actions = [

@@ -61,6 +61,9 @@ export default function Page() {
 	const since = useRef(0), ticks = useRef(0), poll = useRef<ReturnType<typeof setTimeout>>(undefined), searchRef = useRef<HTMLInputElement>(null)
 
 	const a = albums.find(x => x.path === selected) || null
+	// the disc the cover fields edit (ADR 0098); undefined: all discs. Kept per album, so another album starts at all discs
+	const [discSel, setDiscSel] = useState<{ path: string; disc: number } | null>(null)
+	const coverDisc = a && discSel?.path === a.path ? discSel.disc : undefined
 	const load = useCallback(async (path = '', fresh = false, quiet = false) => {
 		if (!path && areaRef.current === 'library') path = libPath.current
 		if (!quiet) setLoading(true)
@@ -184,6 +187,7 @@ export default function Page() {
 		const q = new URLSearchParams({ path: a!.path })
 		if (type !== undefined) q.set('type', String(type))
 		if (index !== undefined) q.set('index', String(index))
+		if (coverDisc !== undefined) q.set('disc', String(coverDisc))
 		return q.toString()
 	}
 	const putCover = async (f: File, type?: number, index?: number) => {
@@ -357,12 +361,12 @@ export default function Page() {
 				{a ? (
 					<Inspector key={a.path} a={a} job={job} working={working?.path === a.path ? working.steps : undefined} log={log} inLibrary={area === 'library'} refresh={() => refreshOne(a.path)} run={run} move={() => { setCerr(''); setDlg({ kind: 'move' }) }}
 						openEditor={tab => setTagTab(tab)} openAlbum={() => setDlg({ kind: 'album' })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })}
-						openLyrics={file => setDlg({ kind: 'lyrics', file, path: a.path })} playing={playing} play={play} delCover={() => { setCerr(''); setDlg({ kind: 'cover' }) }} delArtwork={delCover} putCover={putCover} coverBusy={coverBusy === a.path} coverTick={coverTick} />
+						openLyrics={file => setDlg({ kind: 'lyrics', file, path: a.path })} playing={playing} play={play} delCover={() => { setCerr(''); setDlg({ kind: 'cover' }) }} delArtwork={delCover} putCover={putCover} coverBusy={coverBusy === a.path} coverTick={coverTick} coverDisc={coverDisc} setCoverDisc={d => setDiscSel(d === undefined ? null : { path: a.path, disc: d })} />
 				) : <div className="p-6 text-slate-500">Select an album.</div>}
 			</aside>
 			</div>
 
-			<CoverDelete open={dk === 'cover'} onClose={() => setDlg(null)} onOk={() => delCover()} err={cerr} />
+			<CoverDelete open={dk === 'cover'} onClose={() => setDlg(null)} onOk={() => delCover()} err={cerr} disc={coverDisc} />
 			<AlbumEdit a={dk === 'album' ? a : null} onClose={() => setDlg(null)} done={done} />
 			<TagEditor a={tagTab ? a : null} tab={tagTab || 'album'} reload={kreload} onClose={() => setTagTab(null)} done={done} begin={(path, steps) => { setWorking({ path, steps }); return () => setWorking(w => (w?.path === path ? null : w)) }}
 				openLyrics={(path, file) => setDlg({ kind: 'lyrics', path, file })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })} />
