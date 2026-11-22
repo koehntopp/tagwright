@@ -1,6 +1,6 @@
 # ADR 0086: A data table for the list view
 
-- **Status**: Accepted (the row shades and padded table layout are superseded by [0087](0087-table-contrast.md))
+- **Status**: Accepted (the row shades and padded table layout are superseded by [0087](0087-table-contrast.md); the view toggle position and look by [0095](0095-view-toggle-pill-beside-the-folder-switch.md))
 - **Date**: 2026-11-18
 - **Supersedes**: [0085](0085-list-view.md) (the view switch and the first list view)
 

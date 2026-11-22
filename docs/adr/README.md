@@ -80,6 +80,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0092](0092-cover-controls-and-full-size-view.md) | Compact cover field controls and a double-click full-size view | Accepted |
 | [0093](0093-cover-preview-size.md) | Cover previews fill their field and show W×H in the header | Accepted |
 | [0094](0094-clear-buttons-and-no-shortcut-hint.md) | Every text field can be cleared with an x; no ⌘K hint in the search | Accepted |
+| [0095](0095-view-toggle-pill-beside-the-folder-switch.md) | The view toggle is a pill; Rescan and the toggle sit beside the folder switch | Accepted |
 
 ## History: superseded ADRs
 
@@ -143,8 +144,8 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | parallel tag writes by pipeline scripts (lost tags), step order and concurrency in `nzbfix` | 0032, 0033 |
 | dynamic-range tag names | 0005, 0027 |
 | ReplayGain skip | 0028 |
-| top bar navigation entries, view switch | 0031, 0026, 0086 |
-| layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar), 0094 (clear buttons, no ⌘K hint), 0086 (list table), 0087 (table contrast), 0088 (sticky title row) |
+| top bar navigation entries, view switch | 0031, 0026, 0086, 0095 |
+| layout, colours, widths, dialogs, UI styling | 0030 (colours, cards, dialogs), 0031 (top bar), 0094 (clear buttons, no ⌘K hint), 0095 (view toggle pill, top bar order), 0086 (list table), 0087 (table contrast), 0088 (sticky title row) |
 | how to test | 0018 |
 | commits, pushing, tags (no branches), release notes, commit descriptions, making a release, README and screenshots | 0020, 0069, 0070, 0071 |
 | Docker image build, publishing and the server's stack | 0084, 0003 |
