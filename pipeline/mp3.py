@@ -72,6 +72,9 @@ NUMBER_FRAMES = {  # key -> (frame, part of "n/total")
 }
 
 
+MAPPED_KEYS = {*TEXT_FRAMES, *NUMBER_FRAMES, 'LYRICS', 'COMMENT'}  # keys with a frame of their own
+
+
 def _frame(name: str, **kw: object) -> Frame:
 	return getattr(id3mod, name)(encoding=UTF8, **kw)
 
@@ -92,6 +95,12 @@ class TagView(MutableMapping[str, list[str]]):
 				return f
 		return None
 
+	def _drop_txxx(self, *keys: str) -> None:
+		"""Remove `TXXX` copies of keys that have their own frame (written by ffmpeg and some taggers)."""
+		for f in list(self.id3.getall('TXXX')):
+			if f.desc.upper() in keys:
+				self.id3.delall(f'TXXX:{f.desc}')
+
 	def _number(self, key: str) -> list[str]:
 		frame, part = NUMBER_FRAMES[key]
 		got = self.id3.getall(frame)
@@ -104,7 +113,8 @@ class TagView(MutableMapping[str, list[str]]):
 		frame, part = NUMBER_FRAMES[key]
 		got = self.id3.getall(frame)
 		pieces = (str(got[0].text[0]).split('/', 1) if got and got[0].text else []) + ['', '']
-		number, total = pieces[0].strip(), pieces[1].strip()
+		number = pieces[0].strip()
+		total = next(iter(self.get_list(f'{"TRACK" if frame == "TRCK" else "DISC"}TOTAL')), '')
 		if part == 0:
 			number, *rest = [p.strip() for p in value.split('/', 1)] + ['']
 			total = rest[0] or total
@@ -112,11 +122,21 @@ class TagView(MutableMapping[str, list[str]]):
 			total = value.strip()
 		text = f'{number}/{total}' if number and total else number or (f'/{total}' if total else '')
 		self.id3.delall(frame)
+		self._drop_txxx(*(k for k, (f, _) in NUMBER_FRAMES.items() if f == frame))
 		if text:
 			self.id3.add(_frame(frame, text=[text]))
 
 	def get_list(self, key: str) -> list[str]:
 		key = key.upper()
+		values = self._own_frame(key)
+		if values or key not in MAPPED_KEYS:
+			return values
+		f = self._txxx(
+			key
+		)  # a TXXX copy of a mapped key (ffmpeg writes TXXX:DISCTOTAL, TXXX:LABEL, ...)
+		return [v for v in _texts(f) if v] if f else []
+
+	def _own_frame(self, key: str) -> list[str]:
 		if key in NUMBER_FRAMES:
 			return self._number(key)
 		if key in TEXT_FRAMES:
@@ -148,14 +168,17 @@ class TagView(MutableMapping[str, list[str]]):
 		elif key in TEXT_FRAMES:
 			name = TEXT_FRAMES[key]
 			self.id3.delall(name)
+			self._drop_txxx(*(k for k, f in TEXT_FRAMES.items() if f == name))
 			if values:
 				self.id3.add(_frame(name, text=values))
 		elif key == 'LYRICS':
 			self.id3.delall('USLT')
+			self._drop_txxx('LYRICS')
 			if values:
 				self.id3.add(USLT(encoding=UTF8, lang=LANG, desc='', text=values[0]))
 		elif key == 'COMMENT':
 			self.id3.delall('COMM')
+			self._drop_txxx('COMMENT')
 			if values:
 				self.id3.add(COMM(encoding=UTF8, lang=LANG, desc='', text=values))
 		else:
@@ -171,19 +194,30 @@ class TagView(MutableMapping[str, list[str]]):
 			frame, part = NUMBER_FRAMES[key]
 			if part == 0:
 				self.id3.delall(frame)
+				self._drop_txxx(*(k for k, (f, _) in NUMBER_FRAMES.items() if f == frame))
 			else:
 				self._set_number(key, '')
 		elif key in TEXT_FRAMES:
 			self.id3.delall(TEXT_FRAMES[key])
+			self._drop_txxx(*(k for k, f in TEXT_FRAMES.items() if f == TEXT_FRAMES[key]))
 		elif key == 'LYRICS':
 			self.id3.delall('USLT')
+			self._drop_txxx('LYRICS')
 		elif key == 'COMMENT':
 			self.id3.delall('COMM')
+			self._drop_txxx('COMMENT')
 		elif (f := self._txxx(key)) is not None:
 			self.id3.delall(f'TXXX:{f.desc}')
 
 	def __contains__(self, key: object) -> bool:
 		return isinstance(key, str) and bool(self.get_list(key))
+
+	def normalize(self) -> None:
+		"""Move TXXX copies of mapped keys into their own frames, as every save of the macOS port does."""
+		for f in list(self.id3.getall('TXXX')):
+			key = f.desc.upper()
+			if key in MAPPED_KEYS and self.id3.getall(f'TXXX:{f.desc}'):
+				self[key] = self.get_list(key)
 
 	def __iter__(self) -> Iterator[str]:
 		seen: list[str] = []
@@ -205,7 +239,9 @@ class TagView(MutableMapping[str, list[str]]):
 			else:
 				continue
 			for k in keys:
-				if k.lower() not in seen:
+				if k.lower() not in seen and self.get_list(
+					k
+				):  # a key is listed only when it reads a value
 					seen.append(k.lower())
 					yield k.lower()
 
@@ -292,4 +328,6 @@ class Mp3Audio:
 		)
 
 	def save(self) -> None:
+		if self._mp3.tags is not None:
+			self._view().normalize()
 		self._mp3.save(v2_version=4)

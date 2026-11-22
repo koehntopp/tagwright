@@ -10,6 +10,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Fixed
 
+- MP3 files converted with ffmpeg (or tagged by tools that store track and disc totals, label, media or comment as extra text frames) no longer make the Discogs tags step fail with "disctotal"; those values are read and moved into the standard ID3 frames when the file is saved [0059].
 - The Front Cover options menu now sits in the field's bottom-right action row instead of beside the title, leaving the header clearer [0090].
 - Cover images now fill their field instead of being letterboxed, and each field shows the image's pixel size in its header (with the file size on hover) [0093].
 - Cover previews now use the full square field, so large artwork no longer occupies only the upper half of its cover box [0093].

@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import soundfile as sf
-from mutagen.id3 import ID3, TXXX, TYER
+from mutagen.id3 import ID3, TPOS, TRCK, TXXX, TYER
 from PIL import Image
 
 from pipeline import audio
@@ -193,3 +193,57 @@ def test_writing_before_add_tags_is_an_error_like_a_flac_without_tags(tmp_path: 
 	assert a.tags is None and a.pictures == []
 	with pytest.raises(ValueError, match='add_tags'):
 		a['TITLE'] = 'x'
+
+
+def ffmpeg_style(path: Path) -> None:
+	"""Frames as ffmpeg writes them from a FLAC: totals and some mapped keys as TXXX copies."""
+	id3 = ID3(path)
+	id3.add(TRCK(encoding=3, text=['1']))
+	id3.add(TPOS(encoding=3, text=['1']))
+	for desc, value in [
+		('TRACKTOTAL', '4'),
+		('TOTALTRACKS', '4'),
+		('DISCTOTAL', '2'),
+		('TOTALDISCS', '2'),
+	]:
+		id3.add(TXXX(encoding=3, desc=desc, text=[value]))
+	for desc, value in [('LABEL', 'Mercury'), ('MEDIA', 'Vinyl'), ('COMMENT', 'note')]:
+		id3.add(TXXX(encoding=3, desc=desc, text=[value]))
+	id3.save(path)
+
+
+def test_txxx_copies_of_mapped_keys_are_read_and_do_not_break_listing(
+	tmp_path: Path, make_mp3: MakeMp3
+) -> None:
+	"""A TXXX:DISCTOTAL beside a TPOS without total made listing the tags raise KeyError('disctotal'), so the
+	Discogs tags step failed on every such MP3 (ADR 0059: a TXXX description in any case is a key)."""
+	f = make_mp3(tmp_path / 'a.mp3')
+	ffmpeg_style(f)
+	t = upper_tags(reopen(f))
+	assert t['TRACKNUMBER'] == ['1'] and t['TRACKTOTAL'] == ['4'] and t['DISCTOTAL'] == ['2']
+	assert t['LABEL'] == ['Mercury'] and t['MEDIA'] == ['Vinyl'] and t['COMMENT'] == ['note']
+
+
+def test_writing_a_mapped_key_moves_its_txxx_copy_into_the_frame(
+	tmp_path: Path, make_mp3: MakeMp3
+) -> None:
+	f = make_mp3(tmp_path / 'a.mp3')
+	ffmpeg_style(f)
+	tagged(f, TRACKNUMBER='2', DISCNUMBER='1', LABEL='Mercury', MEDIA='Vinyl', COMMENT='note')
+	id3 = ID3(f)
+	assert id3['TRCK'].text == ['2/4'] and id3['TPOS'].text == [
+		'1/2'
+	]  # the totals join the number frames
+	assert id3['TPUB'].text == ['Mercury'] and id3['TMED'].text == ['Vinyl']
+	assert [c.text for c in id3.getall('COMM')] == [['note']]
+	assert not [x.desc for x in id3.getall('TXXX')]  # no copies left behind
+
+
+def test_any_save_moves_txxx_copies_into_their_frames(tmp_path: Path, make_mp3: MakeMp3) -> None:
+	"""The Discogs step rewrites only changed tags; the copies still end up in their frames (as the macOS port)."""
+	f = make_mp3(tmp_path / 'a.mp3')
+	ffmpeg_style(f)
+	tagged(f, DYNAMIC_RANGE='08')
+	id3 = ID3(f)
+	assert id3['TRCK'].text == ['1/4'] and id3['TPUB'].text == ['Mercury']
+	assert sorted(x.desc for x in id3.getall('TXXX')) == ['DYNAMIC_RANGE']
