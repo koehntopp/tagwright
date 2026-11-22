@@ -108,7 +108,15 @@ Avoid `Any`. If it is genuinely necessary, add a comment saying why.
 - Never force-push or rewrite history.
 - Branches `renovate/*` belong to the Renovate bot ([ADR 0061](docs/adr/0061-renovate-for-dependency-updates.md)): do not create, push to or delete them, and do not count them as a violation of the one-branch rule.
 
-## 7. Before you say "done"
+## 7. The macOS port
+
+A native port of this app lives in `../tagwright-macos` (SwiftUI). These ADRs are its specification too, so a change here is a change there.
+
+- Behaviour is decided here, in an ADR (or a CHANGELOG entry for a fix), also when the idea or the bug came from the port.
+- After a commit that changes behaviour or UI, the local post-commit hook prints how many changed files the port has not followed yet; `../tagwright-macos/scripts/sync-check` lists them with the Swift files that correspond. Say in the commit body whether the port needs the change ("macOS port: needs porting" or "macOS port: not affected").
+- The port's `WebParityTests` run functions of this repository (naming, lyrics, `album_issues`, the library template, `release_tags`) as the reference; renaming or moving one of them means updating `../tagwright-macos/scripts/web-oracle.py`.
+
+## 8. Before you say "done"
 
 Check each item and say which you checked:
 
@@ -118,5 +126,6 @@ Check each item and say which you checked:
 - [ ] Verified on a copy, not on real data; what was not verified is stated.
 - [ ] Every commit has a detailed description (why, what, how checked, ADRs), and every functional change or bug fix has its entry under `Unreleased` in CHANGELOG.md (or the body says "No release note").
 - [ ] No secrets in code, logs, commits or output.
+- [ ] The macOS port: the commit body says whether it needs porting.
 - [ ] `uv run --group test pytest` passes, or the failures are listed.
 - [ ] Python changed: `uv run ruff check .` and `uv run ruff format --check .` pass, or the failures are listed.
