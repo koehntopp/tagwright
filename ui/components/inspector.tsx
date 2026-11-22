@@ -140,6 +140,44 @@ function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, pu
 	)
 }
 
+/** Which disc's artwork the cover fields edit (ADR 0098): a pill as wide as the cover grid; when the discs do not
+ * fit, it scrolls sideways and shows ‹ › buttons at its ends. */
+function DiscSwitch({ discs, disc, choose }: { discs: number[]; disc?: number; choose: (disc?: number) => void }) {
+	const strip = useRef<HTMLDivElement>(null)
+	const [edges, setEdges] = useState({ left: false, right: false })
+	const measure = () => {
+		const el = strip.current
+		if (el) setEdges({ left: el.scrollLeft > 1, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 1 })
+	}
+	useEffect(() => {
+		const el = strip.current
+		if (!el) return
+		const ro = new ResizeObserver(measure)
+		ro.observe(el)
+		return () => ro.disconnect()
+	}, [discs.length])
+	useEffect(() => { strip.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }) }, [disc])
+	const by = (d: number) => strip.current?.scrollBy({ left: d * strip.current.clientWidth * 0.6, behavior: 'smooth' })
+	const arrow = 'grid h-full w-6 shrink-0 place-items-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-30'
+	return (
+		<div className="flex items-center gap-2 text-xs text-slate-500">
+			<span className="shrink-0">Artwork for</span>
+			<div role="group" aria-label="Artwork for" className="flex h-7 min-w-0 flex-1 items-center rounded-full border border-slate-300 bg-white p-0.5">
+				{(edges.left || edges.right) && <button type="button" aria-label="Earlier discs" title="Earlier discs" disabled={!edges.left} onClick={() => by(-1)} className={arrow}>‹</button>}
+				<div ref={strip} onScroll={measure} className="flex h-full min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+					{[undefined, ...discs].map(d => (
+						<button key={d ?? 'all'} type="button" aria-pressed={disc === d} onClick={() => choose(d)}
+							className={`h-full shrink-0 whitespace-nowrap rounded-full px-2.5 ${disc === d ? 'bg-slate-200 text-slate-900' : 'text-slate-500 hover:text-slate-800'}`}>
+							{d === undefined ? 'All discs' : `Disc ${d}`}
+						</button>
+					))}
+				</div>
+				{(edges.left || edges.right) && <button type="button" aria-label="Later discs" title="Later discs" disabled={!edges.right} onClick={() => by(1)} className={arrow}>›</button>}
+			</div>
+		</div>
+	)
+}
+
 /** Channel layout of a track: Mono and Stereo neutral, multichannel violet (ADR 0040). `hint`: taken from a title. */
 export function ChannelBadge({ n, hint }: { n?: number; hint?: boolean }) {
 	if (!n) return null
@@ -331,20 +369,7 @@ export function Inspector(p: Props) {
 						{a.dr && <Pill className="bg-emerald-100 text-emerald-800" title="Album dynamic range">DR{a.dr}</Pill>}
 					</div>
 			</div>
-			{(covers.discs?.length ?? 0) > 1 && (
-				// which disc's artwork the fields edit (ADR 0098); only multi-disc albums show it
-				<div className="-mb-3 flex items-center gap-2 text-xs text-slate-500">
-					<span>Artwork for</span>
-					<div role="group" aria-label="Artwork for" className="inline-flex h-7 items-center overflow-hidden rounded-full border border-slate-300 bg-white p-0.5">
-						{[undefined, ...(covers.discs ?? [])].map(d => (
-							<button key={d ?? 'all'} type="button" aria-pressed={p.coverDisc === d} onClick={() => p.setCoverDisc(d)}
-								className={`h-full whitespace-nowrap rounded-full px-2.5 ${p.coverDisc === d ? 'bg-slate-200 text-slate-900' : 'text-slate-500 hover:text-slate-800'}`}>
-								{d === undefined ? 'All discs' : `Disc ${d}`}
-							</button>
-						))}
-					</div>
-				</div>
-			)}
+			{(covers.discs?.length ?? 0) > 1 && <DiscSwitch discs={covers.discs ?? []} disc={p.coverDisc} choose={p.setCoverDisc} />}
 			<div className="grid grid-cols-4 gap-2">
 				<CoverField kind="front" label="Front Cover" items={covers.front}
 					fallback={p.coverDisc === undefined && !covers.front.length && a.cover && !a.cover.embedded ? coverUrl(a) : undefined}
