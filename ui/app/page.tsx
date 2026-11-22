@@ -362,7 +362,7 @@ export default function Page() {
 			</aside>
 			</div>
 
-			<CoverDelete open={dk === 'cover'} onClose={() => setDlg(null)} onOk={delCover} err={cerr} />
+			<CoverDelete open={dk === 'cover'} onClose={() => setDlg(null)} onOk={() => delCover()} err={cerr} />
 			<AlbumEdit a={dk === 'album' ? a : null} onClose={() => setDlg(null)} done={done} />
 			<TagEditor a={tagTab ? a : null} tab={tagTab || 'album'} reload={kreload} onClose={() => setTagTab(null)} done={done} begin={(path, steps) => { setWorking({ path, steps }); return () => setWorking(w => (w?.path === path ? null : w)) }}
 				openLyrics={(path, file) => setDlg({ kind: 'lyrics', path, file })} openDiscogs={() => setDlg({ kind: 'discogs' })} openMb={() => setDlg({ kind: 'mb' })} />
