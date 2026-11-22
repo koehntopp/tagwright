@@ -80,7 +80,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0092](0092-cover-controls-and-full-size-view.md) | Compact cover field controls and a double-click full-size view | Accepted |
 | [0093](0093-cover-preview-size.md) | Cover previews fill their field and show W×H in the header | Accepted |
 | [0094](0094-clear-buttons-and-no-shortcut-hint.md) | Every text field can be cleared with an x; no ⌘K hint in the search | Accepted |
-| [0095](0095-view-toggle-pill-beside-the-folder-switch.md) | The view toggle is a pill; Rescan and the toggle sit beside the folder switch | Accepted |
+| [0095](0095-view-toggle-pill-beside-the-folder-switch.md) | The view toggle is a pill; Rescan and the toggle sit between the folder switch and the search | Accepted |
 
 ## History: superseded ADRs
 

@@ -248,18 +248,18 @@ export default function Page() {
 					</button>
 				))}
 				</nav>
-				<button onClick={async () => { await load('', true); toast.success('Rescanned') }} title="Rescan folder" aria-label="Rescan folder" className="ml-auto grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-white/60"><RefreshCw className="size-4" /></button>
-				<div className="flex h-9 shrink-0 items-center gap-0.5 rounded-full border border-slate-300 bg-white p-[2px]" role="group" aria-label="Board view">
-					<button onClick={() => chooseView('cards')} aria-pressed={view === 'cards'} title="Card view" aria-label="Card view" className={`grid h-full w-9 place-items-center rounded-full ${view === 'cards' ? 'bg-slate-200 text-slate-900' : 'text-slate-400 hover:text-slate-700'}`}><LayoutGrid className="size-4" /></button>
-					<button onClick={() => chooseView('list')} aria-pressed={view === 'list'} title="List view" aria-label="List view" className={`grid h-full w-9 place-items-center rounded-full ${view === 'list' ? 'bg-slate-200 text-slate-900' : 'text-slate-400 hover:text-slate-700'}`}><List className="size-4" /></button>
-				</div>
-				<button role="switch" aria-checked={area === 'library'} aria-label="Folder: staging or library" onClick={() => switchArea(area === 'library' ? 'staging' : 'library')} title={area === 'library' ? 'Showing the library; click for the staging folder' : 'Showing the staging folder; click for the library'} className="flex h-9 w-48 shrink-0 items-center justify-between gap-2 rounded-full border border-slate-300 bg-white px-4 text-[15px] font-medium">
+				<button role="switch" aria-checked={area === 'library'} aria-label="Folder: staging or library" onClick={() => switchArea(area === 'library' ? 'staging' : 'library')} title={area === 'library' ? 'Showing the library; click for the staging folder' : 'Showing the staging folder; click for the library'} className="ml-auto flex h-9 w-48 shrink-0 items-center justify-between gap-2 rounded-full border border-slate-300 bg-white px-4 text-[15px] font-medium">
 					<span className={area === 'staging' ? 'text-slate-900' : 'text-slate-400'}>Staging</span>
 					<span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${area === 'library' ? 'bg-slate-700' : 'bg-slate-300'}`}>
 						<span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${area === 'library' ? 'left-[1.125rem]' : 'left-0.5'}`} />
 					</span>
 					<span className={area === 'library' ? 'text-slate-900' : 'text-slate-400'}>Library</span>
 				</button>
+				<button onClick={async () => { await load('', true); toast.success('Rescanned') }} title="Rescan folder" aria-label="Rescan folder" className="grid size-9 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-white/60"><RefreshCw className="size-4" /></button>
+				<div className="flex h-9 shrink-0 items-center gap-0.5 rounded-full border border-slate-300 bg-white p-[2px]" role="group" aria-label="Board view">
+					<button onClick={() => chooseView('cards')} aria-pressed={view === 'cards'} title="Card view" aria-label="Card view" className={`grid h-full w-9 place-items-center rounded-full ${view === 'cards' ? 'bg-slate-200 text-slate-900' : 'text-slate-400 hover:text-slate-700'}`}><LayoutGrid className="size-4" /></button>
+					<button onClick={() => chooseView('list')} aria-pressed={view === 'list'} title="List view" aria-label="List view" className={`grid h-full w-9 place-items-center rounded-full ${view === 'list' ? 'bg-slate-200 text-slate-900' : 'text-slate-400 hover:text-slate-700'}`}><List className="size-4" /></button>
+				</div>
 				<div className="relative w-72 min-w-20 shrink">
 					<Search className="pointer-events-none absolute left-3 top-2.5 z-10 size-4 text-slate-400" />
 					<Input ref={searchRef} type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search" title="Search albums, artists, IDs (⌘K)" className="h-9 rounded-full border-slate-300 bg-white pl-9 pr-8" />
