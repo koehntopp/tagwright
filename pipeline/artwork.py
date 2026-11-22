@@ -26,9 +26,29 @@ BACK = 4
 LEAFLET = 5
 MEDIA = 6
 UNTYPED = 0
+BOX = 100  # pseudo-type of the API: a front cover described BOX_DESC, never written as a picture type (ADR 0099)
+BOX_DESC = 'Box set'
 TYPES = (FRONT, BACK, LEAFLET, MEDIA)
-KEYS = {FRONT: 'front', BACK: 'back', LEAFLET: 'leaflet', MEDIA: 'media'}
-LABELS = {FRONT: 'Front Cover', BACK: 'Back Cover', LEAFLET: 'Leaflet', MEDIA: 'Media'}
+KEYS = {FRONT: 'front', BACK: 'back', LEAFLET: 'leaflet', MEDIA: 'media', BOX: 'box'}
+LABELS = {
+	FRONT: 'Front Cover',
+	BACK: 'Back Cover',
+	LEAFLET: 'Leaflet',
+	MEDIA: 'Media',
+	BOX: 'Box Cover',
+}
+
+
+def is_box(pic: Cover) -> bool:
+	"""The box-set cover: a front picture described `Box set` (ADR 0099)."""
+	return pic.type == FRONT and (pic.desc or '').strip().casefold() == BOX_DESC.casefold()
+
+
+def kind(pic: Cover) -> int:
+	"""The group a picture belongs to: its type, or BOX for the box-set cover."""
+	return BOX if is_box(pic) else pic.type
+
+
 JPEG_MAGIC = b'\xff\xd8'
 
 
@@ -57,7 +77,7 @@ def read(album: Path, disc: int | None = None) -> dict[int, list[Cover]]:
 
 def read_files(paths: list[Path], disc: int | None = None) -> dict[int, list[Cover]]:
 	"""The distinct pictures of these files by type; with `disc`, only the files of that disc."""
-	out: dict[int, list[Cover]] = {t: [] for t in (*TYPES, UNTYPED)}
+	out: dict[int, list[Cover]] = {t: [] for t in (*TYPES, UNTYPED, BOX)}
 	seen: dict[int, set[str]] = {t: set() for t in out}
 	for path in paths:
 		try:
@@ -69,13 +89,14 @@ def read_files(paths: list[Path], disc: int | None = None) -> dict[int, list[Cov
 			log.warning('Could not read the pictures of %s: %s', path, e)
 			continue
 		for pic in pictures:
-			if pic.type not in out or not pic.data:
+			group = kind(pic)
+			if group not in out or not pic.data:
 				continue
 			key = hashlib.sha256(pic.data).hexdigest()
-			if key in seen[pic.type]:
+			if key in seen[group]:
 				continue
-			seen[pic.type].add(key)
-			out[pic.type].append(pic)
+			seen[group].add(key)
+			out[group].append(pic)
 	return out
 
 
@@ -125,10 +146,9 @@ def write(album: Path, type_: int, pictures: list[Cover], disc: int | None = Non
 			if disc is not None and disc_of(audio) != disc:
 				continue
 			old = audio.pictures
-			keep = [
-				p for p in old if p.type != type_ and not (type_ == FRONT and p.type == UNTYPED)
-			]
-			wanted = [*keep, *pictures]
+			keep = [p for p in old if not _replaced(p, type_)]
+			# a disc's own front goes first, the box cover after it (ADR 0099)
+			wanted = [*pictures, *keep] if type_ == FRONT else [*keep, *pictures]
 			if [(p.type, p.data) for p in old] == [(p.type, p.data) for p in wanted]:
 				continue
 			audio.clear_pictures()
@@ -139,16 +159,32 @@ def write(album: Path, type_: int, pictures: list[Cover], disc: int | None = Non
 			log.warning('Could not write the artwork of %s: %s', path, e)
 
 
+def _replaced(pic: Cover, type_: int) -> bool:
+	"""Whether writing `type_` replaces this picture: the front replaces untyped pictures too, but never the box
+	cover, and the box replaces only the box cover."""
+	if type_ == FRONT:
+		return pic.type in (FRONT, UNTYPED) and not is_box(pic)
+	return kind(pic) == type_
+
+
+def as_box(pic: Cover) -> Cover:
+	"""Mark a front picture as the box-set cover."""
+	pic.type, pic.desc = FRONT, BOX_DESC
+	return pic
+
+
 def front_picture(groups: dict[int, list[Cover]]) -> Cover | None:
 	"""The front cover: type 3, else an untyped picture from an older tagger (ADR 0090)."""
 	return next(iter(groups[FRONT]), None) or next(iter(groups[UNTYPED]), None)
 
 
-def sidecar_names(groups: dict[int, list[Cover]]) -> list[tuple[str, Cover]]:
-	"""The artwork files to write under an album: `folder.jpg` for the front, then numbered `Artwork/` files
-	for back, leaflet and media in type order (ADR 0091)."""
+def sidecar_names(
+	groups: dict[int, list[Cover]], front: Cover | None = None
+) -> list[tuple[str, Cover]]:
+	"""The artwork files to write under an album: `folder.jpg` for the front (or `front`, ADR 0099), then
+	numbered `Artwork/` files for back, leaflet and media in type order (ADR 0091)."""
 	out: list[tuple[str, Cover]] = []
-	if pic := front_picture(groups):
+	if pic := front or front_picture(groups) or next(iter(groups.get(BOX, [])), None):
 		out.append(('folder.jpg', pic))
 	counters = {BACK: 0, LEAFLET: 0, MEDIA: 0}
 	names = {BACK: 'back', LEAFLET: 'booklet', MEDIA: 'disc'}
@@ -182,17 +218,21 @@ def _write_image(path: Path, pic: Cover, overwrite: bool = False) -> None:
 
 def folder_sets(album_dir: Path, by_dir: dict[Path, list[Path]]) -> list[tuple[Path, Cover]]:
 	"""The cover files of an album whose audio files sit in the folders of `by_dir` (ADR 0098): every folder gets
-	the set of its own files; when the album folder itself holds no audio (disc folders), it gets only folder.jpg,
-	the front cover of the first disc folder."""
+	the set of its own files; when the album folder itself holds no audio (disc folders), it gets only folder.jpg.
+	The album folder's folder.jpg is the box cover, else the first disc's front; a disc folder without a front of
+	its own gets the box cover (ADR 0099)."""
 	out: list[tuple[Path, Cover]] = []
+	per_dir = {d: read_files(by_dir[d]) for d in sorted(by_dir)}
+	box = next((g[BOX][0] for g in per_dir.values() if g[BOX]), None)
 	first_front = None
-	for d in sorted(by_dir):
-		groups = read_files(by_dir[d])
-		out += [(d / name, pic) for name, pic in sidecar_names(groups)]
+	for d, groups in per_dir.items():
+		# the album folder shows the box cover; a disc folder its own front, else the box (ADR 0099)
+		front = box if d == album_dir and box else front_picture(groups) or box
+		out += [(d / name, pic) for name, pic in sidecar_names(groups, front)]
 		if first_front is None:
 			first_front = front_picture(groups)
-	if album_dir not in by_dir and first_front is not None:
-		out.insert(0, (album_dir / 'folder.jpg', first_front))
+	if album_dir not in by_dir and (top := box or first_front) is not None:
+		out.insert(0, (album_dir / 'folder.jpg', top))
 	return out
 
 

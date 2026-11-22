@@ -184,3 +184,29 @@ def test_an_edit_on_a_library_album_rebuilds_its_cover_files_per_disc_folder(
 	)
 	assert not (album / 'Disc 2' / 'Artwork').exists()
 	assert (album / 'Disc 2' / 'folder.jpg').exists()
+
+
+def test_the_box_cover_sits_after_the_disc_cover_and_fills_the_top_folder(
+	client: TestClient, make_flac: MakeFlac
+) -> None:
+	"""ADR 0099: the box cover is a front described `Box set` in every file, after the disc's own front; the
+	album folder shows it, a disc folder without its own front falls back to it."""
+	album = tagwright.INGEST / 'A' / 'Box'
+	one = make_flac(album / 'Disc 1' / '01.flac', TITLE='One', TRACKNUMBER='1', DISCNUMBER='1')
+	two = make_flac(album / 'Disc 2' / '01.flac', TITLE='Two', TRACKNUMBER='1', DISCNUMBER='2')
+	box, disc1 = image('red'), image('blue')
+	put = {'path': str(album), 'type': artwork.BOX}
+	assert client.put('/api/cover', params=put, content=box).status_code == 200
+	client.put('/api/cover', params={'path': str(album), 'type': 3, 'disc': 1}, content=disc1)
+	assert [(p.type, p.desc) for p in FLAC(one).pictures] == [(3, ''), (3, 'Box set')]
+	assert [(p.type, p.desc) for p in FLAC(two).pictures] == [(3, 'Box set')]
+	covers = client.get('/api/covers', params={'path': str(album)}).json()
+	assert len(covers['box']) == 1 and len(covers['front']) == 1
+	top = (album / 'folder.jpg').read_bytes()
+	assert top == client.get('/api/cover', params=put | {'index': 0}).content
+	assert top != (album / 'Disc 1' / 'folder.jpg').read_bytes()
+	assert (album / 'Disc 2' / 'folder.jpg').read_bytes() == top
+	client.put(
+		'/api/cover', params={'path': str(album), 'type': 3, 'disc': 1}, content=image('green')
+	)
+	assert [p.desc for p in FLAC(one).pictures] == ['', 'Box set']  # a disc edit keeps the box

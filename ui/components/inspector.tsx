@@ -48,6 +48,7 @@ export const Pill = ({ className = '', ...p }: React.ComponentProps<'span'>) => 
 
 type CoverKind = 'front' | 'back' | 'leaflet' | 'media'
 const COVER_TYPE: Record<CoverKind, number> = { front: 3, back: 4, leaflet: 5, media: 6 }
+const BOX_TYPE = 100  // the API's pseudo-type for the box-set cover (ADR 0099)
 
 /** One of the four artwork fields of the inspector (ADR 0090). Front is single; the others are small carousels. */
 function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, put, remove, askRemove, inputRef, rootRef, search, paste, menuOpen, toggleMenu, onEnlarge }: {
@@ -308,13 +309,13 @@ export function Inspector(p: Props) {
 	const coverRef = useRef<HTMLDivElement>(null)
 	// "Paste image" (ADR 0016): read the clipboard where the browser allows it (https, localhost); over plain http on
 	// the LAN there is no clipboard API, so the cover takes focus and the paste key (Cmd/Ctrl+V) delivers the image
-	const pasteCover = async (ref?: React.RefObject<HTMLDivElement | null>) => {
+	const pasteCover = async (put: (f: File) => void, ref?: React.RefObject<HTMLDivElement | null>) => {
 		const fail = () => toast.error('No image on the clipboard')
 		if (!navigator.clipboard?.read) { (ref ?? coverRef).current?.focus(); toast.info('Press Cmd/Ctrl+V to paste the image'); return }
 		try {
 			for (const item of await navigator.clipboard.read()) {
 				const type = item.types.find(t => t.startsWith('image/'))
-				if (type) return p.putCover(new File([await item.getType(type)], 'pasted.' + type.split('/')[1], { type }))
+				if (type) return put(new File([await item.getType(type)], 'pasted.' + type.split('/')[1], { type }))
 			}
 			fail()
 		} catch { fail() }
@@ -342,6 +343,9 @@ export function Inspector(p: Props) {
 	const spinning = (name: string) => (running && name === job.step) || !!p.working?.includes(name)
 
 	const coverSmall = a.issues.some(i => i.action === 'cover')  // below the minimum size, or no cover (ADR 0016)
+	// multi-disc albums: under All discs the first field is the box-set cover, under a disc that disc's front (ADR 0099)
+	const box = (covers.discs?.length ?? 0) > 1 && p.coverDisc === undefined
+	const putFront = (f: File, i?: number) => box ? p.putCover(f, BOX_TYPE, i) : p.putCover(f, COVER_TYPE.front, i)
 	return (
 		<div className="space-y-5 p-6">
 			<div className="min-w-0 space-y-1">
@@ -371,13 +375,13 @@ export function Inspector(p: Props) {
 			</div>
 			{(covers.discs?.length ?? 0) > 1 && <DiscSwitch discs={covers.discs ?? []} disc={p.coverDisc} choose={p.setCoverDisc} />}
 			<div className="grid grid-cols-4 gap-2">
-				<CoverField kind="front" label="Front Cover" items={covers.front}
-					fallback={p.coverDisc === undefined && !covers.front.length && a.cover && !a.cover.embedded ? coverUrl(a) : undefined}
+				<CoverField kind="front" label={box ? 'Box Cover' : 'Front Cover'} items={box ? covers.box ?? [] : covers.front}
+					fallback={!box && p.coverDisc === undefined && !covers.front.length && a.cover && !a.cover.embedded ? coverUrl(a) : undefined}
 					fallbackSize={a.cover ? `${a.cover.w}×${a.cover.h}` : undefined}
 					warn={coverSmall ? a.issues.find(i => i.action === 'cover')?.text : undefined} busy={!!p.coverBusy}
-					put={(f, i) => p.putCover(f, COVER_TYPE.front, i)} remove={p.delCover} askRemove={p.delCover}
+					put={putFront} remove={box ? i => p.delArtwork(BOX_TYPE, i) : p.delCover} askRemove={box ? () => p.delArtwork(BOX_TYPE, 0) : p.delCover}
 					inputRef={fileRef} rootRef={coverRef}
-					menuOpen={menu} toggleMenu={() => setMenu(m => !m)} paste={() => void pasteCover(coverRef)} onEnlarge={url => setBig(url)}
+					menuOpen={menu} toggleMenu={() => setMenu(m => !m)} paste={() => void pasteCover(f => putFront(f), coverRef)} onEnlarge={url => setBig(url)}
 					search={<>
 						<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://covers.musichoarders.xyz/?${new URLSearchParams({ artist: a.artist || '', album: title(a) })}`} target="_blank" rel="noopener">
 							{/* eslint-disable-next-line @next/next/no-img-element */}

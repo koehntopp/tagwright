@@ -6,6 +6,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
+- Box sets can have their own cover: on a multi-disc album the first field under "All discs" is now Box Cover. It is stored in every file next to each disc's own cover (the disc cover comes first) and becomes folder.jpg in the box folder, as Roon expects; disc folders keep their own covers and fall back to the box cover [0099].
 - Multi-disc albums show an "Artwork for" switch above the cover fields: pick a disc to see and change only that disc's front cover, back cover, leaflet and media images; "All discs" works as before [0098].
 - Changing artwork on a library album now rewrites its cover files on disk (folder.jpg and Artwork/) to match, and removes files for images you deleted. Albums with disc folders get a set per disc folder, and folder.jpg in the album folder [0098].
 - The Tag Editor's Album tab shows the album's current format in the Album Format field (it was empty unless an override was set). Type over it to change the format; no override tag is written, and an empty field means CD. Assigning a Discogs release still sets the release's format [0097].

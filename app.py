@@ -789,7 +789,7 @@ def cover_list(path: str, disc: int | None = None) -> dict:
 	album = safe(path)
 	groups = artwork.read(album, disc)
 	out: dict[str, list] = {'discs': artwork.discs(album)}
-	for type_ in artwork.TYPES:
+	for type_ in (*artwork.TYPES, artwork.BOX):
 		items = []
 		for i, pic in enumerate(groups[type_]):
 			q = urlencode(
@@ -820,13 +820,19 @@ async def set_cover(
 		raise HTTPException(409, 'a job is running')
 	album = safe(path)
 	data = await request.body()
+	if type == artwork.BOX:
+		disc = None  # the box cover is in every file (ADR 0099)
 	if (type is None or type == artwork.FRONT) and disc is None:
 		embed_cover(album, make_picture(data, artwork.FRONT))
 		log.info('front cover replaced: %s', album.name)
 	else:
 		type = type or artwork.FRONT
 		pics = [] if type == artwork.FRONT else artwork.read(album, disc).get(type, [])
-		pic = make_picture(data, type)
+		pic = (
+			artwork.as_box(make_picture(data, artwork.FRONT))
+			if type == artwork.BOX
+			else make_picture(data, type)
+		)
 		if index is not None and 0 <= index < len(pics):
 			pics[index] = pic
 		else:
@@ -847,6 +853,8 @@ def delete_cover(
 	if job['state'] == 'running':
 		raise HTTPException(409, 'a job is running')
 	album = safe(path)
+	if type == artwork.BOX:
+		disc = None  # the box cover is in every file (ADR 0099)
 	where = f' (disc {disc})' if disc is not None else ''
 	if type is not None and type != artwork.FRONT:
 		pics = artwork.read(album, disc).get(type, [])
@@ -886,7 +894,11 @@ def cover(path: str, type: int | None = None, index: int = 0, disc: int | None =
 		return Response(status_code=204)
 	for f in flacs(album)[:1]:
 		pics = open_audio(f).pictures
-		pic = next((p for p in pics if p.type == 3), pics[0] if pics else None)
+		# the box cover first, then the front, then any picture (ADR 0099)
+		pic = next(
+			(p for p in pics if artwork.is_box(p)),
+			next((p for p in pics if p.type == 3), pics[0] if pics else None),
+		)
 		if pic:
 			return Response(pic.data, media_type=pic.mime or 'image/jpeg')
 	for name in COVER_FILES:
