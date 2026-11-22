@@ -50,7 +50,7 @@ type CoverKind = 'front' | 'back' | 'leaflet' | 'media'
 const COVER_TYPE: Record<CoverKind, number> = { front: 3, back: 4, leaflet: 5, media: 6 }
 
 /** One of the four artwork fields of the inspector (ADR 0090). Front is single; the others are small carousels. */
-function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, put, remove, askRemove, inputRef, rootRef, onPaste, search, paste, menuOpen, toggleMenu, onEnlarge }: {
+function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, put, remove, askRemove, inputRef, rootRef, search, paste, menuOpen, toggleMenu, onEnlarge }: {
 	kind: CoverKind
 	label: string
 	items: CoverItem[]
@@ -63,7 +63,6 @@ function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, pu
 	askRemove: () => void
 	inputRef?: React.RefObject<HTMLInputElement | null>
 	rootRef?: React.RefObject<HTMLDivElement | null>
-	onPaste?: (e: React.ClipboardEvent) => void
 	search?: React.ReactNode
 	paste?: () => void
 	onEnlarge?: (url: string) => void
@@ -85,6 +84,11 @@ function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, pu
 		put(f, mode.current === 'replace' && current ? at : undefined)
 	}
 	const step = (d: number) => setSel((at + d + items.length) % items.length)
+	// Cmd/Ctrl+V on the focused field (ADR 0096): the front cover is replaced, the other types get the image appended
+	const onPaste = (e: React.ClipboardEvent) => {
+		const f = [...e.clipboardData.files].find(f => f.type.startsWith('image/'))
+		if (f) { e.preventDefault(); put(f) } else toast.error('No image on the clipboard')
+	}
 	return (
 		<div ref={rootRef} tabIndex={-1} data-cover-menu={kind === 'front' ? '' : undefined} onPaste={onPaste}
 			onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)}
@@ -331,10 +335,6 @@ export function Inspector(p: Props) {
 					warn={coverSmall ? a.issues.find(i => i.action === 'cover')?.text : undefined} busy={!!p.coverBusy}
 					put={(f, i) => p.putCover(f, COVER_TYPE.front, i)} remove={p.delCover} askRemove={p.delCover}
 					inputRef={fileRef} rootRef={coverRef}
-					onPaste={e => {
-						const f = [...e.clipboardData.files].find(f => f.type.startsWith('image/'))
-						if (f) { e.preventDefault(); p.putCover(f, COVER_TYPE.front) } else toast.error('No image on the clipboard')
-					}}
 					menuOpen={menu} toggleMenu={() => setMenu(m => !m)} paste={() => void pasteCover(coverRef)} onEnlarge={url => setBig(url)}
 					search={<>
 						<a role="menuitem" className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-slate-100" onClick={() => setMenu(false)} href={`https://covers.musichoarders.xyz/?${new URLSearchParams({ artist: a.artist || '', album: title(a) })}`} target="_blank" rel="noopener">
