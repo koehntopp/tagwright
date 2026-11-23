@@ -44,13 +44,22 @@ export function SubtitleDivider({ disc, inside, subtitle, count, editing, onEdit
 						</form>
 					) : (
 						<>
-							<div className="min-w-0 flex-1">
-								<div className="flex items-center gap-2">
-									<span className={`min-w-0 truncate text-sm ${keep ? 'text-slate-400' : subtitle ? 'text-sky-950' : 'italic text-slate-400'}`} title={subtitle}>{subtitle || placeholder}</span>
-									{differs && !disabled && <span className="shrink-0 rounded-full bg-yellow-100 px-2 text-[11px] text-yellow-800">differs from your subtitles</span>}
+							{was === undefined ? (
+								<div className="flex min-w-0 flex-1 items-center gap-2">
+									<span className={`min-w-0 truncate text-sm ${subtitle ? 'text-sky-950' : 'italic text-slate-400'}`} title={subtitle}>{subtitle || placeholder}</span>
 								</div>
-								{was !== undefined && <div className="truncate text-[11px] text-slate-400" title={was}>Was: {was || '(none)'}</div>}
-							</div>
+							) : (
+								// import dialogs (ADR 0106): what the release says, then what the files have now
+								<div className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 text-sm">
+									<span className="text-xs text-slate-500">Release:</span>
+									<span className="flex min-w-0 items-center gap-2">
+										<span className={`min-w-0 truncate ${keep ? 'text-slate-400 line-through' : subtitle ? 'font-medium text-sky-950' : 'italic text-slate-500'}`} title={subtitle}>{subtitle || 'none'}</span>
+										{differs && !disabled && <span className="shrink-0 rounded-full bg-yellow-100 px-2 text-[11px] text-yellow-800">differs</span>}
+									</span>
+									<span className="text-xs text-slate-500">Current subtitle:</span>
+									<span className={`min-w-0 truncate ${was ? (keep ? 'font-medium text-sky-950' : 'text-slate-700') : 'italic text-slate-500'}`} title={was}>{was || 'none'}</span>
+								</div>
+							)}
 							{onKeep && !disabled && (
 								<div className="flex shrink-0 overflow-hidden rounded-full border border-slate-300 text-[11px]" role="group" aria-label="Which subtitle is written">
 									<button type="button" aria-pressed={!keep} onClick={() => onKeep(false)} className={`px-2.5 py-0.5 ${!keep ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-white'}`}>Release</button>

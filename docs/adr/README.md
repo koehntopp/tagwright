@@ -41,7 +41,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0044](0044-lrclib-application-id-no-key-setting.md) | lrclib.net is reached with the application ID; no key setting | Accepted |
 | [0045](0045-folders-from-the-environment-only.md) | Staging and library folders come from the environment only; Settings shows their host paths | Accepted |
 | [0051](0051-run-a-single-pipeline-step.md) | A double click on a pipeline step runs only that step | Accepted |
-| [0053](0053-discogs-search-and-assignment-consolidated.md) | Discogs release search and track assignment (consolidated: 0013, 0043, 0046, 0047, 0048, 0052) | Accepted (artist and credit rows: 0100; positions: 0101; one track on several discs: 0102) |
+| [0053](0053-discogs-search-and-assignment-consolidated.md) | Discogs release search and track assignment (consolidated: 0013, 0043, 0046, 0047, 0048, 0052) | Accepted (artist and credit rows: 0100; positions: 0101; one track on several discs: 0102; 0106) |
 | [0054](0054-album-status-and-steps-consolidated.md) | Album status, pipeline steps and issue lines (consolidated: 0006, 0039, 0049, 0050) | Accepted |
 | [0055](0055-no-default-paths.md) | No default paths: staging, library and data folders must be set | Accepted |
 | [0056](0056-cover-controls-in-one-menu.md) | Cover controls in one menu, with the size warning on the cover | Accepted |
@@ -67,7 +67,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0078](0078-musicbrainz-track-assignment-and-import-song-titles.md) | MusicBrainz track assignment and the "Import song titles" checkbox in both dialogs | Accepted |
 | [0079](0079-discogs-assignment-sets-the-album-artist.md) | ALBUMARTIST is a Discogs tag (assignment and Run fixes); the override is the exception | Accepted |
 | [0080](0080-discogs-leads-album-level-tags.md) | Discogs leads CATALOGNUMBER, ALBUM_FORMAT and the credits (overrides keep manual values); ARTIST goes with the title | Accepted (format override superseded by 0097; joined ARTIST: 0100) |
-| [0081](0081-subtitle-dividers-in-track-lists.md) | Disc subtitles are dividers in the track lists (Tag Editor first, then the import dialogs) | Accepted(in part: 0102) |
+| [0081](0081-subtitle-dividers-in-track-lists.md) | Disc subtitles are dividers in the track lists (Tag Editor first, then the import dialogs) | Accepted (in part: 0102, 0106) |
 | [0082](0082-in-your-library-box.md) | "In your library" box: other versions of the album's Discogs master (`/api/library/versions`) | Accepted |
 | [0083](0083-inspector-note-boxes-and-year-mismatch.md) | One style for the inspector's note boxes (types, symbols, buttons); a year mismatch Discogs/MusicBrainz stops the move | Accepted |
 | [0084](0084-locally-built-image-deployment.md) | Deploy a locally built amd64 image on the server (supersedes 0063) | Accepted |
@@ -91,6 +91,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0103](0103-watcher-removes-empty-folders.md) | The library watcher removes empty folders it finds on every full pass | Accepted |
 | [0104](0104-cover-files-for-albums-already-in-the-library.md) | Cover files for albums already in the library, written on every full pass | Accepted |
 | [0105](0105-artwork-folder-holds-the-front-cover-too.md) | `Artwork/00 front.jpg` copies folder.jpg; cover files follow every artwork change | Accepted |
+| [0106](0106-clearer-subtitle-dividers-and-current-release-id.md) | Import-dialog dividers as "Release:" / "Current subtitle:"; the current release ID under the search field | Accepted |
 
 ## History: superseded ADRs
 

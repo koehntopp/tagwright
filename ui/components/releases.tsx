@@ -224,7 +224,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a Discogs release ID" />
 				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search Discogs</Button>
 			</form>
-			<AlbumFacts a={a} />
+			<AlbumFacts a={a} id="Discogs ID" />
 			<div className="relative min-h-48">
 			{busy && <Busy text={what} />}
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>
@@ -244,10 +244,12 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 }
 
 /** What is known about the album, for searching by hand: each value with a copy icon. */
-function AlbumFacts({ a }: { a: Album }) {
+/** The album's facts for searching by hand, and the release ID it has now (`id`: 'Discogs ID' or 'MusicBrainz ID'). */
+function AlbumFacts({ a, id }: { a: Album; id: 'Discogs ID' | 'MusicBrainz ID' }) {
+	const current = id === 'Discogs ID' ? a.discogs : a.mbid
 	return (
 		<div className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
-			{([['Artist', a.artist], ['Album', a.album], ['Year', a.year], ['Catalog #', a.catalog]] as const).filter(([, v]) => v).map(([k, v]) => <span key={k} className="inline-flex items-center">{k}: {v}<CopyBtn text={v} /></span>)}
+			{([['Artist', a.artist], ['Album', a.album], ['Year', a.year], ['Catalog #', a.catalog], [id, current]] as const).filter(([, v]) => v).map(([k, v]) => <span key={k} className="inline-flex items-center">{k}: {v}<CopyBtn text={v} /></span>)}
 		</div>
 	)
 }
@@ -294,7 +296,7 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a MusicBrainz release ID" />
 				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search MusicBrainz</Button>
 			</form>
-			<AlbumFacts a={a} />
+			<AlbumFacts a={a} id="MusicBrainz ID" />
 			<div className="relative min-h-48">
 			{busy && <Busy text={what} />}
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>
