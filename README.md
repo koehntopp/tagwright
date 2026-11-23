@@ -74,7 +74,7 @@ Tags Tagwright writes are never read back as input, tags owned by Discogs are re
 
 ## The library watcher
 
-A background watcher keeps the library folder in the layout. It notices changes without re-listing the whole share (it compares directory modification times), waits for a cooldown after the last change, and only then renames and moves. It never overwrites, removes only empty folders and obvious litter.
+A background watcher keeps the library folder in the layout. It notices changes without re-listing the whole share (it compares directory modification times), waits for a cooldown after the last change, and only then renames and moves. It never overwrites, removes only empty folders and obvious litter (`.DS_Store`, Synology's `@eaDir`). On every full pass (after a restart, daily, or with **Re-analyze**) it also removes empty folders left behind and writes the missing cover files of albums already in the library (ADR 0103, 0104). When it moves the album you have open, the inspector and an open Tag Editor follow it to the new folder.
 
 The top bar shows album artists, albums and tracks, and what the watcher is doing. Click it for recent activity and a manual **Re-analyze** button.
 
@@ -127,7 +127,7 @@ The program logs jobs, moves, renames, assignments, tag, lyrics and cover edits 
 
 ### Docker
 
-A published image (amd64 and arm64) is on GitHub's registry; each release also has its own tag (for example `:0.6`, [ADR 0070](docs/adr/0070-releases.md)):
+A published image (amd64 and arm64) is on GitHub's registry; each release also has its own tag (for example `:0.7`, [ADR 0070](docs/adr/0070-releases.md)):
 
 ```bash
 docker pull ghcr.io/koehntopp/tagwright:latest

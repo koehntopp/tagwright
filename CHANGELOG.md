@@ -4,6 +4,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+## 0.7.0 (2026-11-23)
+
 ### Changed
 
 - The `Artwork/` folder of a library album also holds the front cover, as `00 front.jpg` (a copy of `folder.jpg`), so it has the whole set. The cover files are also rewritten after the cover a Discogs assignment adds and after Run fixes, not only after edits in the inspector [0105].
