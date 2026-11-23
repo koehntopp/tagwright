@@ -69,6 +69,7 @@ def remove_empty_dirs(root: Path, should_stop: Callable[[], bool] = lambda: Fals
 			log.info('Folder %s stays: %s', path, e)
 			continue
 		removed.append(str(PurePosixPath(path.relative_to(root))))
+		log.info('Removed the empty folder %s', removed[-1])
 	return removed
 
 

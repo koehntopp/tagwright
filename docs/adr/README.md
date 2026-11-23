@@ -76,7 +76,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0088](0088-header-stays-at-inset.md) | The table title row stays at its 24 px inset while scrolling | Accepted |
 | [0089](0089-assignment-track-order.md) | Assignment dialogs list files in the release track's disc order | Accepted(in part: 0102) |
 | [0090](0090-artwork-types-and-cover-fields.md) | Embedded artwork by type, with four cover fields in the inspector | Accepted (album-level writes superseded in part by 0098) |
-| [0091](0091-artwork-sidecars-on-move.md) | Recreate cover files from embedded art when an album moves | Accepted (per-folder sets and rebuild: 0098) |
+| [0091](0091-artwork-sidecars-on-move.md) | Recreate cover files from embedded art when an album moves | Accepted (per-folder sets and rebuild: 0098; albums already in the library: 0104) |
 | [0092](0092-cover-controls-and-full-size-view.md) | Compact cover field controls and a double-click full-size view | Accepted |
 | [0093](0093-cover-preview-size.md) | Cover previews fill their field and show W×H in the header | Accepted |
 | [0094](0094-clear-buttons-and-no-shortcut-hint.md) | Every text field can be cleared with an x; no ⌘K hint in the search | Accepted |
@@ -89,6 +89,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0101](0101-discogs-positions-with-media-labels.md) | Disc and track from Discogs positions with media labels (`SACD-1`, `CD-1`, `BD1-2`) | Accepted |
 | [0102](0102-one-release-track-on-several-discs.md) | One release track on several discs of the album (a Blu-ray with several mixes listed once on Discogs) | Accepted |
 | [0103](0103-watcher-removes-empty-folders.md) | The library watcher removes empty folders it finds on every full pass | Accepted |
+| [0104](0104-cover-files-for-albums-already-in-the-library.md) | Cover files for albums already in the library, written on every full pass | Accepted |
 
 ## History: superseded ADRs
 

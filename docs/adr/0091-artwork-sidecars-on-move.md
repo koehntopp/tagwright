@@ -1,6 +1,6 @@
 # ADR 0091: Artwork sidecars when an album enters the library
 
-- **Status**: Accepted (one set per album and never-overwrite in the library superseded in part by [0098](0098-artwork-per-disc.md))
+- **Status**: Accepted (one set per album and never-overwrite in the library superseded in part by [0098](0098-artwork-per-disc.md); albums already in the library get theirs from [0104](0104-cover-files-for-albums-already-in-the-library.md))
 - **Date**: 2026-11-21
 - **Supersedes in part**: [0011](0011-ingestion-move.md) ("covers, logs and other files stay behind") and [0037](0037-library-watcher-and-layout.md) ("only the FLACs move") for artwork sidecars; the rest of both ADRs stands
 

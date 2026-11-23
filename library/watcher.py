@@ -19,6 +19,7 @@ from library.index import Index
 from library.planner import Item, Problem
 from library.scanner import Reader, read_tags, scan
 from library.template import Template, default, validate
+from pipeline import artwork
 from pipeline.layout import album_root
 
 log = logging.getLogger(__name__)
@@ -222,6 +223,7 @@ class Library:
 		if cfg.apply and ready:
 			self._execute(root, index, ready)
 		if cfg.apply and full:
+			self._backfill_art(root, index)
 			with self.exclusive:
 				gone = remove_empty_dirs(root, self._stop.is_set)
 			for d in gone:
@@ -232,6 +234,32 @@ class Library:
 			phase='waiting' if waiting else 'idle',
 			message=f'waiting for {len(waiting)} file(s) to settle' if waiting else '',
 		)
+
+	def _backfill_art(self, root: Path, index: Index) -> None:
+		"""Write the missing cover files of every album with a music folder that has no folder.jpg (ADR 0104):
+		albums placed before ADR 0091, or never moved since, got none. Nothing is overwritten."""
+		albums: dict[Path, set[Path]] = {}
+		for item in index.items():
+			folder = root / item.path.parent
+			albums.setdefault(album_root(folder), set()).add(folder)
+		done = 0
+		for album, folders in sorted(albums.items()):
+			if self._stop.is_set():
+				break
+			if all((f / 'folder.jpg').exists() for f in folders):
+				continue
+			self._set(message=f'writing cover files: {album.relative_to(root)}')
+			with self.exclusive:  # one album at a time, so a Move to library is not held up long
+				try:
+					written = artwork.export(album)
+				except OSError as e:
+					log.warning('Could not write cover files for %s: %s', album, e)
+					continue
+			if written:
+				done += 1
+				log.info('Wrote %d cover file(s) for %s', len(written), album.relative_to(root))
+		if done:
+			self._note(f'wrote missing cover files for {done} album(s)')
 
 	def _settle(
 		self, moves: list[planner.Move], index: Index, now: float, cooldown: float

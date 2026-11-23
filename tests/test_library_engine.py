@@ -1,12 +1,14 @@
 """Index, scanner, executor and watcher on real temporary folders with synthetic FLACs (ADR 0037)."""
 
+import io
 import os
 import threading
 import time
 from pathlib import Path, PurePosixPath
 
 import pytest
-from mutagen.flac import FLAC
+from mutagen.flac import FLAC, Picture
+from PIL import Image
 
 from library import planner
 from library.executor import Executor, remove_empty_dirs
@@ -559,5 +561,47 @@ class TestEmptyFolders:
 		lib.cycle(full=True)
 		assert not (lib_root / 'Artist' / 'Gone').exists()
 		assert 'removed 2 empty folder(s) left behind' in [
+			r['text'] for r in lib.status()['recent']
+		]
+
+
+def jpeg(color: str) -> bytes:
+	buf = io.BytesIO()
+	Image.new('RGB', (8, 8), color).save(buf, 'JPEG')
+	return buf.getvalue()
+
+
+class TestCoverBackfill:
+	"""ADR 0104: a full pass writes the missing cover files of albums already in place; nothing is overwritten."""
+
+	def test_full_pass_writes_missing_cover_files(
+		self, make_flac: MakeFlac, lib_root: Path, tmp_path: Path
+	) -> None:
+		front, back = jpeg('red'), jpeg('blue')
+		album, kept = lib_root / 'Artist' / 'Album', lib_root / 'Artist' / 'Kept'
+		for folder in (album, kept):
+			path = song(make_flac, folder / '01_01_Song_1.flac')
+			audio = FLAC(path)
+			for type_, data in ((3, front), (4, back)):
+				pic = Picture()
+				pic.type, pic.mime, pic.data, pic.width, pic.height = (
+					type_,
+					'image/jpeg',
+					data,
+					8,
+					8,
+				)
+				audio.add_picture(pic)
+			audio.save()
+		(kept / 'folder.jpg').write_bytes(b'mine')
+		lib = library(lib_root, tmp_path, Clock(), cooldown=0)
+		lib.cycle(full=True)
+		assert (album / 'folder.jpg').read_bytes() == front
+		assert (album / 'Artwork' / '01 back.jpg').read_bytes() == back
+		assert (kept / 'folder.jpg').read_bytes() == b'mine', (
+			'an album with folder.jpg is left alone'
+		)
+		assert not (kept / 'Artwork').exists()
+		assert 'wrote missing cover files for 1 album(s)' in [
 			r['text'] for r in lib.status()['recent']
 		]
