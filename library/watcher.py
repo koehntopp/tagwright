@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
 from library import planner
-from library.executor import Executor
+from library.executor import Executor, remove_empty_dirs
 from library.index import Index
 from library.planner import Item, Problem
 from library.scanner import Reader, read_tags, scan
@@ -221,6 +221,13 @@ class Library:
 		)
 		if cfg.apply and ready:
 			self._execute(root, index, ready)
+		if cfg.apply and full:
+			with self.exclusive:
+				gone = remove_empty_dirs(root, self._stop.is_set)
+			for d in gone:
+				index.delete_tree(d)
+			if gone:
+				self._note(f'removed {len(gone)} empty folder(s) left behind')
 		self._set(
 			phase='waiting' if waiting else 'idle',
 			message=f'waiting for {len(waiting)} file(s) to settle' if waiting else '',

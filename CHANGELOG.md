@@ -4,6 +4,10 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+### Changed
+
+- The library watcher removes empty folders it finds, such as the empty disc folders an album leaves behind when it moves to a new folder. It does this on every full pass (after a restart, daily, or at once with Re-analyze in the Library dialog); a folder with any file below it, music or not, stays [0103].
+
 ### Fixed
 
 - When the library watcher moves the files of the album you have open (a new Discogs release or catalog number renames its folder), the inspector follows the album to its new folder and an open Tag Editor reads the files again. Before, later edits failed because the files were no longer where the editor expected them [0037].

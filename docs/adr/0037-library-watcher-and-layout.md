@@ -1,6 +1,6 @@
 # ADR 0037: The library folder: layout template, watcher, status
 
-- **Status**: Accepted (artwork sidecars are recreated from embedded art by [0091](0091-artwork-sidecars-on-move.md))
+- **Status**: Accepted (artwork sidecars are recreated from embedded art by [0091](0091-artwork-sidecars-on-move.md); empty folders found later are removed by [0103](0103-watcher-removes-empty-folders.md))
 - **Date**: 2026-11-11
 - **Supersedes**: the rule of [0010](0010-bliss-file-naming.md) that Tagwright never renames album folders, **for the output folder only** (the input folder is still never reorganised), and the flat move of [0011](0011-ingestion-move.md) (see "Move to library")
 

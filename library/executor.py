@@ -6,7 +6,8 @@
 - an existing folder whose name differs only in case is renamed in place instead of creating a second one;
 - when all FLACs of a folder go to one place, the other files in it (cover.jpg, .m3u, .cue, ...) go along;
 - a folder that is empty afterwards is removed; it is never the library root, and nothing else is deleted
-  except macOS and Windows litter (`.DS_Store`, `._*`, `Thumbs.db`) in a folder that would be empty otherwise.
+  except macOS and Windows litter (`.DS_Store`, `._*`, `Thumbs.db`) in a folder that would be empty otherwise;
+- `remove_empty_dirs` (every full pass, ADR 0103) removes folders that hold nothing but litter and such folders.
 """
 
 import logging
@@ -28,6 +29,35 @@ LITTER = ('.DS_Store', 'Thumbs.db', 'desktop.ini')
 
 def is_litter(name: str) -> bool:
 	return name in LITTER or name.startswith('._')
+
+
+def remove_empty_dirs(root: Path, should_stop: Callable[[], bool] = lambda: False) -> list[str]:
+	"""Remove every folder below root that holds nothing but litter and folders of that kind, deepest first: the
+	empty `Disc N` folders an album leaves behind when it moves (ADR 0103). A folder with any other file, music or
+	not, stays, and so do the folders above it. Hidden folders are neither entered nor removed; root never is.
+	Returns the removed folders relative to root."""
+	removed: list[str] = []
+	for here, _, _ in os.walk(root, topdown=False):
+		if should_stop():
+			break
+		path = Path(here)
+		if path == root or any(p.startswith('.') for p in path.relative_to(root).parts):
+			continue
+		try:
+			names = os.listdir(path)  # the subfolders removed in this walk are gone already
+		except OSError:
+			continue
+		if any(not is_litter(n) for n in names):
+			continue
+		try:
+			for n in names:
+				(path / n).unlink()
+			path.rmdir()
+		except OSError as e:
+			log.info('Folder %s stays: %s', path, e)
+			continue
+		removed.append(str(PurePosixPath(path.relative_to(root))))
+	return removed
 
 
 @dataclass

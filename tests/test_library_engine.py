@@ -9,7 +9,7 @@ import pytest
 from mutagen.flac import FLAC
 
 from library import planner
-from library.executor import Executor
+from library.executor import Executor, remove_empty_dirs
 from library.index import Index
 from library.planner import Move
 from library.scanner import scan
@@ -516,3 +516,46 @@ class TestWatcher:
 		idx = Index(':memory:')
 		scan(lib_root, idx, 1.0)
 		assert len(planner.plan(idx.items(), default()).moves) == 2
+
+
+class TestEmptyFolders:
+	"""ADR 0103: folders left empty (litter aside) are removed on a full pass; anything with a file stays."""
+
+	def test_remove_empty_dirs(self, make_flac: MakeFlac, lib_root: Path) -> None:
+		old = lib_root / 'Artist' / 'Old_Album'
+		for d in ('Disc 1', 'Disc 2'):
+			(old / d).mkdir(parents=True)
+		(old / 'Disc 2' / '.DS_Store').write_bytes(b'x')
+		song(make_flac, lib_root / 'Artist' / 'Album' / 'Disc 1' / '01_01_Song_1.flac')
+		(lib_root / 'Artist' / 'Album' / 'Scans').mkdir()
+		(lib_root / 'Artist' / 'Album' / 'Scans' / 'page.jpg').write_bytes(b'x')
+		(lib_root / 'Other' / 'Notes').mkdir(parents=True)
+		(lib_root / 'Other' / 'Notes' / 'readme.txt').write_text('keep')
+		(lib_root / '.hidden' / 'empty').mkdir(parents=True)
+		assert sorted(remove_empty_dirs(lib_root)) == [
+			'Artist/Old_Album',
+			'Artist/Old_Album/Disc 1',
+			'Artist/Old_Album/Disc 2',
+		]
+		assert not old.exists()
+		assert (lib_root / 'Artist' / 'Album' / 'Disc 1' / '01_01_Song_1.flac').is_file()
+		assert (lib_root / 'Artist' / 'Album' / 'Scans' / 'page.jpg').is_file()
+		assert (lib_root / 'Other' / 'Notes' / 'readme.txt').is_file()
+		assert (lib_root / '.hidden' / 'empty').is_dir()
+
+	def test_a_full_pass_removes_them_report_only_does_not(
+		self, make_flac: MakeFlac, lib_root: Path, tmp_path: Path
+	) -> None:
+		song(make_flac, lib_root / 'Artist' / 'Album' / '01_01_Song_1.flac')
+		(lib_root / 'Artist' / 'Gone' / 'Disc 1').mkdir(parents=True)
+		clock = Clock()
+		lib = library(lib_root, tmp_path, clock, apply=False, cooldown=0)
+		lib.cycle(full=True)
+		assert (lib_root / 'Artist' / 'Gone' / 'Disc 1').is_dir()
+		(tmp_path / 'b').mkdir()
+		lib = library(lib_root, tmp_path / 'b', clock, cooldown=0)
+		lib.cycle(full=True)
+		assert not (lib_root / 'Artist' / 'Gone').exists()
+		assert 'removed 2 empty folder(s) left behind' in [
+			r['text'] for r in lib.status()['recent']
+		]

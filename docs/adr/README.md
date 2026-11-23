@@ -33,7 +33,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0034](0034-python-formatting-and-linting-with-ruff.md) | Python formatting and linting with ruff | Accepted |
 | [0035](0035-automated-tests-with-pytest.md) | Automated tests with pytest on synthetic albums | Accepted |
 | [0036](0036-standalone-pipeline-package.md) | A standalone pipeline package; the discogs repository is no longer needed | Accepted |
-| [0037](0037-library-watcher-and-layout.md) | The library folder: layout template, watcher, status | Accepted |
+| [0037](0037-library-watcher-and-layout.md) | The library folder: layout template, watcher, status | Accepted (empty folders found later: 0103) |
 | [0038](0038-staging-and-library-views.md) | Staging and Library views; one name for each folder | Accepted |
 | [0040](0040-channel-badges.md) | Channel badges (Mono, Stereo, 5.1, 7.1) on tracks | Accepted |
 | [0041](0041-wider-inspector.md) | A wider inspector on wide screens | Accepted |
@@ -88,6 +88,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0100](0100-credits-one-value-per-name.md) | Artists and credits one value per name (track ranges, MIXER, LYRICIST, ...); legacy tags removed; required tags never lost; `scripts/fix-credits.py` | Accepted |
 | [0101](0101-discogs-positions-with-media-labels.md) | Disc and track from Discogs positions with media labels (`SACD-1`, `CD-1`, `BD1-2`) | Accepted |
 | [0102](0102-one-release-track-on-several-discs.md) | One release track on several discs of the album (a Blu-ray with several mixes listed once on Discogs) | Accepted |
+| [0103](0103-watcher-removes-empty-folders.md) | The library watcher removes empty folders it finds on every full pass | Accepted |
 
 ## History: superseded ADRs
 
