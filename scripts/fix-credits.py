@@ -29,6 +29,7 @@ import logging
 import os
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 from mutagen import MutagenError
@@ -44,6 +45,7 @@ from pipeline.layout import album_root  # noqa: E402  # after the path above
 from pipeline.tagio import touch, upper_tags  # noqa: E402  # after the path above
 
 log = logging.getLogger('fix-credits')
+TOTALS: Counter[str] = Counter()  # files per changed tag, for the summary
 SPLIT_KEYS = tuple(
 	k for k, _, _ in credits.CREDIT_TAGS
 )  # joined values of these are split without Discogs data
@@ -136,6 +138,8 @@ def fix_file(path: Path, release: dict, flat: list, write: bool) -> str:
 		log.info('    %s: %s -> %s', k, before.get(k, []), v)
 	if drops:
 		log.info('    removed: %s', ', '.join(sorted(drops)))
+	TOTALS.update(sets.keys())
+	TOTALS.update(f'removed {k}' for k in drops)
 	if write:
 		for k in drops:
 			del audio.tags[k]
@@ -194,6 +198,8 @@ def main() -> None:
 			except (MutagenError, OSError, ValueError) as e:
 				log.error('  %s: %s', path.name, e)
 				counts['errors'] += 1
+	for key, n in sorted(TOTALS.items()):
+		log.info('%6d files  %s', n, key)
 	log.info(
 		'%s: %d changed, %d unchanged, %d skipped, %d error(s)',
 		'wrote' if args.write else 'dry run',
