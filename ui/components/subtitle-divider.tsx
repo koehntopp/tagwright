@@ -57,7 +57,7 @@ export function SubtitleDivider({ disc, inside, subtitle, count, editing, onEdit
 										{differs && !disabled && <span className="shrink-0 rounded-full bg-yellow-100 px-2 text-[11px] text-yellow-800">differs</span>}
 									</span>
 									<span className="text-xs text-slate-500">Current subtitle:</span>
-									<span className={`min-w-0 truncate ${was ? (keep ? 'font-medium text-sky-950' : 'text-slate-700') : 'italic text-slate-500'}`} title={was}>{was || 'none'}</span>
+									<span className={`min-w-0 truncate ${was ? (keep ? 'font-medium text-sky-950' : 'text-slate-400 line-through') : 'italic text-slate-500'}`} title={was}>{was || 'none'}</span>
 								</div>
 							)}
 							{onKeep && !disabled && (

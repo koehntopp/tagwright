@@ -13,7 +13,7 @@ The owner found the dividers of the import dialogs hard to read: the release's s
 - An import-dialog divider (Discogs and MusicBrainz) shows two labelled lines:
   - **Release:** the release's subtitle for the run, or "none"; a yellow **differs** chip when the files' subtitles differ from it.
   - **Current subtitle:** the distinct subtitles the files carry now, or "none".
-- The line that will be written is the prominent one: with **Release** the release line is dark and the current one grey; with **Keep mine** the release line is struck through and the current one dark. The Release / Keep mine toggle, the defaults, the pen, the file count and the Disc chip stay as in 0081.
+- The line that will be written is the prominent one, the other is greyed and struck through: with **Release** the release line is dark and the current subtitle struck through; with **Keep mine** the release line is struck through and the current one dark. (Corrected the same day: the first version only greyed the current subtitle under Release.) The Release / Keep mine toggle, the defaults, the pen, the file count and the Disc chip stay as in 0081.
 - The Tag Editor's dividers are unchanged (they have no release line).
 - The small print under the search field adds the album's current release ID with a copy icon: **Discogs ID** in the Discogs dialog, **MusicBrainz ID** in the MusicBrainz dialog, each only when set.
 - The macOS port follows.

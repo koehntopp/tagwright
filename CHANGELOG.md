@@ -6,7 +6,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
-- The subtitle dividers in the Discogs and MusicBrainz dialogs are easier to read: "Release:" with the release's subtitle and a "differs" chip, then "Current subtitle:" with what the files have now; the one that will be written stands out, the other is greyed or struck through. Under the search field the album's current Discogs or MusicBrainz ID is shown, with a copy icon [0106].
+- The subtitle dividers in the Discogs and MusicBrainz dialogs are easier to read: "Release:" with the release's subtitle and a "differs" chip, then "Current subtitle:" with what the files have now; the one that will be written stands out, the other is greyed and struck through. Under the search field the album's current Discogs or MusicBrainz ID is shown, with a copy icon [0106].
 
 ## 0.7.0 (2026-11-23)
 
