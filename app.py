@@ -982,6 +982,7 @@ def runner(path: Path, ctx: Context, only: str = '') -> int:
 	job['step'] = 'Filenames'
 	job['lines'].append('-- rename files')
 	job['lines'].extend(rename_album_files(path))
+	rebuild_library_art(path)  # Tags & cover may have scaled the embedded covers (ADR 0105)
 	log.info('job finished: %s (%s)', path.name, 'ok' if ok else 'a step failed')
 	return 0 if ok else 1
 
@@ -2110,6 +2111,7 @@ def tracks_apply(body: dict) -> dict:
 	if cover:
 		embed_cover(album, cover, only_missing=True)
 		filled['cover'] = 1
+		rebuild_library_art(album)  # the cover files follow the embedded art (ADR 0105)
 	for f in flacs(album):  # a skipped file keeps its own release; say so, the album then has two
 		other = tag(open_audio(f).tags, 'DISCOGS_RELEASE_ID')
 		if f.name not in chosen and other and other != rel['id']:
@@ -2138,6 +2140,7 @@ def refresh_discogs_tags(album: Path) -> str:
 		return f'Discogs tags not refreshed: {e.message}; Run fixes does it later'
 	if fixed.skipped:
 		return f'Discogs tags not refreshed: {fixed.skipped}'
+	rebuild_library_art(album)  # the step may have scaled the embedded covers (ADR 0105)
 	return f'Discogs tags refreshed: {fixed.album_name} [{fixed.version}] ({fixed.changed} files changed)'
 
 

@@ -236,7 +236,8 @@ class Library:
 		)
 
 	def _backfill_art(self, root: Path, index: Index) -> None:
-		"""Write the missing cover files of every album with a music folder that has no folder.jpg (ADR 0104):
+		"""Write the missing cover files of every album with a music folder that has no folder.jpg or no
+		Artwork/00 front.jpg (ADR 0104, 0105):
 		albums placed before ADR 0091, or never moved since, got none. Nothing is overwritten."""
 		albums: dict[Path, set[Path]] = {}
 		for item in index.items():
@@ -246,7 +247,9 @@ class Library:
 		for album, folders in sorted(albums.items()):
 			if self._stop.is_set():
 				break
-			if all((f / 'folder.jpg').exists() for f in folders):
+			if all(
+				(f / 'folder.jpg').exists() and (f / artwork.FRONT_COPY).exists() for f in folders
+			):
 				continue
 			self._set(message=f'writing cover files: {album.relative_to(root)}')
 			with self.exclusive:  # one album at a time, so a Move to library is not held up long

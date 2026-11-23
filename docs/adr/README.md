@@ -76,20 +76,21 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0088](0088-header-stays-at-inset.md) | The table title row stays at its 24 px inset while scrolling | Accepted |
 | [0089](0089-assignment-track-order.md) | Assignment dialogs list files in the release track's disc order | Accepted(in part: 0102) |
 | [0090](0090-artwork-types-and-cover-fields.md) | Embedded artwork by type, with four cover fields in the inspector | Accepted (album-level writes superseded in part by 0098) |
-| [0091](0091-artwork-sidecars-on-move.md) | Recreate cover files from embedded art when an album moves | Accepted (per-folder sets and rebuild: 0098; albums already in the library: 0104) |
+| [0091](0091-artwork-sidecars-on-move.md) | Recreate cover files from embedded art when an album moves | Accepted (per-folder sets and rebuild: 0098; albums already in the library: 0104; front copy: 0105) |
 | [0092](0092-cover-controls-and-full-size-view.md) | Compact cover field controls and a double-click full-size view | Accepted |
 | [0093](0093-cover-preview-size.md) | Cover previews fill their field and show W×H in the header | Accepted |
 | [0094](0094-clear-buttons-and-no-shortcut-hint.md) | Every text field can be cleared with an x; no ⌘K hint in the search | Accepted |
 | [0095](0095-view-toggle-pill-beside-the-folder-switch.md) | The view toggle is a pill; Rescan and the toggle sit between the folder switch and the search | Accepted |
 | [0096](0096-paste-into-every-cover-field.md) | Paste an image into every cover field (front replaces, the others append) | Accepted |
 | [0097](0097-album-format-is-a-plain-field.md) | Album Format is a plain field showing ALBUM_FORMAT, without an override tag | Accepted |
-| [0098](0098-artwork-per-disc.md) | Artwork per disc; cover files per disc folder and rebuilt when library art changes | Accepted (album-folder cover: 0099) |
+| [0098](0098-artwork-per-disc.md) | Artwork per disc; cover files per disc folder and rebuilt when library art changes | Accepted (album-folder cover: 0099; 0105) |
 | [0099](0099-box-set-cover.md) | A box-set cover (front picture described "Box set") beside the disc covers | Accepted |
 | [0100](0100-credits-one-value-per-name.md) | Artists and credits one value per name (track ranges, MIXER, LYRICIST, ...); legacy tags removed; required tags never lost; `scripts/fix-credits.py` | Accepted |
 | [0101](0101-discogs-positions-with-media-labels.md) | Disc and track from Discogs positions with media labels (`SACD-1`, `CD-1`, `BD1-2`) | Accepted |
 | [0102](0102-one-release-track-on-several-discs.md) | One release track on several discs of the album (a Blu-ray with several mixes listed once on Discogs) | Accepted |
 | [0103](0103-watcher-removes-empty-folders.md) | The library watcher removes empty folders it finds on every full pass | Accepted |
 | [0104](0104-cover-files-for-albums-already-in-the-library.md) | Cover files for albums already in the library, written on every full pass | Accepted |
+| [0105](0105-artwork-folder-holds-the-front-cover-too.md) | `Artwork/00 front.jpg` copies folder.jpg; cover files follow every artwork change | Accepted |
 
 ## History: superseded ADRs
 

@@ -94,6 +94,7 @@ def test_export_names_artwork_and_never_overwrites(tmp_path: Path) -> None:
 	target = tmp_path / 'Album'
 	assert artwork.export_groups(groups, target) == [
 		'folder.jpg',
+		'Artwork/00 front.jpg',  # the copy of folder.jpg (ADR 0105)
 		'Artwork/01 back.jpg',
 		'Artwork/02 booklet-01.jpg',
 		'Artwork/03 booklet-02.jpg',
@@ -129,7 +130,7 @@ def test_move_recreates_embedded_artwork_in_the_library(
 	add_picture(album, artwork.FRONT, front)
 	add_picture(album, artwork.BACK, back)
 	preview = client.get('/api/move/preview', params={'path': str(album)}).json()
-	assert preview['artwork'] == ['folder.jpg', 'Artwork/01 back.jpg']
+	assert preview['artwork'] == ['folder.jpg', 'Artwork/00 front.jpg', 'Artwork/01 back.jpg']
 	r = client.post('/api/move', json={'path': str(album)})
 	assert r.status_code == 200, r.text
 	where = Path(r.json()['moved_to'])
@@ -177,12 +178,17 @@ def test_an_edit_on_a_library_album_rebuilds_its_cover_files_per_disc_folder(
 	)
 	assert (album / 'folder.jpg').exists() and (album / 'Disc 1' / 'folder.jpg').exists()
 	assert (album / 'Disc 2' / 'Artwork' / '01 disc.jpg').exists()
-	assert not (album / 'Artwork').exists()
-	assert not (album / 'Disc 1' / 'Artwork').exists()
+
+	def art(folder: Path) -> list[str]:
+		return sorted(p.name for p in (folder / 'Artwork').iterdir())
+
+	# the stale back cover is gone; every folder keeps the copy of its folder.jpg (ADR 0105)
+	assert art(album) == ['00 front.jpg']
+	assert art(album / 'Disc 1') == ['00 front.jpg']
 	client.delete(
 		'/api/cover', params={'path': str(album), 'type': artwork.MEDIA, 'index': 0, 'disc': 2}
 	)
-	assert not (album / 'Disc 2' / 'Artwork').exists()
+	assert art(album / 'Disc 2') == ['00 front.jpg']
 	assert (album / 'Disc 2' / 'folder.jpg').exists()
 
 

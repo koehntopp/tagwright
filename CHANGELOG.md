@@ -6,6 +6,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
+- The `Artwork/` folder of a library album also holds the front cover, as `00 front.jpg` (a copy of `folder.jpg`), so it has the whole set. The cover files are also rewritten after the cover a Discogs assignment adds and after Run fixes, not only after edits in the inspector [0105].
 - Albums that were already in the library get their cover files too: on every full pass (after a restart, daily, or with Re-analyze) the watcher writes `folder.jpg` and the `Artwork/` images from the embedded art of every album that has none. Existing cover files are never overwritten [0104].
 - The library watcher removes empty folders it finds, such as the empty disc folders an album leaves behind when it moves to a new folder. It does this on every full pass (after a restart, daily, or at once with Re-analyze in the Library dialog); a folder with any file below it, music or not, stays. Synology's hidden `@eaDir` folders no longer keep a folder from counting as empty, also right after a move [0103].
 

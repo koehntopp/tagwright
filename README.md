@@ -64,7 +64,7 @@ Tags Tagwright writes are never read back as input, tags owned by Discogs are re
 
 **Multi-disc albums** show an *Artwork for* switch above the fields: *All discs* or one disc, so a disc can have its own front, back, leaflet and media images. Under *All discs* the first field is the **Box Cover**, which a box set can have besides the disc covers (ADR 0098, 0099).
 
-**Cover files**: when an album moves to the library, and whenever its artwork changes there, `folder.jpg` and numbered files under `Artwork/` are written from the embedded images, and files for removed images are deleted. With disc folders each disc folder gets its own set, and the album folder's `folder.jpg` is the box cover, the layout Roon reads for box sets (ADR 0091, 0098, 0099).
+**Cover files**: when an album moves to the library, and whenever its artwork changes there, `folder.jpg` and the `Artwork/` folder (a copy of the front as `00 front.jpg`, then the numbered back, leaflet and media images) are written from the embedded images, and files for removed images are deleted. A changed cover from a Discogs assignment or from Run fixes counts too, and albums that were already in the library get their missing cover files at the watcher's next full pass (ADR 0104, 0105). With disc folders each disc folder gets its own set, and the album folder's `folder.jpg` is the box cover, the layout Roon reads for box sets (ADR 0091, 0098, 0099).
 
 ## Moving to the library
 

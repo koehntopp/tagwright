@@ -1,6 +1,6 @@
 # ADR 0098: Artwork per disc, and cover files rebuilt when library art changes
 
-- **Status**: Accepted (album-folder cover and the All-discs front superseded in part by [0099](0099-box-set-cover.md))
+- **Status**: Accepted (album-folder cover and the All-discs front superseded in part by [0099](0099-box-set-cover.md); more rebuild triggers and `Artwork/00 front.jpg`: [0105](0105-artwork-folder-holds-the-front-cover-too.md))
 - **Date**: 2026-11-22
 - **Supersedes in part**: [0090](0090-artwork-types-and-cover-fields.md) ("writes are album-level") and [0091](0091-artwork-sidecars-on-move.md) (one set of cover files in the album folder; "nothing is ever overwritten"; "library sidecars are only created, never deleted")
 

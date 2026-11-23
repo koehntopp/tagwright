@@ -598,10 +598,11 @@ class TestCoverBackfill:
 		lib.cycle(full=True)
 		assert (album / 'folder.jpg').read_bytes() == front
 		assert (album / 'Artwork' / '01 back.jpg').read_bytes() == back
-		assert (kept / 'folder.jpg').read_bytes() == b'mine', (
-			'an album with folder.jpg is left alone'
-		)
-		assert not (kept / 'Artwork').exists()
-		assert 'wrote missing cover files for 1 album(s)' in [
-			r['text'] for r in lib.status()['recent']
-		]
+		assert (album / 'Artwork' / '00 front.jpg').read_bytes() == front  # ADR 0105
+		# an album with its own folder.jpg keeps it and gets only what is missing
+		assert (kept / 'folder.jpg').read_bytes() == b'mine'
+		assert (kept / 'Artwork' / '01 back.jpg').read_bytes() == back
+		wrote = 'wrote missing cover files for 2 album(s)'
+		assert wrote in [r['text'] for r in lib.status()['recent']]
+		lib.cycle(full=True)  # a complete album is not read again
+		assert [r['text'] for r in lib.status()['recent']].count(wrote) == 1

@@ -173,6 +173,10 @@ def as_box(pic: Cover) -> Cover:
 	return pic
 
 
+# the copy of folder.jpg inside Artwork/, so the folder holds the whole set (ADR 0105)
+FRONT_COPY = 'Artwork/00 front.jpg'
+
+
 def front_picture(groups: dict[int, list[Cover]]) -> Cover | None:
 	"""The front cover: type 3, else an untyped picture from an older tagger (ADR 0090)."""
 	return next(iter(groups[FRONT]), None) or next(iter(groups[UNTYPED]), None)
@@ -181,11 +185,12 @@ def front_picture(groups: dict[int, list[Cover]]) -> Cover | None:
 def sidecar_names(
 	groups: dict[int, list[Cover]], front: Cover | None = None
 ) -> list[tuple[str, Cover]]:
-	"""The artwork files to write under an album: `folder.jpg` for the front (or `front`, ADR 0099), then
-	numbered `Artwork/` files for back, leaflet and media in type order (ADR 0091)."""
+	"""The artwork files to write under an album: `folder.jpg` for the front (or `front`, ADR 0099) and its copy
+	`Artwork/00 front.jpg` (ADR 0105), then numbered `Artwork/` files for back, leaflet and media in type order
+	(ADR 0091)."""
 	out: list[tuple[str, Cover]] = []
 	if pic := front or front_picture(groups) or next(iter(groups.get(BOX, [])), None):
-		out.append(('folder.jpg', pic))
+		out += [('folder.jpg', pic), (FRONT_COPY, pic)]
 	counters = {BACK: 0, LEAFLET: 0, MEDIA: 0}
 	names = {BACK: 'back', LEAFLET: 'booklet', MEDIA: 'disc'}
 	index = 0
@@ -232,7 +237,7 @@ def folder_sets(album_dir: Path, by_dir: dict[Path, list[Path]]) -> list[tuple[P
 		if first_front is None:
 			first_front = front_picture(groups)
 	if album_dir not in by_dir and (top := box or first_front) is not None:
-		out.insert(0, (album_dir / 'folder.jpg', top))
+		out[:0] = [(album_dir / 'folder.jpg', top), (album_dir / FRONT_COPY, top)]
 	return out
 
 
