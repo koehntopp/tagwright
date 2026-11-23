@@ -54,7 +54,7 @@ Tags Tagwright writes are never read back as input, tags owned by Discogs are re
 
 ![Tag editor, Tracks tab](docs/screenshots/tag-editor-tracks.png)
 
-**Discogs** search assigns an album's files to the tracks of a release, which matters when the download holds only a subset of the release. The Discogs-owned tags (album name, version, catalog number, year, ...) are written at once. Artists and credits are written one name per value, as Roon reads them: `ARTIST`, `COMPOSER`, `LYRICIST`, `ARRANGER`, `CONDUCTOR`, `REMIXER`, `MIXER`, `PRODUCER`, `ENGINEER`, and `PERSONNEL` (`Name - Role`, mastering included) for every other role; credits Discogs limits to some tracks go only on those tracks. Credit lists and leftovers of earlier taggers are removed, and a file is never saved when the assignment would empty its title, artist, album, album artist, track or disc number (ADR 0100). **MusicBrainz** search picks the matching release, assigns the files to its tracks the same way, stores its IDs and links, and shows a red **Mismatch** when its year differs from the Discogs release, which stops *Move to library* until the release is fixed (ADR 0083). Both dialogs show the release's subtitles as dividers with a "Release" / "Keep mine" choice. Both dialogs have an "Import song titles" checkbox (remembered; on for Discogs, off for MusicBrainz): off imports only the album data, on also writes the release's titles, track and disc numbers and disc subtitles, so titles you prefer, for example without kanji, stay in the files. With it off, an empty disc number, track number or title is still filled from the release.
+**Discogs** search assigns an album's files to the tracks of a release, which matters when the download holds only a subset of the release. The Discogs-owned tags (album name, version, catalog number, year, ...) are written at once. Artists and credits are written one name per value, as Roon reads them: `ARTIST`, `COMPOSER`, `LYRICIST`, `ARRANGER`, `CONDUCTOR`, `REMIXER`, `MIXER`, `PRODUCER`, `ENGINEER`, and `PERSONNEL` (`Name - Role`, mastering included) for every other role; credits Discogs limits to some tracks go only on those tracks. Credit lists and leftovers of earlier taggers are removed, and a file is never saved when the assignment would empty its title, artist, album, album artist, track or disc number (ADR 0100). **MusicBrainz** search picks the matching release, assigns the files to its tracks the same way, stores its IDs and links, and shows a red **Mismatch** when its year differs from the Discogs release, which stops *Move to library* until the release is fixed (ADR 0083). Both dialogs show the release's subtitles as dividers with a "Release" / "Keep mine" choice. Both dialogs have an "Import song titles" checkbox (remembered; on for Discogs, off for MusicBrainz): off imports only the album data, on also writes the release's titles, track and disc numbers and disc subtitles, so titles you prefer, for example without kanji, stay in the files. With it off, an empty disc number, track number or title is still filled from the release. Discogs positions with a media label (`SACD-1`, `CD-1`, `DVD-1`, `BD1-2`) give each disc of a mixed-media set its own number (ADR 0101). A release track can go to one file on each disc of the album: a Blu-ray with the same songs in several mixes, listed once on Discogs, is assigned completely, each disc numbered from 1, and each mix takes the songs under the Discogs heading that matches its subtitle (ADR 0102).
 
 **Lyrics** are edited per track, optionally after searching lrclib.net under another title or artist.
 
@@ -127,7 +127,7 @@ The program logs jobs, moves, renames, assignments, tag, lyrics and cover edits 
 
 ### Docker
 
-A published image (amd64 and arm64) is on GitHub's registry; each release also has its own tag (for example `:0.5`, [ADR 0070](docs/adr/0070-releases.md)):
+A published image (amd64 and arm64) is on GitHub's registry; each release also has its own tag (for example `:0.6`, [ADR 0070](docs/adr/0070-releases.md)):
 
 ```bash
 docker pull ghcr.io/koehntopp/tagwright:latest
@@ -151,7 +151,7 @@ uv run ruff check . && uv run ruff format --check .
 cd ui && npm run build                # frontend; commit the resulting static/ui/
 ./scripts/retype-covers.py <paths>     # one-off: retype single untyped embedded covers to Front Cover (3); --write saves
 ./scripts/retype-covers.py --multi-albums <paths>  # list only album folders with multi-picture files
-./scripts/fix-credits.py <paths>       # one-off: rewrite artists and credits one value per name from Discogs, drop legacy tags (ADR 0100); --write saves
+./scripts/fix-credits.py <paths>       # one-off: rewrite artists and credits one value per name from Discogs, drop legacy tags (ADR 0100); files are matched by Discogs position, else by title; --write saves
 ```
 
 Layout: `app.py` (web layer), `pipeline/` (the steps), `library/` (watcher, planner, layout template), `ui/` (Next.js, shadcn/ui), `docs/adr/` (the specification).

@@ -4,6 +4,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+## 0.6.0 (2026-11-23)
+
 ### Added
 
 - A Discogs release track can go to one file on each disc of the album. A Blu-ray with the same songs in several mixes, listed only once on Discogs, can now be assigned completely: every disc gets the songs, numbered 1 to n, and each mix picks the songs under the matching Discogs heading by its subtitle. The same release track twice on one disc is still refused [0102].
