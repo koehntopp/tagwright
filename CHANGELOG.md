@@ -4,6 +4,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+## 0.8.0 (2026-11-23)
+
 ### Changed
 
 - The Discogs and MusicBrainz dialogs have a "Sort by disc and track" button: after correcting numbers, it puts the rows (and the subtitle dividers) in that order. Rows still never move while you edit [0111].
