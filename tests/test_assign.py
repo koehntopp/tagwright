@@ -29,9 +29,7 @@ REL = {
 			'title': 'One',
 			'duration': 10,
 			'artist': 'Test Artist',
-			'composers': [],
-			'producers': [],
-			'engineers': [],
+			'credits': {},
 		},
 		{
 			'i': 1,
@@ -41,9 +39,7 @@ REL = {
 			'title': 'Two',
 			'duration': 10,
 			'artist': 'Test Artist',
-			'composers': [],
-			'producers': [],
-			'engineers': [],
+			'credits': {},
 		},
 	],
 }

@@ -41,7 +41,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0044](0044-lrclib-application-id-no-key-setting.md) | lrclib.net is reached with the application ID; no key setting | Accepted |
 | [0045](0045-folders-from-the-environment-only.md) | Staging and library folders come from the environment only; Settings shows their host paths | Accepted |
 | [0051](0051-run-a-single-pipeline-step.md) | A double click on a pipeline step runs only that step | Accepted |
-| [0053](0053-discogs-search-and-assignment-consolidated.md) | Discogs release search and track assignment (consolidated: 0013, 0043, 0046, 0047, 0048, 0052) | Accepted |
+| [0053](0053-discogs-search-and-assignment-consolidated.md) | Discogs release search and track assignment (consolidated: 0013, 0043, 0046, 0047, 0048, 0052) | Accepted (artist and credit rows: 0100) |
 | [0054](0054-album-status-and-steps-consolidated.md) | Album status, pipeline steps and issue lines (consolidated: 0006, 0039, 0049, 0050) | Accepted |
 | [0055](0055-no-default-paths.md) | No default paths: staging, library and data folders must be set | Accepted |
 | [0056](0056-cover-controls-in-one-menu.md) | Cover controls in one menu, with the size warning on the cover | Accepted |
@@ -66,7 +66,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0077](0077-library-as-csv-for-other-programs.md) | The library as CSV for other programs (`/api/library/albums.csv`) | Accepted |
 | [0078](0078-musicbrainz-track-assignment-and-import-song-titles.md) | MusicBrainz track assignment and the "Import song titles" checkbox in both dialogs | Accepted |
 | [0079](0079-discogs-assignment-sets-the-album-artist.md) | ALBUMARTIST is a Discogs tag (assignment and Run fixes); the override is the exception | Accepted |
-| [0080](0080-discogs-leads-album-level-tags.md) | Discogs leads CATALOGNUMBER, ALBUM_FORMAT and the credits (overrides keep manual values); ARTIST goes with the title | Accepted (format override superseded by 0097) |
+| [0080](0080-discogs-leads-album-level-tags.md) | Discogs leads CATALOGNUMBER, ALBUM_FORMAT and the credits (overrides keep manual values); ARTIST goes with the title | Accepted (format override superseded by 0097; joined ARTIST: 0100) |
 | [0081](0081-subtitle-dividers-in-track-lists.md) | Disc subtitles are dividers in the track lists (Tag Editor first, then the import dialogs) | Accepted |
 | [0082](0082-in-your-library-box.md) | "In your library" box: other versions of the album's Discogs master (`/api/library/versions`) | Accepted |
 | [0083](0083-inspector-note-boxes-and-year-mismatch.md) | One style for the inspector's note boxes (types, symbols, buttons); a year mismatch Discogs/MusicBrainz stops the move | Accepted |
@@ -85,6 +85,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0097](0097-album-format-is-a-plain-field.md) | Album Format is a plain field showing ALBUM_FORMAT, without an override tag | Accepted |
 | [0098](0098-artwork-per-disc.md) | Artwork per disc; cover files per disc folder and rebuilt when library art changes | Accepted (album-folder cover: 0099) |
 | [0099](0099-box-set-cover.md) | A box-set cover (front picture described "Box set") beside the disc covers | Accepted |
+| [0100](0100-credits-one-value-per-name.md) | Artists and credits one value per name (track ranges, MIXER, LYRICIST, ...); legacy tags removed; required tags never lost; `scripts/fix-credits.py` | Accepted |
 
 ## History: superseded ADRs
 
@@ -136,7 +137,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | settings dialog, API keys, config overlay | 0009, 0044 (no lrclib key), 0045 (folders read-only) |
 | file names, `rename_files`, `clean()` | 0010 |
 | Move to ingest | 0011, 0091 |
-| Discogs search, track assignment, filled tags, re-assignment | 0053, 0089 |
+| Discogs search, track assignment, filled tags, re-assignment | 0053, 0089, 0100 (artists, credits, legacy tags) |
 | MusicBrainz search, MusicBrainz tags | 0023, 0078 |
 | tag editor, override pencils, which tags are editable | 0014, 0097 (Album Format) |
 | play button, track edit dialog, lyrics editing | 0015, 0021 (artist field, lrclib search) |

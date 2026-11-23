@@ -339,12 +339,12 @@ def test_discogs_leads_the_credits_and_an_empty_discogs_value_changes_nothing(
 	apply(client, album)  # REL's tracks name no composer: nothing to replace it with
 	assert {FLAC(f)['COMPOSER'][0] for f in album.glob('*.flac')} == {'Old Composer'}
 	for t in REL['tracks']:
-		t['composers'] = ['New Composer']
+		t['credits'] = {'COMPOSER': ['New Composer']}
 	try:
 		apply(client, album)
 	finally:
 		for t in REL['tracks']:
-			t['composers'] = []
+			t['credits'] = {}
 	assert {FLAC(f)['COMPOSER'][0] for f in album.glob('*.flac')} == {'New Composer'}
 
 

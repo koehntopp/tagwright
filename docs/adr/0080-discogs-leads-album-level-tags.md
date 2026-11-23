@@ -1,6 +1,6 @@
 # ADR 0080: Discogs leads the album-level tags; ARTIST goes with the title
 
-- **Status**: Accepted; the format override is superseded by [0097](0097-album-format-is-a-plain-field.md)
+- **Status**: Accepted; the format override is superseded by [0097](0097-album-format-is-a-plain-field.md); `ARTIST` as one joined value by [0100](0100-credits-one-value-per-name.md)
 - **Date**: 2026-11-15
 - **Supersedes in part**: [0053](0053-discogs-search-and-assignment-consolidated.md) and [0013](0013-discogs-track-assignment.md) (the "filled only when the tag is empty" rule for `CATALOGNUMBER`, `ALBUM_FORMAT`, `ARTIST` and the credit tags), [0048](0048-reassignment-replaces-what-the-previous-release-filled.md) (for the keys below), [0014](0014-internal-tag-editor.md) (Album tab: Album Format and Catalog # become override fields)
 

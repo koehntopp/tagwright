@@ -6,6 +6,9 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
+- Assigning a Discogs release writes artists and credits one name per value, as Roon reads them: ARTIST, COMPOSER, LYRICIST, ARRANGER, CONDUCTOR, REMIXER, MIXER, PRODUCER, ENGINEER, and PERSONNEL ("Name - Role", mastering included) for everything else. Credits Discogs limits to some tracks no longer land on every track. Old credit lists (PERFORMERYR, INVOLVEDPEOPLE…) and leftover tags from earlier taggers and rippers are removed. A track's artists show as "A; B" in the Tag Editor [0100].
+- New script `scripts/fix-credits.py` brings existing albums up to the same rules from a fresh Discogs lookup (dry run by default, `--write` to save) [0100].
+
 - Box sets can have their own cover: on a multi-disc album the first field under "All discs" is now Box Cover. It is stored in every file next to each disc's own cover (the disc cover comes first) and becomes folder.jpg in the box folder, as Roon expects; disc folders keep their own covers and fall back to the box cover [0099].
 - Multi-disc albums show an "Artwork for" switch above the cover fields: pick a disc to see and change only that disc's front cover, back cover, leaflet and media images; "All discs" works as before [0098].
 - Changing artwork on a library album now rewrites its cover files on disk (folder.jpg and Artwork/) to match, and removes files for images you deleted. Albums with disc folders get a set per disc folder, and folder.jpg in the album folder [0098].
@@ -17,6 +20,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Fixed
 
+- An assignment that would empty a file's title, artist, album, album artist, track or disc number (for example from a broken Discogs answer) is no longer saved for that file; the log names it [0100].
 - Remove cover works again; confirming the dialog showed "[object Object]" and left the cover in place [0090].
 - Pasting an image (Cmd/Ctrl+V) now works in the Back Cover, Leaflet and Media fields too; click the field, then paste, and the image is added to that set [0096].
 - MP3 files converted with ffmpeg (or tagged by tools that store track and disc totals, label, media or comment as extra text frames) no longer make the Discogs tags step fail with "disctotal"; those values are read and moved into the standard ID3 frames when the file is saved [0059].

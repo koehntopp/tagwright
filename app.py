@@ -48,12 +48,13 @@ from pipeline import discogs as discogs_api
 from pipeline import musicbrainz as mb_api
 from pipeline.audio import Audio, Cover, is_audio, open_audio
 from pipeline.config import Config
+from pipeline.credits import clean_artist, legacy_keys, lost_required, track_tags, uniq
 from pipeline.fixtags import DISCOGS_TAG_PREFIXES, artist_names, fix_album
 from pipeline.http import ApiError
 from pipeline.layout import album_dirs, flacs, is_disc_dir
 from pipeline.naming import bliss_album, rename_files
 from pipeline.run import only_steps, run_album
-from pipeline.tagio import Tags, channels_from_title, tag
+from pipeline.tagio import Tags, channels_from_title, tag, upper_tags
 from pipeline.tools import Context, Stopped
 
 
@@ -1510,33 +1511,7 @@ def seconds(d: str) -> int:
 		return 0
 
 
-WRITER_ROLES = (
-	'written-by',
-	'written by',
-	'composed by',
-	'music by',
-	'songwriter',
-	'lyrics by',
-	'words by',
-)
 COPYRIGHT_TYPES = ('copyright (c)', 'phonographic copyright (p)')
-
-
-def clean_artist(name: str) -> str:
-	return re.sub(r'\s*\(\d+\)$', '', name.strip())
-
-
-def uniq(xs: Iterable[str | None]) -> list[str]:
-	return list(dict.fromkeys(x for x in xs if x))
-
-
-def by_role(extra: list[dict], *roles: str) -> list[str]:
-	"""Names of the credits whose role contains one of the (lower-case) role words."""
-	return uniq(
-		clean_artist(e.get('name', ''))
-		for e in extra
-		if any(w in (e.get('role') or '').lower() for w in roles)
-	)
 
 
 def release_format(r: dict) -> str:
@@ -1558,8 +1533,7 @@ def release_tags(r: dict) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
 	Player tags are the standard ones the tagger used to import (shown by Roon etc.); they are filled when missing.
 	DISCOGS_* tags are Discogs-owned and replaced on every assignment.
 	"""
-	extra, companies, labels = (
-		r.get('extraartists') or [],
+	companies, labels = (
 		r.get('companies') or [],
 		r.get('labels') or [],
 	)
@@ -1603,13 +1577,6 @@ def release_tags(r: dict) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
 		'CATALOG': catnos,
 		'COPYRIGHT': [', '.join(copyright_)],
 		'PUBLISHER': [', '.join(company('published by'))],
-		'PRODUCER': by_role(extra, 'producer'),
-		'ENGINEER': by_role(extra, 'engineer'),
-		'PERSONNEL': uniq(
-			f'{clean_artist(e["name"])} - {e["role"]}'
-			for e in extra
-			if e.get('name') and e.get('role')
-		),
 	}
 	rid = r['id']
 	artist_urls = [f'https://www.discogs.com/artist/{a["id"]}' for a in artists if a.get('id')]
@@ -1694,9 +1661,8 @@ def release_tracks(rid: str) -> dict:
 				'channels': channels_from_title(t.get('title', '')),
 				'duration': duration or seconds(t.get('duration', '')),
 				'artist': artist_names(t.get('artists', [])) or album_artist,
-				'composers': by_role(t.get('extraartists') or [], *WRITER_ROLES),
-				'producers': by_role(t.get('extraartists') or [], 'producer'),
-				'engineers': by_role(t.get('extraartists') or [], 'engineer'),
+				# ARTIST and the credits, one value per name (ADR 0100); tracks are added in flat_tracks order
+				'credits': track_tags(r, len(tracks)),
 			}
 		)
 
@@ -2012,11 +1978,7 @@ def tracks_apply(body: dict) -> dict:
 						'ALBUM_FORMAT': [release_format(raw)],
 						'ALBUMARTIST': [r['artist']],
 						'ALBUM': [release_album_title(r)],
-						**{
-							k: v
-							for k, v in release_tags(raw)[0].items()
-							if k not in ('PRODUCER', 'ENGINEER')
-						},
+						**release_tags(raw)[0],
 					}
 			except HTTPException:
 				pass
@@ -2045,7 +2007,6 @@ def tracks_apply(body: dict) -> dict:
 			filled[key] = filled.get(key, 0) + 1
 
 	player, discogs_tags = release_tags(raw_releases[rel['id']])
-	writers = by_role(raw_releases[rel['id']].get('extraartists') or [], *WRITER_ROLES)
 
 	cover = None
 	if not open_audio(flacs(album)[0]).pictures and rel['image']:
@@ -2059,6 +2020,9 @@ def tracks_apply(body: dict) -> dict:
 		a = open_audio(album / fn)
 		if a.tags is None:
 			a.add_tags()
+		was = upper_tags(a)
+		credits = t.get('credits') or {}
+		artists = credits.get('ARTIST') or ([t['artist']] if t['artist'] else [])
 		before = tag(a.tags, 'DISCOGS_RELEASE_ID')
 		prev_vals.clear()
 		if before and before != rel['id']:
@@ -2069,9 +2033,11 @@ def tracks_apply(body: dict) -> dict:
 		if not tag(a.tags, 'ALBUM_FORMAT_OVERRIDE'):
 			lead(a, 'ALBUM_FORMAT', release_format(raw_releases[rel['id']]))
 		if with_titles:
-			lead(a, 'ARTIST', t['artist'])  # the artist goes with the title (ADR 0080)
+			lead(
+				a, 'ARTIST', artists
+			)  # the artist goes with the title (ADR 0080), one value each (0100)
 		else:
-			fill(a, 'ARTIST', t['artist'])
+			fill(a, 'ARTIST', artists)
 		if rel['artist'] and not tag(a.tags, 'ALBUM_ARTIST_OVERRIDE'):
 			if tag(a.tags, 'ALBUMARTIST') != rel['artist']:  # the release artist wins (ADR 0079)
 				a['ALBUMARTIST'] = [rel['artist']]
@@ -2079,11 +2045,12 @@ def tracks_apply(body: dict) -> dict:
 		if not tag(a.tags, 'ALBUM_TITLE_OVERRIDE'):
 			fill(a, 'ALBUM', release_album_title(rel))
 		for key, values in player.items():
-			if key not in ('PRODUCER', 'ENGINEER'):
+			lead(a, key, values)
+		for key, values in credits.items():  # the track's credits, one value per name (ADR 0100)
+			if key != 'ARTIST':
 				lead(a, key, values)
-		lead(a, 'COMPOSER', t['composers'] or writers)  # track credits win over release credits
-		lead(a, 'PRODUCER', t['producers'] or player.get('PRODUCER', []))
-		lead(a, 'ENGINEER', t['engineers'] or player.get('ENGINEER', []))
+		for key in legacy_keys(list(a.tags.keys())):
+			del a.tags[key]  # earlier taggers' credit lists and junk (ADR 0100)
 		for key in [
 			k
 			for k in a.tags.keys()
@@ -2105,6 +2072,9 @@ def tracks_apply(body: dict) -> dict:
 		else:
 			for key in fill_numbers(a, t['title'], d, n, per_disc):
 				filled[key] = filled.get(key, 0) + 1
+		if lost := lost_required(was, upper_tags(a)):  # never take a required tag away (ADR 0100)
+			log.append(f'{fn}: not saved, it would lose {", ".join(lost)}')
+			continue
 		a.save()
 		log.append(
 			f'{fn}: {d}-{n:02d} {titles.get(fn) or t["title"]}'
@@ -2718,7 +2688,7 @@ def get_tags(path: str) -> dict:
 				'format': rate_bits(audio.info),
 				'lyrics': lyric_kind(t),
 				'title': tag(t, 'TITLE'),
-				'artist': tag(t, 'ARTIST'),
+				'artist': '; '.join(t.get('ARTIST') or []),  # one value per artist (ADR 0100)
 				'disc': tag(t, 'DISCNUMBER'),
 				'track': tag(t, 'TRACKNUMBER'),
 				'subtitle': tag(t, 'SET SUBTITLE'),
@@ -2838,8 +2808,8 @@ def set_tags(body: dict) -> dict:
 		a['TRACKNUMBER'] = [str(tr['track']).strip()]
 		for key, field in (('ARTIST', 'artist'), ('SET SUBTITLE', 'subtitle')):
 			value = str(tr.get(field, '')).strip()
-			if value:
-				a[key] = [value]
+			if value:  # ARTIST: '; ' separates the artists, one value each (ADR 0100)
+				a[key] = uniq(v.strip() for v in value.split(';')) if key == 'ARTIST' else [value]
 			elif key in a.tags:
 				del a.tags[key]
 		sub = str(tr.get('subtitle', '')).strip()
