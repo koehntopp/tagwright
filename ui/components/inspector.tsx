@@ -51,12 +51,14 @@ const COVER_TYPE: Record<CoverKind, number> = { front: 3, back: 4, leaflet: 5, m
 const BOX_TYPE = 100  // the API's pseudo-type for the box-set cover (ADR 0099)
 
 /** One of the four artwork fields of the inspector (ADR 0090). Front is single; the others are small carousels. */
-function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, put, remove, askRemove, inputRef, rootRef, search, paste, menuOpen, toggleMenu, onEnlarge }: {
+function CoverField({ kind, label, items, fallback, fallbackSize, fallbackNote, warn, busy, put, remove, askRemove, inputRef, rootRef, search, paste, menuOpen, toggleMenu, onEnlarge }: {
 	kind: CoverKind
 	label: string
 	items: CoverItem[]
 	fallback?: string
 	fallbackSize?: string
+	/** shown over a fallback that is only a stand-in (the box cover's empty field, ADR 0107): it cannot be deleted */
+	fallbackNote?: string
 	warn?: string
 	busy: boolean
 	put: (file: File, index?: number) => void
@@ -114,7 +116,10 @@ function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, pu
 					<img src={current.url} alt={label} title={`${current.w}×${current.h}, ${fmtBytes(current.bytes)} — double-click to view full size`} onDoubleClick={() => onEnlarge?.(current.url)} className="absolute inset-0 size-full cursor-zoom-in object-cover" />
 				) : fallback ? (
 					// eslint-disable-next-line @next/next/no-img-element
-					<img src={fallback} alt={label} title="Double-click to view full size" onDoubleClick={() => onEnlarge?.(fallback)} className="absolute inset-0 size-full cursor-zoom-in object-cover opacity-70" />
+					<>
+						<img src={fallback} alt={label} title="Double-click to view full size" onDoubleClick={() => onEnlarge?.(fallback)} className={`absolute inset-0 size-full cursor-zoom-in object-cover ${fallbackNote ? 'opacity-40 grayscale' : 'opacity-70'}`} />
+						{fallbackNote && <span className="absolute inset-x-0 bottom-0 bg-white/85 px-1.5 py-1 text-center text-[10px] leading-tight text-slate-600">{fallbackNote}</span>}
+					</>
 				) : <span className="absolute inset-0 grid place-items-center px-1 text-center text-[11px] leading-tight text-slate-400">Drop image or click Upload</span>}
 				{busy && <div className="absolute inset-0 grid place-items-center bg-white/70"><Loader2 className="size-5 animate-spin text-slate-700" /></div>}
 			</div>
@@ -123,8 +128,8 @@ function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, pu
 					<button type="button" title="Previous image" aria-label="Previous image" disabled={items.length < 2} onClick={() => step(-1)} className="rounded px-1 text-slate-600 hover:bg-white disabled:opacity-30">‹</button>
 					<button type="button" title="Next image" aria-label="Next image" disabled={items.length < 2} onClick={() => step(1)} className="rounded px-1 text-slate-600 hover:bg-white disabled:opacity-30">›</button>
 				</>}
-				{!current && !fallback && <button type="button" onClick={() => pick('add')} className="shrink-0 whitespace-nowrap rounded px-1.5 text-[11px] text-slate-700 hover:bg-white">Upload</button>}
-				{(current || fallback) && <button type="button" onClick={() => current ? remove(at) : askRemove()} className="shrink-0 whitespace-nowrap rounded px-1.5 text-[11px] text-rose-600 hover:bg-rose-50">Delete</button>}
+				{!current && (!fallback || fallbackNote) && <button type="button" onClick={() => pick('add')} className="shrink-0 whitespace-nowrap rounded px-1.5 text-[11px] text-slate-700 hover:bg-white">Upload</button>}
+				{(current || (fallback && !fallbackNote)) && <button type="button" onClick={() => current ? remove(at) : askRemove()} className="shrink-0 whitespace-nowrap rounded px-1.5 text-[11px] text-rose-600 hover:bg-rose-50">Delete</button>}
 				{multiple && <button type="button" title="Add an image" onClick={() => pick('add')} className="shrink-0 whitespace-nowrap rounded px-1.5 text-[11px] text-slate-700 hover:bg-white">+</button>}
 				{kind === 'front' && toggleMenu && <button type="button" onClick={toggleMenu} aria-label="Cover options" aria-expanded={menuOpen} className="ml-auto shrink-0 rounded p-0.5 text-slate-500 hover:bg-white"><Ellipsis className="size-3.5" /></button>}
 			</div>
@@ -343,8 +348,11 @@ export function Inspector(p: Props) {
 	const spinning = (name: string) => (running && name === job.step) || !!p.working?.includes(name)
 
 	const coverSmall = a.issues.some(i => i.action === 'cover')  // below the minimum size, or no cover (ADR 0016)
-	// multi-disc albums: under All discs the first field is the box-set cover, under a disc that disc's front (ADR 0099)
-	const box = (covers.discs?.length ?? 0) > 1 && p.coverDisc === undefined
+	// multi-disc albums: under All discs the first field is the box-set cover, under a disc that disc's front (ADR 0099);
+	// when every disc has the same front and there is no box cover, All discs shows that front instead (ADR 0107)
+	const allDiscs = (covers.discs?.length ?? 0) > 1 && p.coverDisc === undefined
+	const box = allDiscs && ((covers.box?.length ?? 0) > 0 || covers.front.length > 1)
+	const boxStandIn = box && !covers.box?.length ? covers.front[0] : undefined  // disc 1's front, what folder.jpg shows
 	const putFront = (f: File, i?: number) => box ? p.putCover(f, BOX_TYPE, i) : p.putCover(f, COVER_TYPE.front, i)
 	return (
 		<div className="space-y-5 p-6">
@@ -376,8 +384,9 @@ export function Inspector(p: Props) {
 			{(covers.discs?.length ?? 0) > 1 && <DiscSwitch discs={covers.discs ?? []} disc={p.coverDisc} choose={p.setCoverDisc} />}
 			<div className="grid grid-cols-4 gap-2">
 				<CoverField kind="front" label={box ? 'Box Cover' : 'Front Cover'} items={box ? covers.box ?? [] : covers.front}
-					fallback={!box && p.coverDisc === undefined && !covers.front.length && a.cover && !a.cover.embedded ? coverUrl(a) : undefined}
-					fallbackSize={a.cover ? `${a.cover.w}×${a.cover.h}` : undefined}
+					fallback={boxStandIn ? boxStandIn.url : !box && p.coverDisc === undefined && !covers.front.length && a.cover && !a.cover.embedded ? coverUrl(a) : undefined}
+					fallbackSize={boxStandIn ? `${boxStandIn.w}×${boxStandIn.h}` : a.cover ? `${a.cover.w}×${a.cover.h}` : undefined}
+					fallbackNote={boxStandIn ? "No box cover; folder.jpg uses Disc 1's cover" : undefined}
 					warn={coverSmall ? a.issues.find(i => i.action === 'cover')?.text : undefined} busy={!!p.coverBusy}
 					put={putFront} remove={box ? i => p.delArtwork(BOX_TYPE, i) : p.delCover} askRemove={box ? () => p.delArtwork(BOX_TYPE, 0) : p.delCover}
 					inputRef={fileRef} rootRef={coverRef}

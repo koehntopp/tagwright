@@ -4,13 +4,14 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+### Changed
+
+- A multi-disc album whose discs all have the same front cover shows that Front Cover under "All discs" instead of an empty Box Cover. A real box set keeps the Box Cover field; while it is empty it shows Disc 1's cover greyed, with a note that folder.jpg uses it [0107].
+- The subtitle dividers in the Discogs and MusicBrainz dialogs are easier to read: "Release:" with the release's subtitle and a "differs" chip, then "Current subtitle:" with what the files have now; the one that will be written stands out, the other is greyed and struck through. Under the search field the album's current Discogs or MusicBrainz ID is shown, with a copy icon [0106].
+
 ### Fixed
 
 - The front cover's "…" menu (Upload, Paste, Search, Remove) opens to the right, so it is no longer cut off at the left edge of the inspector.
-
-### Changed
-
-- The subtitle dividers in the Discogs and MusicBrainz dialogs are easier to read: "Release:" with the release's subtitle and a "differs" chip, then "Current subtitle:" with what the files have now; the one that will be written stands out, the other is greyed and struck through. Under the search field the album's current Discogs or MusicBrainz ID is shown, with a copy icon [0106].
 
 ## 0.7.0 (2026-11-23)
 

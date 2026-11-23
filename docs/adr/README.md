@@ -84,7 +84,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0096](0096-paste-into-every-cover-field.md) | Paste an image into every cover field (front replaces, the others append) | Accepted |
 | [0097](0097-album-format-is-a-plain-field.md) | Album Format is a plain field showing ALBUM_FORMAT, without an override tag | Accepted |
 | [0098](0098-artwork-per-disc.md) | Artwork per disc; cover files per disc folder and rebuilt when library art changes | Accepted (album-folder cover: 0099; 0105) |
-| [0099](0099-box-set-cover.md) | A box-set cover (front picture described "Box set") beside the disc covers | Accepted |
+| [0099](0099-box-set-cover.md) | A box-set cover (front picture described "Box set") beside the disc covers | Accepted (in part: 0107) |
 | [0100](0100-credits-one-value-per-name.md) | Artists and credits one value per name (track ranges, MIXER, LYRICIST, ...); legacy tags removed; required tags never lost; `scripts/fix-credits.py` | Accepted |
 | [0101](0101-discogs-positions-with-media-labels.md) | Disc and track from Discogs positions with media labels (`SACD-1`, `CD-1`, `BD1-2`) | Accepted |
 | [0102](0102-one-release-track-on-several-discs.md) | One release track on several discs of the album (a Blu-ray with several mixes listed once on Discogs) | Accepted |
@@ -92,6 +92,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0104](0104-cover-files-for-albums-already-in-the-library.md) | Cover files for albums already in the library, written on every full pass | Accepted |
 | [0105](0105-artwork-folder-holds-the-front-cover-too.md) | `Artwork/00 front.jpg` copies folder.jpg; cover files follow every artwork change | Accepted |
 | [0106](0106-clearer-subtitle-dividers-and-current-release-id.md) | Import-dialog dividers as "Release:" / "Current subtitle:"; the current release ID under the search field | Accepted |
+| [0107](0107-all-discs-shows-a-shared-front-instead-of-an-empty-box-cover.md) | All discs shows a shared front cover instead of an empty Box Cover | Accepted |
 
 ## History: superseded ADRs
 

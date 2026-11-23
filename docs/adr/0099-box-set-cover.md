@@ -1,6 +1,6 @@
 # ADR 0099: A box-set cover beside the disc covers
 
-- **Status**: Accepted
+- **Status**: Accepted (a shared front instead of an empty Box Cover: [0107](0107-all-discs-shows-a-shared-front-instead-of-an-empty-box-cover.md))
 - **Date**: 2026-11-22
 - **Supersedes in part**: [0098](0098-artwork-per-disc.md) (the album folder's `folder.jpg` is the first disc's front cover; `All discs` edits the front cover of every file)
 
