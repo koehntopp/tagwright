@@ -21,6 +21,7 @@ import time
 import unicodedata
 import urllib.error
 import urllib.request
+from collections import Counter
 from collections.abc import AsyncIterator, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -1835,6 +1836,12 @@ def norm_title(s: str) -> str:
 	).strip()
 
 
+def subtitle_overlap(mine: str, release: str) -> float:
+	"""The share of the words of a file's subtitle that the release track's subtitle has (0 without either)."""
+	words = set(norm_title(mine).split())
+	return len(words & set(norm_title(release).split())) / len(words) if words else 0.0
+
+
 def album_files(album: Path) -> list[dict]:
 	out = []
 	for f in flacs(album):
@@ -1863,6 +1870,8 @@ def tracks_propose(body: dict) -> dict:
 	rel = mb_release(rid.lower()) if source == 'musicbrainz' else release_tracks(rid)
 	files = album_files(album)
 	pairs = []
+	# a title the release lists more than once (one per mix): the file's subtitle tells which (ADR 0102)
+	twice = Counter(norm_title(t['title']) for t in rel['tracks'])
 	for f in files:
 		for t in rel['tracks']:
 			s = SequenceMatcher(None, norm_title(f['title']), norm_title(t['title'])).ratio() * 0.6
@@ -1870,27 +1879,37 @@ def tracks_propose(body: dict) -> dict:
 				s += max(0.0, 1 - abs(f['duration'] - t['duration']) / 8) * 0.25
 			if f['track'] and (f['disc'], f['track']) == (t['disc'], t['track']):
 				s += 0.15
+			if twice[norm_title(t['title'])] > 1:
+				s += subtitle_overlap(f['subtitle'], t.get('subtitle', '')) * 0.3
 			pairs.append((s, f['file'], t['i']))
 	assign: dict[str, int | None] = {f['file']: None for f in files}
 	conf: dict[str, float] = {}
 	used: set[int] = set()
+	copy = {f['file']: f['disc'] for f in files}  # the file's own disc (ADR 0102)
+	taken: dict[int, set[int]] = {}
 	is_part = {t['i']: bool(t['part_of']) for t in rel['tracks']}
-	# whole tracks first; the parts of a medley only take the files left over, and only on a clear title match (ADR 0060)
-	for part_pass in (False, True):
+	# whole tracks first; the parts of a medley only take the files left over, and only on a clear title match
+	# (ADR 0060). Then the files still left may take a track another disc of the album already has, on a clear
+	# match: a Blu-ray with the same songs in several mixes, listed once on Discogs (ADR 0102).
+	for reuse, part_pass, least in ((False, False, 0.35), (False, True, 0.45), (True, False, 0.6)):
 		for s, fn, i in sorted(pairs, reverse=True):
-			if is_part[i] != part_pass or assign[fn] is not None or i in used:
+			if is_part[i] != part_pass or assign[fn] is not None or s < least:
 				continue
-			if s >= (0.45 if part_pass else 0.35):
-				assign[fn], conf[fn] = i, round(s, 2)
-				used.add(i)
+			if i in (taken.get(copy[fn], set()) if reuse else used):
+				continue
+			assign[fn], conf[fn] = i, round(s, 2)
+			used.add(i)
+			taken.setdefault(copy[fn], set()).add(i)
+	reused = len([i for i in assign.values() if i is not None]) != len(used)
 
-	# The dividers name the release's disc, so list the files in that order too (ADR 0089).
-	def release_order(f: dict) -> tuple[bool, int, int, int, str]:
+	# The dividers name the release's disc, so list the files in that order too (ADR 0089); a release track used
+	# on several discs of the album lists each disc of the album in turn (ADR 0102).
+	def release_order(f: dict) -> tuple[bool, int, int, int, int, str]:
 		i = assign[f['file']]
 		if i is None:
-			return (True, 0, 0, 0, f['file'])
+			return (True, 0, 0, 0, 0, f['file'])
 		t = rel['tracks'][i]
-		return (False, t['disc'], t['track'], i, f['file'])
+		return (False, t['disc'], copy[f['file']] if reused else 0, t['track'], i, f['file'])
 
 	files = sorted(files, key=release_order)
 	return {
@@ -1906,24 +1925,31 @@ def assignment_titles(asg: list[dict]) -> dict[str, str]:
 
 
 def number_assignments(
-	rel: dict, assignments: list[dict]
+	rel: dict, assignments: list[dict], copies: dict[str, int] | None = None
 ) -> tuple[
 	list[dict], dict[str, int], dict[str, tuple[int, int]], dict[int, int], list[tuple[str, int]]
 ]:
-	"""Disc and track numbers for assigned files (ADR 0013, 0078): 1..n per disc in release order, the UI may override
-	disc and track per file. Returns the assignments, file -> release track, file -> (disc, track), tracks per disc and
-	the (file, release track) pairs in release order."""
+	"""Disc and track numbers for assigned files (ADR 0013, 0078, 0102): 1..n per disc in release order, the UI may
+	override disc and track per file. `copies` is each file's own disc: a release track may go to one file per disc of
+	the album, and when one does, every disc of the album is numbered on its own. Returns the assignments, file ->
+	release track, file -> (disc, track), tracks per disc and the (file, release track) pairs in release order."""
 	asg = [a for a in assignments if a.get('rel') is not None]
 	chosen = {a['file']: a['rel'] for a in asg}
-	if len({*chosen.values()}) != len(chosen):
-		raise HTTPException(400, 'a release track is assigned twice')
+	copy = {fn: (copies or {}).get(fn, 1) for fn in chosen}
+	if len({(i, copy[fn]) for fn, i in chosen.items()}) != len(chosen):
+		raise HTTPException(400, 'a release track is assigned twice on one disc')
+	reused = len({*chosen.values()}) != len(chosen)
+
+	def group(fn: str, i: int) -> tuple[int, int]:
+		return (copy[fn] if reused else 0, rel['tracks'][i]['disc'])
+
 	# default numbering: 1..n per disc in release order; the UI may override disc and track per file
 	picked = sorted(chosen.items(), key=lambda kv: kv[1])
-	discs = sorted({rel['tracks'][i]['disc'] for _, i in picked})
-	seen: dict[int, int] = {}
+	discs = sorted({group(fn, i) for fn, i in picked})
+	seen: dict[tuple[int, int], int] = {}
 	final: dict[str, tuple[int, int]] = {}
 	for fn, i in picked:
-		d = rel['tracks'][i]['disc']
+		d = group(fn, i)
 		seen[d] = seen.get(d, 0) + 1
 		final[fn] = (discs.index(d) + 1, seen[d])
 	for a in asg:
@@ -1952,7 +1978,10 @@ def tracks_apply(body: dict) -> dict:
 		raise HTTPException(409, 'a job is running')
 	rel = release_tracks(str(body.get('release_id', '')).strip())
 	with_titles = remember_import_titles('discogs', body)
-	asg, chosen, final, per_disc, picked = number_assignments(rel, body.get('assignments', []))
+	copies = {f['file']: f['disc'] for f in album_files(album)}
+	asg, chosen, final, per_disc, picked = number_assignments(
+		rel, body.get('assignments', []), copies
+	)
 	titles = assignment_titles(asg)
 	items = {a['file']: a for a in asg}
 	log = []
@@ -2438,7 +2467,8 @@ def musicbrainz_apply(body: dict) -> dict:
 	titles: dict[str, str] = {}
 	items: dict[str, dict] = {}
 	if assigned:
-		asg, chosen, final, per_disc, _ = number_assignments(rel, body['assignments'])
+		copies = {f['file']: f['disc'] for f in album_files(album)}
+		asg, chosen, final, per_disc, _ = number_assignments(rel, body['assignments'], copies)
 		titles = assignment_titles(asg)
 		items = {a['file']: a for a in asg}
 	group, mb = rel['group'], 'https://musicbrainz.org'

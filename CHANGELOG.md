@@ -4,6 +4,10 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+### Added
+
+- A Discogs release track can go to one file on each disc of the album. A Blu-ray with the same songs in several mixes, listed only once on Discogs, can now be assigned completely: every disc gets the songs, numbered 1 to n, and each mix picks the songs under the matching Discogs heading by its subtitle. The same release track twice on one disc is still refused [0102].
+
 ### Fixed
 
 - Assigning a Discogs release with mixed media numbered like `SACD-1`, `CD-1`, `DVD-1` or `BD1-2` gives each disc its own number. Before, every track of such a release counted as disc 1, so the files of a second disc were suggested as disc 1, track 11 and on [0101].

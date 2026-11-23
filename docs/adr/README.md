@@ -41,14 +41,14 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0044](0044-lrclib-application-id-no-key-setting.md) | lrclib.net is reached with the application ID; no key setting | Accepted |
 | [0045](0045-folders-from-the-environment-only.md) | Staging and library folders come from the environment only; Settings shows their host paths | Accepted |
 | [0051](0051-run-a-single-pipeline-step.md) | A double click on a pipeline step runs only that step | Accepted |
-| [0053](0053-discogs-search-and-assignment-consolidated.md) | Discogs release search and track assignment (consolidated: 0013, 0043, 0046, 0047, 0048, 0052) | Accepted (artist and credit rows: 0100; positions: 0101) |
+| [0053](0053-discogs-search-and-assignment-consolidated.md) | Discogs release search and track assignment (consolidated: 0013, 0043, 0046, 0047, 0048, 0052) | Accepted (artist and credit rows: 0100; positions: 0101; one track on several discs: 0102) |
 | [0054](0054-album-status-and-steps-consolidated.md) | Album status, pipeline steps and issue lines (consolidated: 0006, 0039, 0049, 0050) | Accepted |
 | [0055](0055-no-default-paths.md) | No default paths: staging, library and data folders must be set | Accepted |
 | [0056](0056-cover-controls-in-one-menu.md) | Cover controls in one menu, with the size warning on the cover | Accepted |
 | [0057](0057-tag-editor-tabs-and-other-tags.md) | Tag editor tabs: Discogs and MusicBrainz apart, and an Other tab with the remaining tags | Accepted |
 | [0058](0058-audio-files-through-one-seam.md) | Audio files are opened through one seam (`pipeline/audio.py`) | Accepted |
 | [0059](0059-mp3-support.md) | MP3 support: ID3 mapped to the Vorbis-style tag model, v2.4 written, mixed albums, own extensions | Accepted |
-| [0060](0060-parts-of-a-work-are-release-tracks.md) | The parts of a work or medley are release tracks too | Accepted |
+| [0060](0060-parts-of-a-work-are-release-tracks.md) | The parts of a work or medley are release tracks too | Accepted(in part: 0102) |
 | [0061](0061-renovate-for-dependency-updates.md) | Renovate for dependency updates | Accepted |
 | [0062](0062-license-gpl-3-or-later.md) | Licence: GPL-3.0-or-later (mutagen and Unidecode are GPL) | Accepted |
 | [0064](0064-logging-and-syslog.md) | Logging to standard output, and to syslog when SYSLOG_HOST is set | Accepted |
@@ -67,14 +67,14 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0078](0078-musicbrainz-track-assignment-and-import-song-titles.md) | MusicBrainz track assignment and the "Import song titles" checkbox in both dialogs | Accepted |
 | [0079](0079-discogs-assignment-sets-the-album-artist.md) | ALBUMARTIST is a Discogs tag (assignment and Run fixes); the override is the exception | Accepted |
 | [0080](0080-discogs-leads-album-level-tags.md) | Discogs leads CATALOGNUMBER, ALBUM_FORMAT and the credits (overrides keep manual values); ARTIST goes with the title | Accepted (format override superseded by 0097; joined ARTIST: 0100) |
-| [0081](0081-subtitle-dividers-in-track-lists.md) | Disc subtitles are dividers in the track lists (Tag Editor first, then the import dialogs) | Accepted |
+| [0081](0081-subtitle-dividers-in-track-lists.md) | Disc subtitles are dividers in the track lists (Tag Editor first, then the import dialogs) | Accepted(in part: 0102) |
 | [0082](0082-in-your-library-box.md) | "In your library" box: other versions of the album's Discogs master (`/api/library/versions`) | Accepted |
 | [0083](0083-inspector-note-boxes-and-year-mismatch.md) | One style for the inspector's note boxes (types, symbols, buttons); a year mismatch Discogs/MusicBrainz stops the move | Accepted |
 | [0084](0084-locally-built-image-deployment.md) | Deploy a locally built amd64 image on the server (supersedes 0063) | Accepted |
 | [0086](0086-data-table-list-view.md) | A data table for the list view: no covers, alternating rows, resizable and sortable columns | Accepted (row shades and layout superseded by 0087) |
 | [0087](0087-table-contrast.md) | Higher-contrast, full-bleed table with a DR column and sticky header | Accepted (sticky position superseded by 0088) |
 | [0088](0088-header-stays-at-inset.md) | The table title row stays at its 24 px inset while scrolling | Accepted |
-| [0089](0089-assignment-track-order.md) | Assignment dialogs list files in the release track's disc order | Accepted |
+| [0089](0089-assignment-track-order.md) | Assignment dialogs list files in the release track's disc order | Accepted(in part: 0102) |
 | [0090](0090-artwork-types-and-cover-fields.md) | Embedded artwork by type, with four cover fields in the inspector | Accepted (album-level writes superseded in part by 0098) |
 | [0091](0091-artwork-sidecars-on-move.md) | Recreate cover files from embedded art when an album moves | Accepted (per-folder sets and rebuild: 0098) |
 | [0092](0092-cover-controls-and-full-size-view.md) | Compact cover field controls and a double-click full-size view | Accepted |
@@ -87,6 +87,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0099](0099-box-set-cover.md) | A box-set cover (front picture described "Box set") beside the disc covers | Accepted |
 | [0100](0100-credits-one-value-per-name.md) | Artists and credits one value per name (track ranges, MIXER, LYRICIST, ...); legacy tags removed; required tags never lost; `scripts/fix-credits.py` | Accepted |
 | [0101](0101-discogs-positions-with-media-labels.md) | Disc and track from Discogs positions with media labels (`SACD-1`, `CD-1`, `BD1-2`) | Accepted |
+| [0102](0102-one-release-track-on-several-discs.md) | One release track on several discs of the album (a Blu-ray with several mixes listed once on Discogs) | Accepted |
 
 ## History: superseded ADRs
 
@@ -138,7 +139,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | settings dialog, API keys, config overlay | 0009, 0044 (no lrclib key), 0045 (folders read-only) |
 | file names, `rename_files`, `clean()` | 0010 |
 | Move to ingest | 0011, 0091 |
-| Discogs search, track assignment, filled tags, re-assignment | 0053, 0089, 0100 (artists, credits, legacy tags), 0101 (disc and track from positions) |
+| Discogs search, track assignment, filled tags, re-assignment | 0053, 0089, 0100 (artists, credits, legacy tags), 0101 (disc and track from positions), 0102 (one track on several discs) |
 | MusicBrainz search, MusicBrainz tags | 0023, 0078 |
 | tag editor, override pencils, which tags are editable | 0014, 0097 (Album Format) |
 | play button, track edit dialog, lyrics editing | 0015, 0021 (artist field, lrclib search) |

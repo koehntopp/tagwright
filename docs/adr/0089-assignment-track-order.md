@@ -1,6 +1,6 @@
 # ADR 0089: Track order in the assignment dialogs
 
-- **Status**: Accepted
+- **Status**: Accepted (a release track on several discs: [0102](0102-one-release-track-on-several-discs.md))
 - **Date**: 2026-11-19
 - **Supersedes in part**: [0081](0081-subtitle-dividers-in-track-lists.md) (which requires neighbouring tracks to share a disc, but did not say how the rows are ordered)
 

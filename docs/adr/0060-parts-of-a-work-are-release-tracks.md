@@ -1,6 +1,6 @@
 # ADR 0060: The parts of a work or medley are release tracks too
 
-- **Status**: Accepted
+- **Status**: Accepted (a release track on several discs of the album: [0102](0102-one-release-track-on-several-discs.md))
 - **Date**: 2026-11-12
 - **Supersedes in part**: the tracklist bullet on medleys in [0053](0053-discogs-search-and-assignment-consolidated.md) (from [0046](0046-discogs-medleys-are-one-release-track.md)): "the sub-tracks are not listed ... a medley split into separate files stays a manual choice"
 

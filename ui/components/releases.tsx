@@ -51,15 +51,21 @@ const Busy = ({ text }: { text: string }) => (
 )
 
 /** Default numbering (same rule as the server): 1..n per disc in release order; f.d / f.t hold manual overrides.
- *  Sets f.ad / f.at on the files and returns how often each release track is used. */
+ *  A release track may go to one file per disc of the album (f.disc, the file's own disc); when one does, every
+ *  disc of the album is numbered on its own (ADR 0102). Sets f.ad / f.at on the files and returns how often each
+ *  release track is used, the release tracks used twice on one disc of the album, and the number of assigned files. */
 function numbering(rel: any, files: any[]) {
 	const sel = rel ? files.filter(f => f.rel !== null).sort((x, y) => x.rel - y.rel) : []
-	const seen: Record<number, number> = {}
-	const discs = rel ? [...new Set(sel.map(f => rel.tracks[f.rel].disc as number))].sort((x, y) => x - y) : []
-	sel.forEach(f => { const d = rel.tracks[f.rel].disc; seen[d] = (seen[d] || 0) + 1; f.ad = discs.indexOf(d) + 1; f.at = seen[d] })
-	const used: Record<number, number> = {}
-	files.forEach(f => { if (f.rel !== null) used[f.rel] = (used[f.rel] || 0) + 1 })
-	return { used, dup: Object.values(used).some(n => n > 1), n: Object.keys(used).length }
+	const used: Record<number, number> = {}, onDisc: Record<string, number> = {}
+	sel.forEach(f => { used[f.rel] = (used[f.rel] || 0) + 1; const k = `${f.rel}:${f.disc}`; onDisc[k] = (onDisc[k] || 0) + 1 })
+	const reused = Object.values(used).some(n => n > 1)
+	const group = (f: any) => `${reused ? f.disc : 0}:${rel.tracks[f.rel].disc}`
+	const order = (g: string) => g.split(':').map(Number)
+	const discs = [...new Set(sel.map(group))].sort((x, y) => order(x)[0] - order(y)[0] || order(x)[1] - order(y)[1])
+	const seen: Record<string, number> = {}
+	sel.forEach(f => { const g = group(f); seen[g] = (seen[g] || 0) + 1; f.ad = discs.indexOf(g) + 1; f.at = seen[g] })
+	const twice = new Set(sel.filter(f => onDisc[`${f.rel}:${f.disc}`] > 1).map(f => f.file as string))
+	return { used, twice, dup: twice.size > 0, n: sel.length }
 }
 
 /** Runs of the subtitle dividers (ADR 0081): neighbouring assigned files whose release tracks share a disc and a
@@ -72,10 +78,10 @@ function subtitleRuns(rel: any, files: any[], ovr: Record<string, Ovr>) {
 	let cur: Run | null = null, lastSub = ''
 	if (rel) files.forEach((f, i) => {
 		if (f.rel === null) return
-		const t = rel.tracks[f.rel], relSub: string = t.subtitle || '', o = ovr[f.file]
-		const discStart = !cur || t.disc !== cur.disc
+		const t = rel.tracks[f.rel], relSub: string = t.subtitle || '', o = ovr[f.file], disc: number = f.d ?? f.ad ?? t.disc
+		const discStart = !cur || disc !== cur.disc
 		if (!cur || discStart || ((relSub !== lastSub || o?.split) && !o?.merge)) {
-			cur = { start: i, key: f.file, disc: t.disc, relSub, inside: !discStart, idx: [], text: '', keep: false, was: '', differs: false }
+			cur = { start: i, key: f.file, disc, relSub, inside: !discStart, idx: [], text: '', keep: false, was: '', differs: false }
 			runs.push(cur)
 		}
 		cur.idx.push(i); lastSub = relSub
@@ -93,7 +99,7 @@ function subtitleRuns(rel: any, files: any[], ovr: Record<string, Ovr>) {
 }
 
 /** The file -> release track table of both dialogs (ADR 0013, 0078, 0081). */
-function AssignTable({ rel, files, used, upd, numbers, ovr, setOvr }: { rel: any; files: any[]; used: Record<number, number>; upd: (k: number, p: any) => void; numbers: boolean; ovr: Record<string, Ovr>; setOvr: (o: Record<string, Ovr>) => void }) {
+function AssignTable({ rel, files, twice, upd, numbers, ovr, setOvr }: { rel: any; files: any[]; twice: Set<string>; upd: (k: number, p: any) => void; numbers: boolean; ovr: Record<string, Ovr>; setOvr: (o: Record<string, Ovr>) => void }) {
 	const { runs, multi } = subtitleRuns(rel, files, ovr)
 	const [editing, setEditing] = useState<string | null>(null)
 	const runAt = (k: number) => runs.find(r => r.start === k)
@@ -135,7 +141,7 @@ function AssignTable({ rel, files, used, upd, numbers, ovr, setOvr }: { rel: any
 						<td>{f.rel !== null && <Input type="number" min={1} disabled={!numbers} className={`h-7 w-14 text-xs ${numbers ? '' : 'bg-slate-50 text-slate-400'}`} value={f.d ?? f.ad} onChange={e => upd(k, { d: e.target.value === '' ? null : +e.target.value })} />}</td>
 						<td>{f.rel !== null && <Input type="number" min={1} disabled={!numbers} className={`h-7 w-14 text-xs ${numbers ? '' : 'bg-slate-50 text-slate-400'}`} value={f.t ?? f.at} onChange={e => upd(k, { t: e.target.value === '' ? null : +e.target.value })} />}</td>
 						<td>
-							<select className={`h-8 w-full rounded-md border bg-white px-2 text-sm ${f.rel !== null && used[f.rel] > 1 ? 'border-rose-500' : ''}`} value={f.rel ?? ''} onChange={e => upd(k, { rel: e.target.value === '' ? null : +e.target.value, conf: 1, d: null, t: null, nt: undefined })}>
+							<select className={`h-8 w-full rounded-md border bg-white px-2 text-sm ${twice.has(f.file) ? 'border-rose-500' : ''}`} value={f.rel ?? ''} onChange={e => upd(k, { rel: e.target.value === '' ? null : +e.target.value, conf: 1, d: null, t: null, nt: undefined })}>
 								<option value="">Skip (leave as is)</option>
 								{rel.tracks.map((t: any) => <option key={t.i} value={t.i}>{t.part_of ? '\u00a0\u00a0\u21b3' : (t.position || t.i + 1)}  {t.title}{t.duration ? ` (${mmss(t.duration)})` : ''}{t.channels ? ` · ${channelLabel(t.channels)}` : ''}</option>)}
 							</select>
@@ -201,7 +207,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 		}
 		await Promise.all([next(), next(), next()])
 	}
-	const { used, dup, n } = numbering(rel, files)
+	const { used, twice, dup, n } = numbering(rel, files)
 	const sr = subtitleRuns(rel, files, ovr)
 	const upd = (k: number, p: any) => setFiles(files.map((f, i) => (i === k ? { ...f, ...p } : f)))
 	const apply = async () => {
@@ -212,7 +218,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 		} catch (e: any) { setErr(e.message); setBusy(false); setApplying(false) }
 	}
 	return (
-		<Shell open onClose={onClose} wide="sm:max-w-[64rem]" title="Assign tracks to a release" err={dup ? 'A release track is assigned to more than one file.' : err}
+		<Shell open onClose={onClose} wide="sm:max-w-[64rem]" title="Assign tracks to a release" err={dup ? 'A release track is assigned to more than one file of the same disc.' : err}
 			save={apply} saveLabel={applying ? 'Applying…' : rel ? `Apply (${n} of ${files.length})` : 'Apply'} saveDisabled={!rel || dup || n === 0 || busy} danger={applying}>
 			<form className="flex gap-2" onSubmit={search}>
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a Discogs release ID" />
@@ -225,7 +231,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 				{rel ? (
 					<>
 						<div className="mb-3 flex items-center gap-3 text-sm"><div className="min-w-0 flex-1"><span className="font-medium">{rel.artist} - {rel.title}</span> <span className="text-slate-500">{rel.year} · {rel.tracks.length} tracks on release · {files.length} files</span></div><TitlesCheck on={titles} set={setTitles} /></div>
-						<AssignTable rel={rel} files={files} used={used} upd={upd} numbers={titles} ovr={ovr} setOvr={setOvr} />
+						<AssignTable rel={rel} files={files} twice={twice} upd={upd} numbers={titles} ovr={ovr} setOvr={setOvr} />
 						<TitlesHint on={titles} />
 						<div className="mt-3 text-xs text-slate-500">Always written from Discogs: DISCOGS_RELEASE_ID, ALBUMARTIST, ALBUM, CATALOGNUMBER, ALBUM_FORMAT (each unless its _OVERRIDE tag is set), COMPOSER, PRODUCER, ENGINEER, the other credit tags and the DISCOGS_* tags.<br />Written only where a file has none: a cover, and ARTIST while “Import song titles” is off.</div>
 						<div className="mt-1 text-xs text-slate-500">Not in this album: {rel.tracks.filter((t: any) => !used[t.i] && !t.part_of && !rel.tracks.some((p: any) => p.part_of === t.title && used[p.i])).map((t: any) => t.title).join(', ') || 'none'}</div>
@@ -278,12 +284,12 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 		try { await post('/api/musicbrainz/apply', { path: a.path, id: rel.id, import_titles: titles, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at, title: f.nt, subtitle: sr.subOf[f.file] ?? null })) }); toast.success('MusicBrainz release applied'); setBusy(false); setApplying(false); onClose(); done(a.path) }
 		catch (e: any) { setErr(e.message); setBusy(false); setApplying(false) }
 	}
-	const { used, dup, n } = numbering(rel, files)
+	const { used, twice, dup, n } = numbering(rel, files)
 	const sr = subtitleRuns(rel, files, ovr)
 	const upd = (k: number, p: any) => setFiles(files.map((f, i) => (i === k ? { ...f, ...p } : f)))
 	const commas = (xs: any[]) => xs.map((x, i) => <span key={x.id}>{i ? ', ' : ''}<L kind="artist" id={x.id} text={x.name} /></span>)
 	return (
-		<Shell open onClose={onClose} wide="sm:max-w-[64rem]" title="Choose a MusicBrainz release" err={dup ? 'A release track is assigned to more than one file.' : err} save={apply} saveLabel={applying ? 'Applying…' : rel ? `Apply (${n} of ${files.length})` : 'Apply'} saveDisabled={!rel || dup || busy} danger={applying}>
+		<Shell open onClose={onClose} wide="sm:max-w-[64rem]" title="Choose a MusicBrainz release" err={dup ? 'A release track is assigned to more than one file of the same disc.' : err} save={apply} saveLabel={applying ? 'Applying…' : rel ? `Apply (${n} of ${files.length})` : 'Apply'} saveDisabled={!rel || dup || busy} danger={applying}>
 			<form className="flex gap-2" onSubmit={search}>
 				<Input className="flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Artist and album, or a MusicBrainz release ID" />
 				<Button size="sm" className="bg-slate-800 text-white hover:bg-slate-700" type="submit" disabled={busy}>{busy && <RefreshCw className="size-3.5 animate-spin" />}Search MusicBrainz</Button>
@@ -300,7 +306,7 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 							<tr className="border-b"><td className="py-1 text-slate-500">Release group (master)</td><td>{rel.group.id ? <><L kind="release-group" id={rel.group.id} text={rel.group.title || rel.group.id} /> <span className="text-xs text-slate-500">{[rel.group.type, rel.group.first].filter(Boolean).join(' · ')}</span></> : <span className="text-slate-500">none</span>}</td></tr>
 							<tr><td className="py-1 text-slate-500">Album artist</td><td>{rel.artists.length ? commas(rel.artists) : <span className="text-slate-500">none</span>}</td></tr>
 						</tbody></table>
-						<AssignTable rel={rel} files={files} used={used} upd={upd} numbers={titles} ovr={ovr} setOvr={setOvr} />
+						<AssignTable rel={rel} files={files} twice={twice} upd={upd} numbers={titles} ovr={ovr} setOvr={setOvr} />
 						<TitlesHint on={titles} />
 						<div className="mt-3 text-xs text-slate-500">Apply writes MUSICBRAINZ_ALBUMID, the release group and album artist IDs and links to every file, and MUSICBRAINZ_ARTISTID and its link to each assigned file. With “Import song titles” on, assigned files also get the release's TITLE, ARTIST, TRACKNUMBER, DISCNUMBER and DISCSUBTITLE and are renamed. BARCODE, ASIN, MUSICBRAINZ_ALBUM_RELEASECOUNTRY, MUSICBRAINZ_ALBUMSTATUS, MUSICBRAINZ_ALBUMTYPE and MUSICBRAINZ_ALBUM_DISAMBIGUATION are filled only where the file has none yet.</div>
 					</>
