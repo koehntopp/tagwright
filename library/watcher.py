@@ -19,6 +19,7 @@ from library.index import Index
 from library.planner import Item, Problem
 from library.scanner import Reader, read_tags, scan
 from library.template import Template, default, validate
+from pipeline.layout import album_root
 
 log = logging.getLogger(__name__)
 
@@ -71,6 +72,8 @@ class Library:
 			'unplaced': [],
 			'skipped': [],
 			'recent': deque(maxlen=100),
+			# album folders whose files moved, {'t', 'from', 'to'} absolute, newest first: the UI follows an open album
+			'moved': deque(maxlen=50),
 			'last_scan': 0.0,
 			'last_full': 0.0,
 			'next_wake': 0.0,
@@ -132,6 +135,7 @@ class Library:
 		with self._lock:
 			s = dict(self._state)
 			s['recent'] = list(s['recent'])
+			s['moved'] = list(s['moved'])
 		cfg = self._settings_of()
 		s.update(
 			root=str(self._root or ''),
@@ -255,6 +259,18 @@ class Library:
 		for old_dir in result.renamed_dirs:
 			index.delete_tree(old_dir)
 		index.forget_dirs(result.touched)
+		now = self._clock()
+		for old, new in sorted(
+			{
+				(
+					album_root(root / PurePosixPath(o).parent),
+					album_root(root / PurePosixPath(n).parent),
+				)
+				for o, n in result.done
+			}
+		):
+			with self._lock:
+				self._state['moved'].appendleft({'t': now, 'from': str(old), 'to': str(new)})
 		for text in result.actions:
 			self._note(text)
 		if result.sidecars:

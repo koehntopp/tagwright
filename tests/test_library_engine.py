@@ -303,6 +303,10 @@ class TestWatcher:
 		texts = [r['text'] for r in s['recent']]
 		assert 'moved 2 file(s) to Artist/Album_2020_CD' in texts
 		assert 'removed 1 empty folder(s)' in texts
+		# the UI follows an open album to its new folder by this record
+		assert [(m['from'], m['to']) for m in s['moved']] == [
+			(str(lib_root / 'dump'), str(lib_root / 'Artist' / 'Album_2020_CD'))
+		]
 
 	def test_a_file_that_keeps_changing_keeps_its_album_waiting(
 		self, make_flac: MakeFlac, lib_root: Path, tmp_path: Path

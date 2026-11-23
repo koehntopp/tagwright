@@ -87,14 +87,21 @@ export default function Page() {
 	}
 	// The watcher moved or removed files (a corrected artist name puts an album in another folder): the board must not
 	// keep the old card. It reloads, without the skeleton, when the library reports new activity (ADR 0067).
+	// When it moved the files of the open album (a new catalog number renames the folder), the selection follows the
+	// album to its new folder and an open Tag Editor reads the files again, so later edits find them.
 	const seenActivity = useRef<number | null>(null)
-	const activity = lib.st?.recent?.[0]?.t ?? null
+	const activity = lib.st ? (lib.st.recent?.[0]?.t ?? 0) : null  // 0: loaded, nothing happened yet
 	useEffect(() => {
-		if (activity === null) return
-		const first = seenActivity.current === null
+		if (activity === null || activity === seenActivity.current) return
+		const prev = seenActivity.current
 		seenActivity.current = activity
-		if (!first && areaRef.current === 'library') void load('', false, true).catch(() => {})
-	}, [activity, load])
+		if (prev === null) return
+		const mine = (lib.st?.moved ?? []).filter(m => m.t > prev && (m.from === selected || m.to === selected))
+		const to = mine.find(m => m.from === selected)?.to
+		if (to && to !== selected) setSelected(to)
+		if (mine.length) setKreload(n => n + 1)
+		if (areaRef.current === 'library') void load('', false, true).catch(() => {})
+	}, [activity, load, selected, lib.st?.moved])
 	const refreshOne = useCallback(async (path: string) => {
 		try {
 			const s = await api<Album>('/api/album?path=' + encodeURIComponent(path))

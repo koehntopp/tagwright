@@ -4,6 +4,10 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+### Fixed
+
+- When the library watcher moves the files of the album you have open (a new Discogs release or catalog number renames its folder), the inspector follows the album to its new folder and an open Tag Editor reads the files again. Before, later edits failed because the files were no longer where the editor expected them [0037].
+
 ## 0.6.0 (2026-11-23)
 
 ### Added

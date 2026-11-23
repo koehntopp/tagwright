@@ -76,6 +76,6 @@ export type LibraryStatus = {
 	phase: string; message: string; error: string; artists: number; albums: number; tracks: number
 	planned: { from: string; to: string }[]; waiting: number
 	unplaced: { path: string; reason: string }[]; skipped: { path: string; reason: string }[]
-	recent: { t: number; text: string }[]; last_scan: number; last_full: number
+	recent: { t: number; text: string }[]; moved?: { t: number; from: string; to: string }[]; last_scan: number; last_full: number
 	root: string; apply: boolean; cooldown: number; interval: number
 }
