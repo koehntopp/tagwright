@@ -48,7 +48,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0057](0057-tag-editor-tabs-and-other-tags.md) | Tag editor tabs: Discogs and MusicBrainz apart, and an Other tab with the remaining tags | Accepted |
 | [0058](0058-audio-files-through-one-seam.md) | Audio files are opened through one seam (`pipeline/audio.py`) | Accepted |
 | [0059](0059-mp3-support.md) | MP3 support: ID3 mapped to the Vorbis-style tag model, v2.4 written, mixed albums, own extensions | Accepted |
-| [0060](0060-parts-of-a-work-are-release-tracks.md) | The parts of a work or medley are release tracks too | Accepted (in part: 0102, 0109) |
+| [0060](0060-parts-of-a-work-are-release-tracks.md) | The parts of a work or medley are release tracks too | Accepted (in part: 0102, 0109, 0110) |
 | [0061](0061-renovate-for-dependency-updates.md) | Renovate for dependency updates | Accepted |
 | [0062](0062-license-gpl-3-or-later.md) | Licence: GPL-3.0-or-later (mutagen and Unidecode are GPL) | Accepted |
 | [0064](0064-logging-and-syslog.md) | Logging to standard output, and to syslog when SYSLOG_HOST is set | Accepted |
@@ -95,6 +95,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0107](0107-all-discs-shows-a-shared-front-instead-of-an-empty-box-cover.md) | All discs shows a shared front cover instead of an empty Box Cover | Accepted |
 | [0108](0108-release-track-dropdown-grouped-by-disc-and-subtitle.md) | The release-track dropdown is grouped by disc and subtitle | Accepted |
 | [0109](0109-proposal-keeps-album-discs-together-and-matches-medley-parts.md) | The proposal keeps each album disc in one release section and matches medley parts by their full title | Accepted |
+| [0110](0110-medley-parts-import-with-the-medley-title.md) | Medley parts are imported with the medley's title, "Medley (Part)" | Accepted |
 
 ## History: superseded ADRs
 

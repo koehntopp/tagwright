@@ -1,6 +1,6 @@
 # ADR 0060: The parts of a work or medley are release tracks too
 
-- **Status**: Accepted (a release track on several discs of the album: [0102](0102-one-release-track-on-several-discs.md); the proposal's single pass with full part titles: [0109](0109-proposal-keeps-album-discs-together-and-matches-medley-parts.md))
+- **Status**: Accepted (a release track on several discs of the album: [0102](0102-one-release-track-on-several-discs.md); the proposal's single pass with full part titles: [0109](0109-proposal-keeps-album-discs-together-and-matches-medley-parts.md); imported as "Medley (Part)": [0110](0110-medley-parts-import-with-the-medley-title.md))
 - **Date**: 2026-11-12
 - **Supersedes in part**: the tracklist bullet on medleys in [0053](0053-discogs-search-and-assignment-consolidated.md) (from [0046](0046-discogs-medleys-are-one-release-track.md)): "the sub-tracks are not listed ... a medley split into separate files stays a manual choice"
 

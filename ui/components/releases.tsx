@@ -50,6 +50,9 @@ const Busy = ({ text }: { text: string }) => (
 	</div>
 )
 
+/** The title a release track gives a file: a part of a medley as "Medley (Part)" (ADR 0110; server: import_title). */
+const importTitle = (t: any): string => (t.part_of ? `${t.part_of} (${t.title})` : t.title)
+
 /** The release's tracks in runs of the same disc and subtitle, each with a "Disc N · subtitle" label for the dropdown
  *  (ADR 0108); a release with one disc and no subtitles is one run without a label. */
 function trackGroups(rel: any): { key: string; label: string; tracks: any[] }[] {
@@ -145,7 +148,7 @@ function AssignTable({ rel, files, twice, upd, numbers, ovr, setOvr }: { rel: an
 							{numbers && f.rel !== null ? (
 								<>
 									<div className="flex items-center gap-2">
-										<Input className="h-7 border-sky-300 bg-sky-50 text-sm" aria-label="New title" title="New title from the release; editable" value={f.nt ?? rel.tracks[f.rel].title} onChange={e => upd(k, { nt: e.target.value })} />
+										<Input className="h-7 border-sky-300 bg-sky-50 text-sm" aria-label="New title" title="New title from the release; editable" value={f.nt ?? importTitle(rel.tracks[f.rel])} onChange={e => upd(k, { nt: e.target.value })} />
 										<ChannelBadge n={f.channels} />
 									</div>
 									<div className="mt-0.5 flex items-center text-xs text-slate-400"><span className="truncate">Was: {f.title}</span><CopyBtn text={f.title} title="Copy the old title" /></div>

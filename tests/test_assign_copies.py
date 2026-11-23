@@ -208,3 +208,18 @@ def test_mixes_listed_as_one_disc_follow_the_album_discs_and_take_medley_parts(
 		(2, 2),
 		(2, 3),
 	]
+	# ADR 0110: Import song titles gives a part "Medley (Part)"
+	monkeypatch.setitem(tagwright.raw_releases, '9', {'id': 9, 'title': 'Tales'})
+	monkeypatch.setattr(tagwright, 'fix_album', lambda path, cfg: fixtags.FixResult(2, 'X', 'V'))
+	res = client.post(
+		'/api/tracks/apply',
+		json={
+			'path': str(folder),
+			'release_id': '9',
+			'import_titles': True,
+			'assignments': [{'file': f['file'], 'rel': f['rel']} for f in r['files']],
+		},
+	)
+	assert res.status_code == 200, res.text
+	titles = sorted(FLAC(f)['TITLE'][0] for f in (folder / 'Disc 1').glob('*.flac'))
+	assert titles == ['Raven', 'Usher (Fall)', 'Usher (Prelude)']

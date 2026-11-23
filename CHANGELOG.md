@@ -12,6 +12,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Fixed
 
+- "Import song titles" gives a file of a medley's part the full title, "The Fall Of The House Of Usher (Prelude)", instead of just "Prelude" [0110].
 - The Discogs and MusicBrainz track proposal keeps each disc of your album in one part of the release: on a Blu-ray with two mixes listed as one disc, no file lands in the other mix any more, files of a medley's parts get those parts ("The Fall Of The House Of Usher (Prelude)" → Prelude) instead of the whole medley, and the rows and default numbers follow your discs (Disc 1 1-11, Disc 2 1-11) instead of running 1-22 on one disc [0109].
 - The front cover's "…" menu (Upload, Paste, Search, Remove) opens to the right, so it is no longer cut off at the left edge of the inspector.
 

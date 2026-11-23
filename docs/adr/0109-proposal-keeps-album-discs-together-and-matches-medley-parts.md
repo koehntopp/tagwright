@@ -24,4 +24,4 @@ The Alan Parsons Project, *Tales Of Mystery And Imagination* (Blu-ray, Discogs 9
 
 - The example is proposed completely: Disc 1 to the stereo mix (8-14 with the five parts of 13), Disc 2 to the 5.1 mix (1-7 with the parts of 6), listed and numbered Disc 1 1-11, Disc 2 1-11.
 - On a normal multi-disc album the home section of each album disc is its release disc, so the second run only reinforces the first.
-- Import song titles writes a part's own title ("Prelude"), as before; the editable title field keeps the file's title when wanted.
+- Import song titles writes a part's own title ("Prelude"), as before; the editable title field keeps the file's title when wanted. (Changed by [0110](0110-medley-parts-import-with-the-medley-title.md): parts are imported as "Medley (Part)".)

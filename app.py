@@ -1961,6 +1961,11 @@ def tracks_propose(body: dict) -> dict:
 	}
 
 
+def import_title(t: dict) -> str:
+	"""The title a release track gives a file: a part of a medley as "Medley (Part)" (ADR 0110)."""
+	return f'{t["part_of"]} ({t["title"]})' if t.get('part_of') else t['title']
+
+
 def assignment_titles(asg: list[dict]) -> dict[str, str]:
 	"""The titles the owner typed in the dialog (file -> title); a file without one gets the release's title."""
 	return {a['file']: t.strip() for a in asg if isinstance(t := a.get('title'), str) and t.strip()}
@@ -2140,21 +2145,21 @@ def tracks_apply(body: dict) -> dict:
 		if t['position']:
 			a['TRACK_NUMBER_TEXT'] = [t['position']]
 		if with_titles:
-			a['TITLE'] = [titles.get(fn) or t['title']]
+			a['TITLE'] = [titles.get(fn) or import_title(t)]
 			a['TRACKNUMBER'] = [str(n)]
 			a['DISCNUMBER'] = [str(d)]
 			a['TRACKTOTAL'] = a['TOTALTRACKS'] = [str(per_disc[d])]
 			a['DISCTOTAL'] = a['TOTALDISCS'] = [str(len(per_disc))]
 			set_subtitle(a, items.get(fn), t)
 		else:
-			for key in fill_numbers(a, t['title'], d, n, per_disc):
+			for key in fill_numbers(a, import_title(t), d, n, per_disc):
 				filled[key] = filled.get(key, 0) + 1
 		if lost := lost_required(was, upper_tags(a)):  # never take a required tag away (ADR 0100)
 			log.append(f'{fn}: not saved, it would lose {", ".join(lost)}')
 			continue
 		a.save()
 		log.append(
-			f'{fn}: {d}-{n:02d} {titles.get(fn) or t["title"]}'
+			f'{fn}: {d}-{n:02d} {titles.get(fn) or import_title(t)}'
 			if with_titles
 			else f'{fn}: album data only'
 		)
@@ -2569,7 +2574,7 @@ def musicbrainz_apply(body: dict) -> dict:
 			match = by_title.get(norm_title(tag(a.tags, 'TITLE')), [])
 		if assigned and match and with_titles:
 			d, n = final[fn]
-			a['TITLE'] = [titles.get(fn) or match[0]['title']]
+			a['TITLE'] = [titles.get(fn) or import_title(match[0])]
 			if match[0]['artist']:
 				a['ARTIST'] = [match[0]['artist']]  # the artist goes with the title (ADR 0080)
 			set_subtitle(a, items.get(fn), match[0])
@@ -2580,7 +2585,7 @@ def musicbrainz_apply(body: dict) -> dict:
 			renumbered += 1
 		elif assigned and match and fn in chosen:
 			d, n = final[fn]
-			for k in fill_numbers(a, match[0]['title'], d, n, per_disc):
+			for k in fill_numbers(a, import_title(match[0]), d, n, per_disc):
 				filled[k] = filled.get(k, 0) + 1
 		if len(match) == 1 and match[0]['artists']:
 			for k in [k for k in a.tags.keys() if k.upper() in MB_TRACK_KEYS]:
