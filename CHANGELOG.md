@@ -4,6 +4,8 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+## 0.5.0 (2026-11-23)
+
 ### Changed
 
 - Assigning a Discogs release writes artists and credits one name per value, as Roon reads them: ARTIST, COMPOSER, LYRICIST, ARRANGER, CONDUCTOR, REMIXER, MIXER, PRODUCER, ENGINEER, and PERSONNEL ("Name - Role", mastering included) for everything else. Credits Discogs limits to some tracks no longer land on every track. Old credit lists (PERFORMERYR, INVOLVEDPEOPLE…) and leftover tags from earlier taggers and rippers are removed. A track's artists show as "A; B" in the Tag Editor [0100].
@@ -15,7 +17,6 @@ What changed for people who use Tagwright, newest first. Every functional change
 - The Tag Editor's Album tab shows the album's current format in the Album Format field (it was empty unless an override was set). Type over it to change the format; no override tag is written, and an empty field means CD. Assigning a Discogs release still sets the release's format [0097].
 - The card/list buttons sit in a pill, and together with Rescan they moved between the Staging / Library switch and the search [0095].
 - Every text field now shows an x while it has text and you point at it or type in it; clicking it empties the field (number and read-only fields and the lyrics editor excepted). The search field no longer shows the ⌘K hint; ⌘K still jumps to it [0094].
-
 - List view rows are shorter, so more albums fit on screen without scrolling [0087].
 
 ### Fixed
