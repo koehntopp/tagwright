@@ -50,6 +50,19 @@ const Busy = ({ text }: { text: string }) => (
 	</div>
 )
 
+/** The release's tracks in runs of the same disc and subtitle, each with a "Disc N · subtitle" label for the dropdown
+ *  (ADR 0108); a release with one disc and no subtitles is one run without a label. */
+function trackGroups(rel: any): { key: string; label: string; tracks: any[] }[] {
+	const out: { key: string; label: string; tracks: any[] }[] = []
+	for (const t of rel.tracks) {
+		const run = `${t.disc}\u0000${t.subtitle || ''}`
+		if (out.at(-1)?.key.split('\u0001')[1] !== run) out.push({ key: `${out.length}\u0001${run}`, label: [`Disc ${t.disc}`, t.subtitle].filter(Boolean).join(' · '), tracks: [] })
+		out.at(-1)!.tracks.push(t)
+	}
+	const plain = new Set(rel.tracks.map((t: any) => t.disc)).size < 2 && !rel.tracks.some((t: any) => t.subtitle)
+	return plain ? [{ key: 'all', label: '', tracks: rel.tracks }] : out
+}
+
 /** Default numbering (same rule as the server): 1..n per disc in release order; f.d / f.t hold manual overrides.
  *  A release track may go to one file per disc of the album (f.disc, the file's own disc); when one does, every
  *  disc of the album is numbered on its own (ADR 0102). Sets f.ad / f.at on the files and returns how often each
@@ -143,7 +156,10 @@ function AssignTable({ rel, files, twice, upd, numbers, ovr, setOvr }: { rel: an
 						<td>
 							<select className={`h-8 w-full rounded-md border bg-white px-2 text-sm ${twice.has(f.file) ? 'border-rose-500' : ''}`} value={f.rel ?? ''} onChange={e => upd(k, { rel: e.target.value === '' ? null : +e.target.value, conf: 1, d: null, t: null, nt: undefined })}>
 								<option value="">Skip (leave as is)</option>
-								{rel.tracks.map((t: any) => <option key={t.i} value={t.i}>{t.part_of ? '\u00a0\u00a0\u21b3' : (t.position || t.i + 1)}  {t.title}{t.duration ? ` (${mmss(t.duration)})` : ''}{t.channels ? ` · ${channelLabel(t.channels)}` : ''}</option>)}
+								{trackGroups(rel).map(g => {
+									const opts = g.tracks.map((t: any) => <option key={t.i} value={t.i}>{t.part_of ? '\u00a0\u00a0\u21b3' : (t.position || t.i + 1)}  {t.title}{t.duration ? ` (${mmss(t.duration)})` : ''}{t.channels ? ` · ${channelLabel(t.channels)}` : ''}</option>)
+									return g.label ? <optgroup key={g.key} label={g.label}>{opts}</optgroup> : opts
+								})}
 							</select>
 						</td>
 						<td className="pl-2 pr-3 text-right">{f.rel === null ? <Badge variant="secondary">skip</Badge> : f.conf >= 0.6 ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">match</Badge> : <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">check</Badge>}</td>

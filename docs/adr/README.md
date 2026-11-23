@@ -93,6 +93,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0105](0105-artwork-folder-holds-the-front-cover-too.md) | `Artwork/00 front.jpg` copies folder.jpg; cover files follow every artwork change | Accepted |
 | [0106](0106-clearer-subtitle-dividers-and-current-release-id.md) | Import-dialog dividers as "Release:" / "Current subtitle:"; the current release ID under the search field | Accepted |
 | [0107](0107-all-discs-shows-a-shared-front-instead-of-an-empty-box-cover.md) | All discs shows a shared front cover instead of an empty Box Cover | Accepted |
+| [0108](0108-release-track-dropdown-grouped-by-disc-and-subtitle.md) | The release-track dropdown is grouped by disc and subtitle | Accepted |
 
 ## History: superseded ADRs
 
