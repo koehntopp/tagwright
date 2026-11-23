@@ -183,6 +183,15 @@ function AssignTable({ rel, files, twice, upd, numbers, ovr, setOvr }: { rel: an
 
 /** "Import song titles": whether the release's titles and numbering replace the files'; remembered from the last apply.
  *  The checkbox sits in the release line (top right), the explanation below the table. */
+/** Rows in the order of the Disc and Track numbers as they stand now (ADR 0111): the dialog does not reorder by itself
+ *  while the owner edits (0089); skipped files stay last in their order. */
+function byNumbers(files: any[]): any[] {
+	const key = (f: any) => (f.rel === null ? [1, 0, 0] : [0, num(f.d) ?? f.ad ?? 0, num(f.t) ?? f.at ?? 0])
+	return files.map((f, i) => ({ f, i, k: key(f) })).sort((x, y) => x.k[0] - y.k[0] || x.k[1] - y.k[1] || x.k[2] - y.k[2] || x.i - y.i).map(x => x.f)
+}
+function SortButton({ onClick }: { onClick: () => void }) {
+	return <Button type="button" size="xs" variant="outline" className="shrink-0" onClick={onClick} title="Put the rows in the order of their Disc and Track numbers">Sort by disc and track</Button>
+}
 function TitlesCheck({ on, set }: { on: boolean; set: (v: boolean) => void }) {
 	return <label className="flex shrink-0 items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={on} onChange={e => set(e.target.checked)} />Import song titles</label>
 }
@@ -255,7 +264,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>
 				{rel ? (
 					<>
-						<div className="mb-3 flex items-center gap-3 text-sm"><div className="min-w-0 flex-1"><span className="font-medium">{rel.artist} - {rel.title}</span> <span className="text-slate-500">{rel.year} · {rel.tracks.length} tracks on release · {files.length} files</span></div><TitlesCheck on={titles} set={setTitles} /></div>
+						<div className="mb-3 flex items-center gap-3 text-sm"><div className="min-w-0 flex-1"><span className="font-medium">{rel.artist} - {rel.title}</span> <span className="text-slate-500">{rel.year} · {rel.tracks.length} tracks on release · {files.length} files</span></div><SortButton onClick={() => setFiles(byNumbers(files))} /><TitlesCheck on={titles} set={setTitles} /></div>
 						<AssignTable rel={rel} files={files} twice={twice} upd={upd} numbers={titles} ovr={ovr} setOvr={setOvr} />
 						<TitlesHint on={titles} />
 						<div className="mt-3 text-xs text-slate-500">Always written from Discogs: DISCOGS_RELEASE_ID, ALBUMARTIST, ALBUM, CATALOGNUMBER, ALBUM_FORMAT (each unless its _OVERRIDE tag is set), COMPOSER, PRODUCER, ENGINEER, the other credit tags and the DISCOGS_* tags.<br />Written only where a file has none: a cover, and ARTIST while “Import song titles” is off.</div>
@@ -327,7 +336,7 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 			<div className={`mt-4 max-h-[60vh] overflow-y-auto ${busy ? 'pointer-events-none opacity-50' : ''}`}>
 				{rel ? (
 					<>
-						<div className="mb-3 flex items-center gap-3 text-sm"><div className="min-w-0 flex-1"><span className="font-medium">{rel.artist} - {rel.name}</span> <span className="text-slate-500">{[rel.year, rel.country, rel.format, rel.label, rel.catno].filter(Boolean).join(' · ')} · {rel.tracks.length} tracks on release · {files.length} files</span></div><TitlesCheck on={titles} set={setTitles} /></div>
+						<div className="mb-3 flex items-center gap-3 text-sm"><div className="min-w-0 flex-1"><span className="font-medium">{rel.artist} - {rel.name}</span> <span className="text-slate-500">{[rel.year, rel.country, rel.format, rel.label, rel.catno].filter(Boolean).join(' · ')} · {rel.tracks.length} tracks on release · {files.length} files</span></div><SortButton onClick={() => setFiles(byNumbers(files))} /><TitlesCheck on={titles} set={setTitles} /></div>
 						<table className="mb-3 w-full text-sm"><tbody>
 							<tr className="border-b"><td className="w-40 py-1 text-slate-500">Release</td><td className="font-mono text-xs"><L kind="release" id={rel.id} text={rel.id} /></td></tr>
 							<tr className="border-b"><td className="py-1 text-slate-500">Release group (master)</td><td>{rel.group.id ? <><L kind="release-group" id={rel.group.id} text={rel.group.title || rel.group.id} /> <span className="text-xs text-slate-500">{[rel.group.type, rel.group.first].filter(Boolean).join(' · ')}</span></> : <span className="text-slate-500">none</span>}</td></tr>

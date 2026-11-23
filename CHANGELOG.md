@@ -6,6 +6,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
+- The Discogs and MusicBrainz dialogs have a "Sort by disc and track" button: after correcting numbers, it puts the rows (and the subtitle dividers) in that order. Rows still never move while you edit [0111].
 - The "Release track" dropdown of the Discogs and MusicBrainz dialogs groups the tracks under "Disc N · subtitle" headers, so the mixes of a release with the same songs twice can be told apart [0108].
 - A multi-disc album whose discs all have the same front cover shows that Front Cover under "All discs" instead of an empty Box Cover. A real box set keeps the Box Cover field; while it is empty it shows Disc 1's cover greyed, with a note that folder.jpg uses it [0107].
 - The subtitle dividers in the Discogs and MusicBrainz dialogs are easier to read: "Release:" with the release's subtitle and a "differs" chip, then "Current subtitle:" with what the files have now; the one that will be written stands out, the other is greyed and struck through. Under the search field the album's current Discogs or MusicBrainz ID is shown, with a copy icon [0106].

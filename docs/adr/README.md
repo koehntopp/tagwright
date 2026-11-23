@@ -74,7 +74,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0086](0086-data-table-list-view.md) | A data table for the list view: no covers, alternating rows, resizable and sortable columns | Accepted (row shades and layout superseded by 0087) |
 | [0087](0087-table-contrast.md) | Higher-contrast, full-bleed table with a DR column and sticky header | Accepted (sticky position superseded by 0088) |
 | [0088](0088-header-stays-at-inset.md) | The table title row stays at its 24 px inset while scrolling | Accepted |
-| [0089](0089-assignment-track-order.md) | Assignment dialogs list files in the release track's disc order | Accepted(in part: 0102) |
+| [0089](0089-assignment-track-order.md) | Assignment dialogs list files in the release track's disc order | Accepted(in part: 0102; 0111) |
 | [0090](0090-artwork-types-and-cover-fields.md) | Embedded artwork by type, with four cover fields in the inspector | Accepted (album-level writes superseded in part by 0098) |
 | [0091](0091-artwork-sidecars-on-move.md) | Recreate cover files from embedded art when an album moves | Accepted (per-folder sets and rebuild: 0098; albums already in the library: 0104; front copy: 0105) |
 | [0092](0092-cover-controls-and-full-size-view.md) | Compact cover field controls and a double-click full-size view | Accepted |
@@ -96,6 +96,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0108](0108-release-track-dropdown-grouped-by-disc-and-subtitle.md) | The release-track dropdown is grouped by disc and subtitle | Accepted |
 | [0109](0109-proposal-keeps-album-discs-together-and-matches-medley-parts.md) | The proposal keeps each album disc in one release section and matches medley parts by their full title | Accepted |
 | [0110](0110-medley-parts-import-with-the-medley-title.md) | Medley parts are imported with the medley's title, "Medley (Part)" | Accepted |
+| [0111](0111-sort-the-assignment-rows-by-their-numbers.md) | A button sorts the assignment rows by their disc and track numbers | Accepted |
 
 ## History: superseded ADRs
 
