@@ -53,6 +53,7 @@ from pipeline.fixtags import DISCOGS_TAG_PREFIXES, artist_names, fix_album
 from pipeline.http import ApiError
 from pipeline.layout import album_dirs, flacs, is_disc_dir
 from pipeline.naming import bliss_album, rename_files
+from pipeline.positions import DISC_HEADING, Positions
 from pipeline.run import only_steps, run_album
 from pipeline.tagio import Tags, channels_from_title, tag, upper_tags
 from pipeline.tools import Context, Stopped
@@ -1644,7 +1645,7 @@ def release_tracks(rid: str) -> dict:
 		return releases[rid]
 	r = discogs(f'/releases/{rid}')
 	album_artist = artist_names(r.get('artists', []))
-	tracks, seq, head = [], 0, 0
+	tracks, seq, positions = [], 0, Positions()
 	# every heading starts a run of tracks with that subtitle (ADR 0081); a new disc without a heading has none
 	current, heading_seen, last_disc = '', False, None
 
@@ -1668,10 +1669,9 @@ def release_tracks(rid: str) -> dict:
 
 	for t in r.get('tracklist', []):
 		if t.get('type_') == 'heading':
-			if h := re.match(r'^(?:CD|DVD|Disc|Disk)\s*(\d+)\b', t.get('title', ''), re.I):
-				head = int(h[1])  # plain positions 1, 2, ... restart under each 'Disc N' heading
+			positions.heading(t.get('title', ''))
 			current = re.sub(
-				r'^(?:(?:CD|DVD|Disc|Disk)\s*\d+\b\s*[-:\u2013.]?\s*)?',
+				rf'^(?:{DISC_HEADING}\s*[-:\u2013.]?\s*)?',
 				'',
 				t.get('title', ''),
 				flags=re.I,
@@ -1687,11 +1687,8 @@ def release_tracks(rid: str) -> dict:
 			pos = t.get('position', '')
 		else:
 			continue
-		m = re.match(r'^(?:CD|DVD)?(\d+)[-.](\d+)$', pos, re.I)
-		if not m and head and pos.isdigit():
-			m = (None, head, pos)
 		seq += 1
-		disc, number = (int(m[1]) if m else 1), (int(m[2]) if m else seq)
+		disc, number = positions.place(pos) or (1, seq)
 		if last_disc is not None and disc != last_disc and not heading_seen:
 			current = ''
 		heading_seen, last_disc = False, disc

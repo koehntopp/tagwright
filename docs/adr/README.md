@@ -41,7 +41,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0044](0044-lrclib-application-id-no-key-setting.md) | lrclib.net is reached with the application ID; no key setting | Accepted |
 | [0045](0045-folders-from-the-environment-only.md) | Staging and library folders come from the environment only; Settings shows their host paths | Accepted |
 | [0051](0051-run-a-single-pipeline-step.md) | A double click on a pipeline step runs only that step | Accepted |
-| [0053](0053-discogs-search-and-assignment-consolidated.md) | Discogs release search and track assignment (consolidated: 0013, 0043, 0046, 0047, 0048, 0052) | Accepted (artist and credit rows: 0100) |
+| [0053](0053-discogs-search-and-assignment-consolidated.md) | Discogs release search and track assignment (consolidated: 0013, 0043, 0046, 0047, 0048, 0052) | Accepted (artist and credit rows: 0100; positions: 0101) |
 | [0054](0054-album-status-and-steps-consolidated.md) | Album status, pipeline steps and issue lines (consolidated: 0006, 0039, 0049, 0050) | Accepted |
 | [0055](0055-no-default-paths.md) | No default paths: staging, library and data folders must be set | Accepted |
 | [0056](0056-cover-controls-in-one-menu.md) | Cover controls in one menu, with the size warning on the cover | Accepted |
@@ -86,6 +86,7 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0098](0098-artwork-per-disc.md) | Artwork per disc; cover files per disc folder and rebuilt when library art changes | Accepted (album-folder cover: 0099) |
 | [0099](0099-box-set-cover.md) | A box-set cover (front picture described "Box set") beside the disc covers | Accepted |
 | [0100](0100-credits-one-value-per-name.md) | Artists and credits one value per name (track ranges, MIXER, LYRICIST, ...); legacy tags removed; required tags never lost; `scripts/fix-credits.py` | Accepted |
+| [0101](0101-discogs-positions-with-media-labels.md) | Disc and track from Discogs positions with media labels (`SACD-1`, `CD-1`, `BD1-2`) | Accepted |
 
 ## History: superseded ADRs
 
@@ -137,7 +138,7 @@ Kept for the reasoning behind earlier decisions. Do not follow them; the ADR nam
 | settings dialog, API keys, config overlay | 0009, 0044 (no lrclib key), 0045 (folders read-only) |
 | file names, `rename_files`, `clean()` | 0010 |
 | Move to ingest | 0011, 0091 |
-| Discogs search, track assignment, filled tags, re-assignment | 0053, 0089, 0100 (artists, credits, legacy tags) |
+| Discogs search, track assignment, filled tags, re-assignment | 0053, 0089, 0100 (artists, credits, legacy tags), 0101 (disc and track from positions) |
 | MusicBrainz search, MusicBrainz tags | 0023, 0078 |
 | tag editor, override pencils, which tags are editable | 0014, 0097 (Album Format) |
 | play button, track edit dialog, lyrics editing | 0015, 0021 (artist field, lrclib search) |
