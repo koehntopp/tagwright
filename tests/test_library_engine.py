@@ -526,6 +526,8 @@ class TestEmptyFolders:
 		for d in ('Disc 1', 'Disc 2'):
 			(old / d).mkdir(parents=True)
 		(old / 'Disc 2' / '.DS_Store').write_bytes(b'x')
+		(old / 'Disc 1' / '@eaDir').mkdir()  # Synology metadata of files that are gone
+		(old / 'Disc 1' / '@eaDir' / '01_01_Song.flac@SynoEAStream').write_bytes(b'x')
 		song(make_flac, lib_root / 'Artist' / 'Album' / 'Disc 1' / '01_01_Song_1.flac')
 		(lib_root / 'Artist' / 'Album' / 'Scans').mkdir()
 		(lib_root / 'Artist' / 'Album' / 'Scans' / 'page.jpg').write_bytes(b'x')

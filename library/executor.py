@@ -7,7 +7,8 @@
 - when all FLACs of a folder go to one place, the other files in it (cover.jpg, .m3u, .cue, ...) go along;
 - a folder that is empty afterwards is removed; it is never the library root, and nothing else is deleted
   except macOS and Windows litter (`.DS_Store`, `._*`, `Thumbs.db`) in a folder that would be empty otherwise;
-- `remove_empty_dirs` (every full pass, ADR 0103) removes folders that hold nothing but litter and such folders.
+- `remove_empty_dirs` (every full pass, ADR 0103) removes folders that hold nothing but litter and such folders;
+  Synology's `@eaDir` metadata folders count as litter.
 """
 
 import logging
@@ -25,10 +26,21 @@ from pipeline.layout import album_root
 log = logging.getLogger(__name__)
 
 LITTER = ('.DS_Store', 'Thumbs.db', 'desktop.ini')
+# Synology keeps extended attributes and thumbnails of the files of a folder in its @eaDir subfolder, invisible over
+# SMB; it says nothing about the folder holding anything (ADR 0103)
+LITTER_DIRS = ('@eaDir',)
 
 
 def is_litter(name: str) -> bool:
-	return name in LITTER or name.startswith('._')
+	return name in LITTER or name in LITTER_DIRS or name.startswith('._')
+
+
+def remove_litter(path: Path) -> None:
+	"""Delete one litter entry: a file, or a litter folder with everything in it."""
+	if path.is_dir() and not path.is_symlink():
+		shutil.rmtree(path)
+	else:
+		path.unlink()
 
 
 def remove_empty_dirs(root: Path, should_stop: Callable[[], bool] = lambda: False) -> list[str]:
@@ -51,7 +63,7 @@ def remove_empty_dirs(root: Path, should_stop: Callable[[], bool] = lambda: Fals
 			continue
 		try:
 			for n in names:
-				(path / n).unlink()
+				remove_litter(path / n)
 			path.rmdir()
 		except OSError as e:
 			log.info('Folder %s stays: %s', path, e)
@@ -194,7 +206,7 @@ class Executor:
 		except OSError:
 			return
 		if any(e.is_file() and is_music(e.name) for e in entries) or any(
-			e.is_dir(follow_symlinks=False) for e in entries
+			e.is_dir(follow_symlinks=False) and not is_litter(e.name) for e in entries
 		):
 			return  # FLACs stay behind, or there are subfolders: the folder is not just emptied
 		target = self.root / new_dirs.pop()
@@ -223,7 +235,7 @@ class Executor:
 				return
 			try:
 				for n in names:
-					(path / n).unlink()
+					remove_litter(path / n)
 				path.rmdir()
 			except OSError as e:
 				log.info('Folder %s stays: %s', path, e)

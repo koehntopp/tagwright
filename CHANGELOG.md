@@ -6,7 +6,7 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ### Changed
 
-- The library watcher removes empty folders it finds, such as the empty disc folders an album leaves behind when it moves to a new folder. It does this on every full pass (after a restart, daily, or at once with Re-analyze in the Library dialog); a folder with any file below it, music or not, stays [0103].
+- The library watcher removes empty folders it finds, such as the empty disc folders an album leaves behind when it moves to a new folder. It does this on every full pass (after a restart, daily, or at once with Re-analyze in the Library dialog); a folder with any file below it, music or not, stays. Synology's hidden `@eaDir` folders no longer keep a folder from counting as empty, also right after a move [0103].
 
 ### Fixed
 
