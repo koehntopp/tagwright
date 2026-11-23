@@ -50,6 +50,9 @@ const Busy = ({ text }: { text: string }) => (
 	</div>
 )
 
+/** A typed Disc or Track field: digits, kept as typed; empty (or unset) means the default number. */
+const num = (v: string | number | null | undefined): number | undefined => (v === null || v === undefined || v === '' ? undefined : Number(v))
+
 /** The title a release track gives a file: a part of a medley as "Medley (Part)" (ADR 0110; server: import_title). */
 const importTitle = (t: any): string => (t.part_of ? `${t.part_of} (${t.title})` : t.title)
 
@@ -97,7 +100,7 @@ function subtitleRuns(rel: any, files: any[], ovr: Record<string, Ovr>) {
 	let cur: Run | null = null, lastSub = ''
 	if (rel) files.forEach((f, i) => {
 		if (f.rel === null) return
-		const t = rel.tracks[f.rel], relSub: string = t.subtitle || '', o = ovr[f.file], disc: number = f.d ?? f.ad ?? t.disc
+		const t = rel.tracks[f.rel], relSub: string = t.subtitle || '', o = ovr[f.file], disc: number = num(f.d) ?? f.ad ?? t.disc
 		const discStart = !cur || disc !== cur.disc
 		if (!cur || discStart || ((relSub !== lastSub || o?.split) && !o?.merge)) {
 			cur = { start: i, key: f.file, disc, relSub, inside: !discStart, idx: [], text: '', keep: false, was: '', differs: false }
@@ -157,8 +160,8 @@ function AssignTable({ rel, files, twice, upd, numbers, ovr, setOvr }: { rel: an
 								<div className="flex items-center gap-2"><span className="max-w-xs truncate text-slate-400" title={f.file}>{f.title}</span><ChannelBadge n={f.channels} /></div>
 							)}
 						</td>
-						<td>{f.rel !== null && <Input type="number" min={1} disabled={!numbers} className={`h-7 w-14 text-xs ${numbers ? '' : 'bg-slate-50 text-slate-400'}`} value={f.d ?? f.ad} onChange={e => upd(k, { d: e.target.value === '' ? null : +e.target.value })} />}</td>
-						<td>{f.rel !== null && <Input type="number" min={1} disabled={!numbers} className={`h-7 w-14 text-xs ${numbers ? '' : 'bg-slate-50 text-slate-400'}`} value={f.t ?? f.at} onChange={e => upd(k, { t: e.target.value === '' ? null : +e.target.value })} />}</td>
+						<td>{f.rel !== null && <Input type="text" inputMode="numeric" pattern="[0-9]*" disabled={!numbers} aria-label="Disc" className={`h-7 w-14 text-xs ${numbers ? '' : 'bg-slate-50 text-slate-400'}`} value={f.d ?? f.ad} onFocus={e => e.target.select()} onChange={e => upd(k, { d: e.target.value.replace(/\D/g, '') })} />}</td>
+						<td>{f.rel !== null && <Input type="text" inputMode="numeric" pattern="[0-9]*" disabled={!numbers} aria-label="Track" className={`h-7 w-14 text-xs ${numbers ? '' : 'bg-slate-50 text-slate-400'}`} value={f.t ?? f.at} onFocus={e => e.target.select()} onChange={e => upd(k, { t: e.target.value.replace(/\D/g, '') })} />}</td>
 						<td>
 							<select className={`h-8 w-full rounded-md border bg-white px-2 text-sm ${twice.has(f.file) ? 'border-rose-500' : ''}`} value={f.rel ?? ''} onChange={e => upd(k, { rel: e.target.value === '' ? null : +e.target.value, conf: 1, d: null, t: null, nt: undefined })}>
 								<option value="">Skip (leave as is)</option>
@@ -235,7 +238,7 @@ export function DiscogsDialog({ a, onClose, done }: { a: Album | null; onClose: 
 	const apply = async () => {
 		setBusy(true); setApplying(true); setWhat('Assigning the tracks…')
 		try {
-			await post('/api/tracks/apply', { path: a.path, release_id: rid, import_titles: titles, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at, title: f.nt, subtitle: sr.subOf[f.file] ?? null })) })
+			await post('/api/tracks/apply', { path: a.path, release_id: rid, import_titles: titles, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: num(f.d) ?? f.ad, track: num(f.t) ?? f.at, title: f.nt, subtitle: sr.subOf[f.file] ?? null })) })
 			toast.success('Tracks assigned'); setBusy(false); setApplying(false); onClose(); done(a.path)
 		} catch (e: any) { setErr(e.message); setBusy(false); setApplying(false) }
 	}
@@ -305,7 +308,7 @@ export function MbDialog({ a, onClose, done }: { a: Album | null; onClose: () =>
 	}
 	const apply = async () => {
 		setBusy(true); setApplying(true); setWhat('Writing the MusicBrainz tags…')
-		try { await post('/api/musicbrainz/apply', { path: a.path, id: rel.id, import_titles: titles, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: f.d ?? f.ad, track: f.t ?? f.at, title: f.nt, subtitle: sr.subOf[f.file] ?? null })) }); toast.success('MusicBrainz release applied'); setBusy(false); setApplying(false); onClose(); done(a.path) }
+		try { await post('/api/musicbrainz/apply', { path: a.path, id: rel.id, import_titles: titles, assignments: files.map(f => ({ file: f.file, rel: f.rel, disc: num(f.d) ?? f.ad, track: num(f.t) ?? f.at, title: f.nt, subtitle: sr.subOf[f.file] ?? null })) }); toast.success('MusicBrainz release applied'); setBusy(false); setApplying(false); onClose(); done(a.path) }
 		catch (e: any) { setErr(e.message); setBusy(false); setApplying(false) }
 	}
 	const { used, twice, dup, n } = numbering(rel, files)
