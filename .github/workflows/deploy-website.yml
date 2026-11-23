@@ -1,0 +1,78 @@
+# Deploys this repository's Tagwright subpage into the shared Twig Technology site over SFTP.
+# Repository secrets: FTP_USERNAME, FTP_PASSWORD (owner adds these; the job skips until set).
+# Repository variables: FTP_SERVER, FTP_PORT, FTP_SERVER_DIR = /htdocs/twigtechnology.net/tagwright/.
+# Shared CSS/icons are deployed at /assets/ by koehntopp/twigtechnology.
+name: Deploy website
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "website/**"
+      - ".github/workflows/deploy-website.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-website
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check credentials
+        id: creds
+        env:
+          USER: ${{ secrets.FTP_USERNAME }}
+          PASS: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          if [ -n "$USER" ] && [ -n "$PASS" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"
+          else echo "::warning::FTP_USERNAME / FTP_PASSWORD secrets not set — skipping deploy."; fi
+
+      - uses: actions/checkout@v4
+        if: steps.creds.outputs.ok == 'true'
+
+      - name: Check target folder
+        if: steps.creds.outputs.ok == 'true'
+        env:
+          DIR: ${{ vars.FTP_SERVER_DIR }}
+        run: |
+          case "$DIR" in
+            /htdocs/twigtechnology.net/tagwright/) ;;
+            *) echo "::error::FTP_SERVER_DIR must be /htdocs/twigtechnology.net/tagwright/ (is '$DIR')"; exit 1 ;;
+          esac
+
+      - name: Install lftp
+        if: steps.creds.outputs.ok == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Upload via SFTP
+        if: steps.creds.outputs.ok == 'true'
+        env:
+          FTP_SERVER: ${{ vars.FTP_SERVER }}
+          FTP_PORT: ${{ vars.FTP_PORT }}
+          FTP_SERVER_DIR: ${{ vars.FTP_SERVER_DIR }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          LFTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          KNOWN_HOSTS: |
+            [ngcobalt428.manitu.net]:23 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEM59J+gyqY236aBc801jHvdVVzTAZe0woFcm3mF7ZJaFbldm/gG0AD6ZG8Gab6GbxhgYuBz1lsYWiPO7F55rmI=
+            [ngcobalt428.manitu.net]:23 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDGAALK3cbwqVKixuV8WTxUq05HOcEqPLtpKzEcjgCy8Oi4cvkSpVV1uNaMSZ5u74ZsY2qG91dctZNF7HeU8LN7uh4qDr/xCDlipGx7dhZGMxjEA+bQs1xtuJmpqhgY5EyVVpZt6hdp+YOPViCabPw7TviHWNKpk9aOFxdxCdwN/S+xo4NELdk0CHpDnfTAak2h723V7N/Xq9wx+iskU5IA855eH1kNPquvLBiswClZ/bqajEVPNVHpdg4JngKKYW0J2a2ck2EVsZxwNZ4Arz1Ev0rLQIHLRvvqWAGro1dsTNlWNi+NLfLBoVY1pxg7M8b9SIwE5FF2iRmuQbg46w8EJgR3Mv4ku8vNyDaIvzva/ptUWrDfPQeIlWo3bkNIquiu6zVJhLyifQ48M9YNvzlE7G+UIGXpRsvjSo+yno/fCLtaCKUOKpr0OiU1ZLbgWqn70RLQjlR2SKvVbVNa/RWEe/GSLazYcYhH37YmAK1P0ZW3S+kNB4GREyxO8pAfb0=
+        run: |
+          mkdir -p ~/.ssh && printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          lftp --env-password -u "$FTP_USERNAME" "sftp://$FTP_SERVER:$FTP_PORT" -e "
+            set sftp:connect-program 'ssh -a -x -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts';
+            set net:timeout 20;
+            set net:max-retries 3;
+            mirror --reverse --verbose --parallel=4 --exclude-glob '.git*' ./website/ '$FTP_SERVER_DIR';
+            bye"
+
+      - name: Check the live page
+        if: steps.creds.outputs.ok == 'true'
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" "https://www.twigtechnology.net/tagwright/")
+          echo "https://www.twigtechnology.net/tagwright/ → $code"
+          [ "$code" = "200" ] || exit 1

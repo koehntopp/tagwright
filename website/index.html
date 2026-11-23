@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagwright — A clean library, one album at a time</title>
+<meta name="description" content="Self-hosted web app that turns freshly downloaded FLAC and MP3 albums into clean, tagged, loudness-analysed albums with lyrics.">
+<link rel="canonical" href="https://www.twigtechnology.net/tagwright/">
+<meta property="og:title" content="Tagwright">
+<meta property="og:description" content="A clean library, one album at a time. Self-hosted, open source, no account.">
+<meta property="og:image" content="https://raw.githubusercontent.com/koehntopp/tagwright/main/docs/screenshots/board.png">
+<link rel="icon" href="/assets/logo.svg">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<nav class="top">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="">Twig Technology</a>
+    <div class="links">
+      <a class="wide" href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#source">Source</a>
+      <a href="/">All software</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap"><a class="back" href="/">← All software</a></div>
+
+  <header class="hero wrap">
+    <img class="icon" src="/assets/icon-tagwright.svg" alt="Tagwright">
+    <h1>Tagwright</h1>
+    <p class="tagline">A clean library, one album at a time.</p>
+    <p class="lede">Point Tagwright at a staging folder and a library folder. It turns freshly downloaded FLAC and MP3 albums into clean, tagged, loudness-analysed albums with lyrics — and keeps everything in one canonical layout.</p>
+    <a class="cta" href="https://github.com/koehntopp/tagwright/releases/latest">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0 4.5-4.5M12 15l-4.5-4.5M5 19h14"/></svg>
+      <span class="cta-text">Get Tagwright<span class="ver">0.5.0</span></span>
+    </a>
+    <p class="fine">Self-hosted · Docker · free and open source (GPL-3.0)</p>
+    <div class="hero-shots">
+      <img class="win library shot" src="https://raw.githubusercontent.com/koehntopp/tagwright/main/docs/screenshots/board.png" alt="The board: one card per album, the inspector on the right">
+    </div>
+  </header>
+
+  <div class="wrap" id="features">
+    <section class="feature">
+      <div class="text">
+        <div class="eyebrow">The board</div>
+        <h2>See what each album needs.</h2>
+        <p>Every folder in staging becomes one card with its cover, artist, album, year, Discogs ID, dynamic range, lyrics and a pipeline progress bar. Box sets with disc subfolders stay together as one album.</p>
+        <p>Filter for <em>Needs input</em>, <em>Incomplete</em> or <em>Fixed</em>, and switch between cards and a compact, sortable list. Card colour tells you at a glance where an album stands.</p>
+      </div>
+      <img class="win shot" src="https://raw.githubusercontent.com/koehntopp/tagwright/main/docs/screenshots/list.png" alt="The compact list view with the inspector for a box set" loading="lazy">
+    </section>
+
+    <section class="feature flip">
+      <div class="text">
+        <div class="eyebrow">The pipeline</div>
+        <h2>One run does the boring parts.</h2>
+        <p>Dynamic range with <a href="https://github.com/koehntopp/drcalc">drcalc</a>, ReplayGain with rsgain, AcoustID fingerprints with <a href="https://github.com/koehntopp/fpscan">fpscan</a>, tags and cover from the assigned Discogs release, lyrics from lrclib.net and file names in your layout — in that order.</p>
+        <p>The inspector shows each step as done or partial, which tracks lack it, and a live log while fixes run. Tags Tagwright writes are never read back as input, and a user-owned tag is never overwritten by automation.</p>
+      </div>
+      <img class="win shot" src="https://raw.githubusercontent.com/koehntopp/tagwright/main/docs/screenshots/inspector.png" alt="Inspector showing pipeline steps, notes and track details" loading="lazy">
+    </section>
+
+    <h2 class="section-title">And a few more things</h2>
+    <div class="grid">
+      <div class="tile"><div class="glyph">◈</div><h3>Assign the right release</h3><p>Search Discogs and MusicBrainz, then assign the release. Tags owned by Discogs stay read-only in the editor.</p></div>
+      <div class="tile"><div class="glyph">♫</div><h3>Lyrics, synced</h3><p>Plain and time-synced LRC lyrics from LRCLIB, with an editor for the lines that need a hand.</p></div>
+      <div class="tile"><div class="glyph">◉</div><h3>Loudness, measured</h3><p>Dynamic range and ReplayGain (EBU R128) written as tags, so you know what you are listening to.</p></div>
+      <div class="tile"><div class="glyph">▣</div><h3>A canonical library</h3><p>Move to library places files in your chosen folder and filename layout, with the cover recreated.</p></div>
+      <div class="tile"><div class="glyph">✦</div><h3>Your existing versions</h3><p>The inspector shows other versions of the same Discogs master already in your library.</p></div>
+      <div class="tile"><div class="glyph">◇</div><h3>One user, one tab</h3><p>FastAPI and Next.js, no database server and no account. The decisions behind every behaviour are documented in the ADRs.</p></div>
+    </div>
+
+    <section class="pro" id="install">
+      <div>
+        <div class="eyebrow">Install</div>
+        <h2 class="section-title">Run it yourself.</h2>
+        <ol>
+          <li>Pull the container image from ghcr.io and start it with Docker Compose.</li>
+          <li>Point Tagwright at your staging folder and your music library folder.</li>
+          <li>Open it in a browser tab. There is no account to create and no database to set up.</li>
+        </ol>
+        <p class="price">Full quick-start and configuration: in the README on GitHub. Python 3.14, GPL-3.0-or-later.</p>
+        <p style="margin-top: 22px"><a class="cta" href="https://github.com/koehntopp/tagwright#readme">Read the quick start →</a></p>
+      </div>
+      <div>
+        <div class="badges tall" style="justify-content:center">
+          <a href="https://github.com/koehntopp/tagwright/pkgs/container/tagwright"><img src="https://img.shields.io/badge/ghcr.io-tagwright-blue?style=flat&logo=docker&logoColor=white&labelColor=1b1b52" alt="Container image on ghcr.io"></a>
+          <a href="https://github.com/koehntopp/tagwright/actions/workflows/image.yml"><img src="https://github.com/koehntopp/tagwright/actions/workflows/image.yml/badge.svg" alt="Image build"></a>
+        </div>
+        <p class="caption">Container image and build status</p>
+      </div>
+    </section>
+
+    <div class="github-strip" id="source">
+      <div class="gh-copy">
+        <div class="eyebrow">Source</div>
+        <h3>Open, and documented.</h3>
+        <p>Source, issues, releases and the architecture decision records all live on GitHub.</p>
+      </div>
+      <span class="badges tall">
+        <a href="https://github.com/koehntopp/tagwright"><img src="https://img.shields.io/github/stars/koehntopp/tagwright?style=flat&label=stars&logo=github&logoColor=white&labelColor=1b1b52&color=ff9a7a" alt="GitHub stars"></a>
+        <a href="https://github.com/koehntopp/tagwright/releases/latest"><img src="https://img.shields.io/github/v/release/koehntopp/tagwright?style=flat&label=release&labelColor=1b1b52&color=6ff2ff" alt="Latest release"></a>
+        <a href="https://github.com/koehntopp/tagwright/blob/main/LICENSE"><img src="https://img.shields.io/github/license/koehntopp/tagwright?style=flat&label=license&labelColor=1b1b52&color=b9a7ff" alt="License"></a>
+        <a href="https://github.com/koehntopp/tagwright/issues"><img src="https://img.shields.io/github/issues/koehntopp/tagwright?style=flat&label=issues&labelColor=1b1b52&color=ffd07a" alt="Open issues"></a>
+      </span>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Frank Köhntopp</span>
+    <span class="spacer"></span>
+    <a href="/">All software</a>
+    <a href="https://github.com/koehntopp/tagwright">GitHub</a>
+    <a href="mailto:info@twigtechnology.net">info@twigtechnology.net</a>
+  </div>
+</footer>
+</body>
+</html>
