@@ -4,6 +4,10 @@ What changed for people who use Tagwright, newest first. Every functional change
 
 ## Unreleased
 
+### Fixed
+
+- `scripts/fix-credits.py` no longer skips tracks as "no matching Discogs track" when the release numbers them differently (SACD-1, CD-1 against your 1, 2): it then matches by title, ignoring the parts in other scripts ("Travelin' Prayer = 流れ者の祈り" matches "Travelin’ Prayer") and the kind of apostrophe. Only a title that fits exactly one track counts [0100].
+
 ## 0.5.0 (2026-11-23)
 
 ### Changed

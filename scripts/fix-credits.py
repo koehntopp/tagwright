@@ -17,7 +17,7 @@ DISCOGS_RELEASE_ID this script looks the release up again and writes what an ass
 - removes the legacy tags (credits.LEGACY_TAGS, credits.LEGACY_PREFIXES).
 
 Safety: the file is matched to its release track by its Discogs position (TRACK_NUMBER_TEXT), else by
-DISCOGS_RELEASE_ORDINAL_POSITION checked against that position; no match, an empty tracklist or a failed lookup skips the file or album. A file is never saved
+DISCOGS_RELEASE_ORDINAL_POSITION checked against that position, else by a unique title (ASCII only); no match, an empty tracklist or a failed lookup skips the file or album. A file is never saved
 when it would lose TITLE, ARTIST, ALBUM, ALBUMARTIST, TRACKNUMBER or DISCNUMBER. Dry run by default (a diff per
 file); --write saves. Run it on a copy first (ADR 0018). The Discogs key comes from DISCOGS_API_KEY or the
 settings file (--settings, default data/settings.json); Discogs allows about one release a second.
@@ -29,6 +29,7 @@ import logging
 import os
 import re
 import sys
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -75,10 +76,18 @@ def same_artists(old: list[str], new: list[str]) -> bool:
 	return {w.strip().casefold() for w in words if w.strip()} == {n.casefold() for n in new}
 
 
+def norm_title(s: str) -> str:
+	"""Lowercase ASCII words only: apostrophes and other scripts dropped, accents folded, punctuation a space."""
+	s = re.sub(r"['‘’`´]", '', s)  # Ain't = Ain’t = Aint
+	ascii_ = unicodedata.normalize('NFD', s.lower()).encode('ascii', 'ignore').decode()
+	return re.sub(r'[^a-z0-9]+', ' ', ascii_).strip()
+
+
 def ordinal(tags: dict[str, list[str]], flat: list[tuple[dict, dict | None]]) -> int | None:
 	"""The release track of a file: the one track whose position is TRACK_NUMBER_TEXT; else (positions repeat, or no
 	TRACK_NUMBER_TEXT) DISCOGS_RELEASE_ORDINAL_POSITION when its track has that position. None when nothing matches.
-	Positions come first because older writers counted headings in the ordinal."""
+	Positions come first because older writers counted headings in the ordinal. Last, the one track with the
+	same title in ASCII (TRACK_NUMBER_TEXT '1' where Discogs says 'SACD-1')."""
 	text = (tags.get('TRACK_NUMBER_TEXT') or [''])[0].strip()
 	hits = [i for i, (t, _) in enumerate(flat) if text and t.get('position', '') == text]
 	if len(hits) == 1:
@@ -86,8 +95,13 @@ def ordinal(tags: dict[str, list[str]], flat: list[tuple[dict, dict | None]]) ->
 	raw = (tags.get('DISCOGS_RELEASE_ORDINAL_POSITION') or [''])[0].strip()
 	if raw.isdigit() and int(raw) < len(flat):
 		i = int(raw)
-		return i if not text or flat[i][0].get('position', '') == text else None
-	return None
+		if not text or flat[i][0].get('position', '') == text:
+			return i
+	# Last: the one track with the same title, compared in ASCII ('Travelin’ Prayer' matches
+	# "Travelin' Prayer = 流れ者の祈り"); a substring would hit every 'Piano Man (Live ...)'.
+	title = norm_title((tags.get('TITLE') or [''])[0])
+	hits = [i for i, (t, _) in enumerate(flat) if title and norm_title(t.get('title', '')) == title]
+	return hits[0] if len(hits) == 1 else None
 
 
 def plan(tags: dict[str, list[str]], release: dict, i: int) -> tuple[dict, list[str], list[str]]:
