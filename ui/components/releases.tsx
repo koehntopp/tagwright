@@ -64,15 +64,18 @@ function trackGroups(rel: any): { key: string; label: string; tracks: any[] }[] 
 }
 
 /** Default numbering (same rule as the server): 1..n per disc in release order; f.d / f.t hold manual overrides.
- *  A release track may go to one file per disc of the album (f.disc, the file's own disc); when one does, every
- *  disc of the album is numbered on its own (ADR 0102). Sets f.ad / f.at on the files and returns how often each
+ *  A release track may go to one file per disc of the album (f.disc, the file's own disc); when one does, or the
+ *  album has more discs than the release discs its tracks are on, every disc of the album is numbered on its own
+ *  (ADR 0102, 0109). Sets f.ad / f.at on the files and returns how often each
  *  release track is used, the release tracks used twice on one disc of the album, and the number of assigned files. */
 function numbering(rel: any, files: any[]) {
 	const sel = rel ? files.filter(f => f.rel !== null).sort((x, y) => x.rel - y.rel) : []
 	const used: Record<number, number> = {}, onDisc: Record<string, number> = {}
 	sel.forEach(f => { used[f.rel] = (used[f.rel] || 0) + 1; const k = `${f.rel}:${f.disc}`; onDisc[k] = (onDisc[k] || 0) + 1 })
-	const reused = Object.values(used).some(n => n > 1)
-	const group = (f: any) => `${reused ? f.disc : 0}:${rel.tracks[f.rel].disc}`
+	// every disc of the album on its own: a release track on several of them (ADR 0102), or more album discs than
+	// release discs, as when Discogs lists the mixes of a Blu-ray as one disc (ADR 0109); the server's per_album_disc
+	const split = Object.values(used).some(n => n > 1) || new Set(sel.map(f => f.disc)).size > new Set(sel.map(f => rel.tracks[f.rel].disc)).size
+	const group = (f: any) => `${split ? f.disc : 0}:${rel.tracks[f.rel].disc}`
 	const order = (g: string) => g.split(':').map(Number)
 	const discs = [...new Set(sel.map(group))].sort((x, y) => order(x)[0] - order(y)[0] || order(x)[1] - order(y)[1])
 	const seen: Record<string, number> = {}

@@ -117,3 +117,94 @@ def test_an_album_without_reuse_keeps_the_release_discs() -> None:
 		rel, [{'file': 'a', 'rel': 0}, {'file': 'b', 'rel': 1}], {'a': 5, 'b': 5}
 	)
 	assert final == {'a': (1, 1), 'b': (2, 1)}
+
+
+def test_mixes_listed_as_one_disc_follow_the_album_discs_and_take_medley_parts(
+	client: TestClient, make_flac: MakeFlac, monkeypatch: pytest.MonkeyPatch
+) -> None:
+	"""ADR 0109, shaped like The Alan Parsons Project, Tales Of Mystery And Imagination (Discogs 9448188): two mixes
+	under two headings on one release disc, each with a medley in parts; the album has a disc per mix, numbered
+	1..n. Before, disc 1's track 2 took the other mix's track 2 (the disc/track bonus), the part files took the whole
+	medley, and everything was numbered on disc 1."""
+	mixes = ('5.1 Mix', 'Original Stereo Mix')
+	tracks, i = [], 0
+	for m, mix in enumerate(mixes):
+		for n, (title, dur, parts) in enumerate(
+			(('Raven', 238, ()), ('Usher', 330, (('Prelude', 120), ('Fall', 210))))
+		):
+			tracks.append(
+				{
+					'i': i,
+					'position': str(m * 2 + n + 1),
+					'disc': 1,
+					'track': m * 2 + n + 1,
+					'title': title,
+					'duration': dur,
+					'part_of': '',
+					'subtitle': mix,
+					'artist': 'A',
+					'credits': {},
+				}
+			)
+			i += 1
+			for part, pdur in parts:
+				tracks.append(
+					{
+						'i': i,
+						'position': f'{m * 2 + n + 1}.{len(tracks)}',
+						'disc': 1,
+						'track': m * 2 + n + 1,
+						'title': part,
+						'duration': pdur,
+						'part_of': title,
+						'subtitle': mix,
+						'artist': 'A',
+						'credits': {},
+					}
+				)
+				i += 1
+	rel = {
+		'id': '9',
+		'title': 'Tales',
+		'artist': 'A',
+		'year': 2016,
+		'catno': 'X',
+		'master_id': 0,
+		'image': '',
+		'tracks': tracks,
+	}
+	monkeypatch.setattr(tagwright, 'release_tracks', lambda rid: rel)
+	folder = tagwright.ROOT / 'Tales'
+	# album disc 1 is the stereo mix, disc 2 the 5.1 mix (the opposite order of the release)
+	for d, mix in ((1, 'Original Stereo Mix Of Album'), (2, 'DTS 5.1 Surround Mix')):
+		for n, title in enumerate(('Raven', 'Usher (Prelude)', 'Usher (Fall)'), 1):
+			make_flac(
+				folder / f'Disc {d}' / f'{d:02d}_{n:02d}.flac',
+				TITLE=title,
+				DISCNUMBER=str(d),
+				TRACKNUMBER=str(n),
+				**{'SET SUBTITLE': mix},
+			)
+	r = client.post('/api/tracks/propose', json={'path': str(folder), 'release_id': '9'}).json()
+	got = [(f['file'], tracks[f['rel']]['subtitle'], tracks[f['rel']]['title']) for f in r['files']]
+	assert got == [
+		('Disc 1/01_01.flac', 'Original Stereo Mix', 'Raven'),
+		('Disc 1/01_02.flac', 'Original Stereo Mix', 'Prelude'),
+		('Disc 1/01_03.flac', 'Original Stereo Mix', 'Fall'),
+		('Disc 2/02_01.flac', '5.1 Mix', 'Raven'),
+		('Disc 2/02_02.flac', '5.1 Mix', 'Prelude'),
+		('Disc 2/02_03.flac', '5.1 Mix', 'Fall'),
+	]
+	_, _, final, _, _ = tagwright.number_assignments(
+		rel,
+		[{'file': f['file'], 'rel': f['rel']} for f in r['files']],
+		{f['file']: f['disc'] for f in r['files']},
+	)
+	assert [final[f['file']] for f in r['files']] == [
+		(1, 1),
+		(1, 2),
+		(1, 3),
+		(2, 1),
+		(2, 2),
+		(2, 3),
+	]

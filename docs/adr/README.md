@@ -41,14 +41,14 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0044](0044-lrclib-application-id-no-key-setting.md) | lrclib.net is reached with the application ID; no key setting | Accepted |
 | [0045](0045-folders-from-the-environment-only.md) | Staging and library folders come from the environment only; Settings shows their host paths | Accepted |
 | [0051](0051-run-a-single-pipeline-step.md) | A double click on a pipeline step runs only that step | Accepted |
-| [0053](0053-discogs-search-and-assignment-consolidated.md) | Discogs release search and track assignment (consolidated: 0013, 0043, 0046, 0047, 0048, 0052) | Accepted (artist and credit rows: 0100; positions: 0101; one track on several discs: 0102; 0106) |
+| [0053](0053-discogs-search-and-assignment-consolidated.md) | Discogs release search and track assignment (consolidated: 0013, 0043, 0046, 0047, 0048, 0052) | Accepted (artist and credit rows: 0100; positions: 0101; one track on several discs: 0102; 0106; scoring: 0109) |
 | [0054](0054-album-status-and-steps-consolidated.md) | Album status, pipeline steps and issue lines (consolidated: 0006, 0039, 0049, 0050) | Accepted |
 | [0055](0055-no-default-paths.md) | No default paths: staging, library and data folders must be set | Accepted |
 | [0056](0056-cover-controls-in-one-menu.md) | Cover controls in one menu, with the size warning on the cover | Accepted |
 | [0057](0057-tag-editor-tabs-and-other-tags.md) | Tag editor tabs: Discogs and MusicBrainz apart, and an Other tab with the remaining tags | Accepted |
 | [0058](0058-audio-files-through-one-seam.md) | Audio files are opened through one seam (`pipeline/audio.py`) | Accepted |
 | [0059](0059-mp3-support.md) | MP3 support: ID3 mapped to the Vorbis-style tag model, v2.4 written, mixed albums, own extensions | Accepted |
-| [0060](0060-parts-of-a-work-are-release-tracks.md) | The parts of a work or medley are release tracks too | Accepted(in part: 0102) |
+| [0060](0060-parts-of-a-work-are-release-tracks.md) | The parts of a work or medley are release tracks too | Accepted (in part: 0102, 0109) |
 | [0061](0061-renovate-for-dependency-updates.md) | Renovate for dependency updates | Accepted |
 | [0062](0062-license-gpl-3-or-later.md) | Licence: GPL-3.0-or-later (mutagen and Unidecode are GPL) | Accepted |
 | [0064](0064-logging-and-syslog.md) | Logging to standard output, and to syslog when SYSLOG_HOST is set | Accepted |
@@ -87,13 +87,14 @@ Every decision that shapes Tagwright is recorded here. Process and rules: [ADR 0
 | [0099](0099-box-set-cover.md) | A box-set cover (front picture described "Box set") beside the disc covers | Accepted (in part: 0107) |
 | [0100](0100-credits-one-value-per-name.md) | Artists and credits one value per name (track ranges, MIXER, LYRICIST, ...); legacy tags removed; required tags never lost; `scripts/fix-credits.py` | Accepted |
 | [0101](0101-discogs-positions-with-media-labels.md) | Disc and track from Discogs positions with media labels (`SACD-1`, `CD-1`, `BD1-2`) | Accepted |
-| [0102](0102-one-release-track-on-several-discs.md) | One release track on several discs of the album (a Blu-ray with several mixes listed once on Discogs) | Accepted |
+| [0102](0102-one-release-track-on-several-discs.md) | One release track on several discs of the album (a Blu-ray with several mixes listed once on Discogs) | Accepted (in part: 0109) |
 | [0103](0103-watcher-removes-empty-folders.md) | The library watcher removes empty folders it finds on every full pass | Accepted |
 | [0104](0104-cover-files-for-albums-already-in-the-library.md) | Cover files for albums already in the library, written on every full pass | Accepted |
 | [0105](0105-artwork-folder-holds-the-front-cover-too.md) | `Artwork/00 front.jpg` copies folder.jpg; cover files follow every artwork change | Accepted |
 | [0106](0106-clearer-subtitle-dividers-and-current-release-id.md) | Import-dialog dividers as "Release:" / "Current subtitle:"; the current release ID under the search field | Accepted |
 | [0107](0107-all-discs-shows-a-shared-front-instead-of-an-empty-box-cover.md) | All discs shows a shared front cover instead of an empty Box Cover | Accepted |
 | [0108](0108-release-track-dropdown-grouped-by-disc-and-subtitle.md) | The release-track dropdown is grouped by disc and subtitle | Accepted |
+| [0109](0109-proposal-keeps-album-discs-together-and-matches-medley-parts.md) | The proposal keeps each album disc in one release section and matches medley parts by their full title | Accepted |
 
 ## History: superseded ADRs
 

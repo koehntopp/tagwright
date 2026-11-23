@@ -1,6 +1,6 @@
 # ADR 0102: One release track on several discs of the album
 
-- **Status**: Accepted
+- **Status**: Accepted (more album discs than release discs also number each album disc on its own: [0109](0109-proposal-keeps-album-discs-together-and-matches-medley-parts.md))
 - **Date**: 2026-11-23
 - **Supersedes in part**: [0053](0053-discogs-search-and-assignment-consolidated.md) (a release track goes to one file only; the proposal's scoring and numbering), [0060](0060-parts-of-a-work-are-release-tracks.md) ("only choosing the same one twice is refused"), [0081](0081-subtitle-dividers-in-track-lists.md) (the disc a divider names), [0089](0089-assignment-track-order.md) (the order of the rows)
 

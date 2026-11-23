@@ -1870,47 +1870,88 @@ def tracks_propose(body: dict) -> dict:
 	rid = str(body.get('release_id', '')).strip()
 	rel = mb_release(rid.lower()) if source == 'musicbrainz' else release_tracks(rid)
 	files = album_files(album)
-	pairs = []
+	tracks = rel['tracks']
 	# a title the release lists more than once (one per mix): the file's subtitle tells which (ADR 0102)
-	twice = Counter(norm_title(t['title']) for t in rel['tracks'])
-	for f in files:
-		for t in rel['tracks']:
-			s = SequenceMatcher(None, norm_title(f['title']), norm_title(t['title'])).ratio() * 0.6
-			if t['duration']:
-				s += max(0.0, 1 - abs(f['duration'] - t['duration']) / 8) * 0.25
-			if f['track'] and (f['disc'], f['track']) == (t['disc'], t['track']):
-				s += 0.15
-			if twice[norm_title(t['title'])] > 1:
-				s += subtitle_overlap(f['subtitle'], t.get('subtitle', '')) * 0.3
-			pairs.append((s, f['file'], t['i']))
-	assign: dict[str, int | None] = {f['file']: None for f in files}
-	conf: dict[str, float] = {}
-	used: set[int] = set()
+	twice = Counter(norm_title(t['title']) for t in tracks)
 	copy = {f['file']: f['disc'] for f in files}  # the file's own disc (ADR 0102)
-	taken: dict[int, set[int]] = {}
-	is_part = {t['i']: bool(t['part_of']) for t in rel['tracks']}
-	# whole tracks first; the parts of a medley only take the files left over, and only on a clear title match
-	# (ADR 0060). Then the files still left may take a track another disc of the album already has, on a clear
-	# match: a Blu-ray with the same songs in several mixes, listed once on Discogs (ADR 0102).
-	for reuse, part_pass, least in ((False, False, 0.35), (False, True, 0.45), (True, False, 0.6)):
-		for s, fn, i in sorted(pairs, reverse=True):
-			if is_part[i] != part_pass or assign[fn] is not None or s < least:
-				continue
-			if i in (taken.get(copy[fn], set()) if reuse else used):
-				continue
-			assign[fn], conf[fn] = i, round(s, 2)
-			used.add(i)
-			taken.setdefault(copy[fn], set()).add(i)
-	reused = len([i for i in assign.values() if i is not None]) != len(used)
+	is_part = {t['i']: bool(t['part_of']) for t in tracks}
 
-	# The dividers name the release's disc, so list the files in that order too (ADR 0089); a release track used
-	# on several discs of the album lists each disc of the album in turn (ADR 0102).
+	def section(t: dict) -> tuple[int, str]:
+		return t['disc'], t.get('subtitle', '')
+
+	def score(f: dict, t: dict) -> float:
+		title = norm_title(f['title'])
+		s = SequenceMatcher(None, title, norm_title(t['title'])).ratio()
+		if t[
+			'part_of'
+		]:  # a part is also compared as "medley (part)", as files of parts are titled (ADR 0109)
+			s = max(
+				s, SequenceMatcher(None, title, norm_title(f'{t["part_of"]} {t["title"]}')).ratio()
+			)
+		s *= 0.6
+		if t['duration']:
+			s += max(0.0, 1 - abs(f['duration'] - t['duration']) / 8) * 0.25
+		if twice[norm_title(t['title'])] > 1:
+			# one title per mix: the subtitle tells which; the disc/track number would point at the first mix (ADR 0109)
+			s += subtitle_overlap(f['subtitle'], t.get('subtitle', '')) * 0.3
+		elif f['track'] and (f['disc'], f['track']) == (t['disc'], t['track']):
+			s += 0.15
+		return s
+
+	base = [(score(f, t), f['file'], t['i']) for f in files for t in tracks]
+
+	def match(
+		pairs: list[tuple[float, str, int]],
+	) -> tuple[dict[str, int | None], dict[str, float], set[int]]:
+		"""Greedy from the best pair: whole tracks from 0.35, parts of a medley from 0.45, in one pass (ADR 0060,
+		0109); then the files still left may take a track another disc of the album already has, from 0.6: a
+		Blu-ray with the same songs in several mixes, listed once on Discogs (ADR 0102)."""
+		assign: dict[str, int | None] = {f['file']: None for f in files}
+		conf: dict[str, float] = {}
+		used: set[int] = set()
+		taken: dict[int, set[int]] = {}
+		ordered = sorted(pairs, reverse=True)
+		for reuse in (False, True):
+			for s, fn, i in ordered:
+				least = 0.6 if reuse else 0.45 if is_part[i] else 0.35
+				if assign[fn] is not None or s < least:
+					continue
+				if i in (taken.get(copy[fn], set()) if reuse else used):
+					continue
+				assign[fn], conf[fn] = i, round(s, 2)
+				used.add(i)
+				taken.setdefault(copy[fn], set()).add(i)
+		return assign, conf, used
+
+	assign, conf, used = match(base)
+	# Each disc of the album is one section of the release (a disc, or a heading's run such as one mix): the section
+	# most of a disc's files landed in gets a bonus, and the match runs again, so a stray file follows its disc
+	# instead of a lookalike in another mix (ADR 0109).
+	if len({section(t) for t in tracks}) > 1:
+		home: dict[int, tuple[int, str]] = {}
+		for d in set(copy.values()):
+			got = Counter(
+				section(tracks[i]) for fn, i in assign.items() if i is not None and copy[fn] == d
+			)
+			if got and (top := got.most_common(1)[0])[1] * 2 > sum(got.values()):
+				home[d] = top[0]
+		if home:
+			assign, conf, used = match(
+				[
+					(s + (0.2 if home.get(copy[fn]) == section(tracks[i]) else 0.0), fn, i)
+					for s, fn, i in base
+				]
+			)
+	split = per_album_disc({fn: i for fn, i in assign.items() if i is not None}, copy, tracks)
+
+	# The dividers name the release's disc, so list the files in that order too (ADR 0089); when every disc of the
+	# album is numbered on its own, each disc of the album in turn (ADR 0102, 0109).
 	def release_order(f: dict) -> tuple[bool, int, int, int, int, str]:
 		i = assign[f['file']]
 		if i is None:
 			return (True, 0, 0, 0, 0, f['file'])
-		t = rel['tracks'][i]
-		return (False, t['disc'], copy[f['file']] if reused else 0, t['track'], i, f['file'])
+		t = tracks[i]
+		return (False, copy[f['file']] if split else 0, t['disc'], t['track'], i, f['file'])
 
 	files = sorted(files, key=release_order)
 	return {
@@ -1923,6 +1964,15 @@ def tracks_propose(body: dict) -> dict:
 def assignment_titles(asg: list[dict]) -> dict[str, str]:
 	"""The titles the owner typed in the dialog (file -> title); a file without one gets the release's title."""
 	return {a['file']: t.strip() for a in asg if isinstance(t := a.get('title'), str) and t.strip()}
+
+
+def per_album_disc(chosen: dict[str, int], copy: dict[str, int], tracks: list[dict]) -> bool:
+	"""Whether every disc of the album is numbered (and listed) on its own: a release track goes to files on several
+	discs of the album (ADR 0102), or the album's discs are more than the release discs their tracks are on, as when
+	Discogs lists the mixes of a Blu-ray as one disc (ADR 0109)."""
+	if len({*chosen.values()}) != len(chosen):
+		return True
+	return len({copy[fn] for fn in chosen}) > len({tracks[i]['disc'] for i in chosen.values()})
 
 
 def number_assignments(
@@ -1939,10 +1989,10 @@ def number_assignments(
 	copy = {fn: (copies or {}).get(fn, 1) for fn in chosen}
 	if len({(i, copy[fn]) for fn, i in chosen.items()}) != len(chosen):
 		raise HTTPException(400, 'a release track is assigned twice on one disc')
-	reused = len({*chosen.values()}) != len(chosen)
+	split = per_album_disc(chosen, copy, rel['tracks'])
 
 	def group(fn: str, i: int) -> tuple[int, int]:
-		return (copy[fn] if reused else 0, rel['tracks'][i]['disc'])
+		return (copy[fn] if split else 0, rel['tracks'][i]['disc'])
 
 	# default numbering: 1..n per disc in release order; the UI may override disc and track per file
 	picked = sorted(chosen.items(), key=lambda kv: kv[1])
