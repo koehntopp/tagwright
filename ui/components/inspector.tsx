@@ -130,7 +130,7 @@ function CoverField({ kind, label, items, fallback, fallbackSize, warn, busy, pu
 			</div>
 			<input ref={input} type="file" accept="image/*" className="hidden" onChange={e => { sendFile(e.target.files?.[0]); e.target.value = '' }} />
 			{menuOpen && search && (
-				<div role="menu" className="absolute bottom-8 right-1 z-20 w-56 rounded-lg border bg-white p-1 text-sm shadow-md">
+				<div role="menu" className="absolute bottom-8 left-1 z-20 w-56 rounded-lg border bg-white p-1 text-sm shadow-md">
 					<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { toggleMenu?.(); pick('replace') }}><Upload className="size-4" />Upload image</button>
 					<button role="menuitem" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { toggleMenu?.(); paste?.() }}><ClipboardPaste className="size-4" />Paste image</button>
 					{search}
